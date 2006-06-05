@@ -6,7 +6,7 @@
 %%              OCR project
 %%
 %% CVS:
-%% $Id: marks_ocr_init.m,v 1.1 2006-06-03 20:52:45 scottl Exp $
+%% $Id: marks_ocr_init.m,v 1.2 2006-06-05 16:20:34 scottl Exp $
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('loading matlab defaults file\n');
@@ -19,4 +19,8 @@ whitebg;   %inverse the figure backgrounds
 close(gcf);
 
 %add the necessary paths
-addpath "cluster" "util" "display" "ocr"
+addpath([pwd, '/cluster']);
+addpath([pwd, '/util']);
+addpath([pwd, '/display']);
+addpath([pwd, '/ocr']);
+addpath([pwd, '/lang_model']);
