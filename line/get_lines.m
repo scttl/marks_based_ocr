@@ -1,7 +1,7 @@
-function Pos = get_lines(Clust, Comps)
+function Pos = get_lines(Clust, Comps, num)
 % get_lines  Determine bounding box of each "line" on a page based on neighbours
 %
-%   Pos = get_lines(Clust, Comps)
+%   Pos = get_lines(Clust, Comps, [num])
 %
 %   The bounding box of each component in Clust as well as its directional 
 %   neighbours is used to extract individual lines of a document (as determined 
@@ -14,22 +14,30 @@ function Pos = get_lines(Clust, Comps)
 %   Comps should be a 2 or 3 dimensional image matrix, where each entry 
 %   represents a pixel, and each 'on' pixel is labelled with the component
 %   number to which it belongs.
+%
+%   num is optional and if specified determines the maximum number of lines to
+%   return (assuming there are that many lines in the files).  If not specified
+%   all lines found are returned.
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_lines.m,v 1.1 2006-06-03 20:56:01 scottl Exp $
+% $Id: get_lines.m,v 1.2 2006-06-12 20:59:40 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_lines.m,v $
-% Revision 1.1  2006-06-03 20:56:01  scottl
+% Revision 1.2  2006-06-12 20:59:40  scottl
+% use cell array for comps, allow one to specify the number of lines returned
+%
+% Revision 1.1  2006/06/03 20:56:01  scottl
 % Initial check-in.
 %
 %
 
 % LOCAL VARIABLES %
 %%%%%%%%%%%%%%%%%%%
-num_pages = size(Comps,3);
-Pos = cell(1, num_pages);
+max_num = inf;
+num_pages = size(Comps,1);
+Pos = cell(num_pages,1);
 num_clust = size(Clust,1);
 
 display_images = true;
@@ -44,8 +52,10 @@ img_format = 'png';
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin ~= 2
+if nargin < 2 || nargin > 3
     error('incorrect number of arguments specified!');
+elseif nargin == 3
+    max_num = num;
 end
 
 for p=1:num_pages
@@ -74,7 +84,7 @@ for p=1:num_pages
     end
     
     %follow neighbours to get bounding box
-    while more_rows
+    while more_rows && max_num > 0
     
         %there may be left neighbours that aren't as high up the page.
         [vcl, voff] = find_left(Clust, vcl, voff);
@@ -160,11 +170,13 @@ for p=1:num_pages
     
         %update the line boundaries
         Pos{p} = [Pos{p}; l, t, r, b];
+
+        max_num = max_num - 1;
     end
 
     %draw the bounding boxes found
     if display_images || save_images
-        M = label2rgb(Comps(:,:,p), 'white', 'k');
+        M = label2rgb(Comps{p}, 'white', 'k');
         for i=1:size(Pos{p},1)
             l = Pos{p}(i,1); t = Pos{p}(i,2); r = Pos{p}(i,3); b = Pos{p}(i,4);
             M(t,l:r,:) = repmat(out_col,1,r-l+1);
