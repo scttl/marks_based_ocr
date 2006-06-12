@@ -19,11 +19,14 @@ function [Clust, chg_list] = scale_refine(Clust, rl, st)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: scale_refine.m,v 1.1 2006-06-03 20:55:48 scottl Exp $
+% $Id: scale_refine.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: scale_refine.m,v $
-% Revision 1.1  2006-06-03 20:55:48  scottl
+% Revision 1.2  2006-06-12 20:56:01  scottl
+% changed comps to a cell array (indexed by page) to allow different sized pages
+%
+% Revision 1.1  2006/06/03 20:55:48  scottl
 % Initial check-in.
 %
 %
@@ -34,7 +37,7 @@ distance_thresh = 0.01;          %default distance theshold
 scale_method = 'bicubic';   %other choices are bilinear or nearest
 
 
-display_images = true;
+display_images = false;
 
 
 % CODE START %

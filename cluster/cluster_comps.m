@@ -10,16 +10,18 @@ function [Clust, Comps] = cluster_comps(Files)
 %   Clust is a cell array, with each entry containing a vector of all the
 %   connected components found to be equivalent after processing
 %
-%   Comps is a 3 dimensional matrix of connected component labels.  The third
-%   dimension indexing the page if multiple pages are passed in Files
+%   Comps is a cell array of connected component labels, one page per entry.
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.1 2006-06-03 20:55:47 scottl Exp $
+% $Id: cluster_comps.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.1  2006-06-03 20:55:47  scottl
+% Revision 1.2  2006-06-12 20:56:01  scottl
+% changed comps to a cell array (indexed by page) to allow different sized pages
+%
+% Revision 1.1  2006/06/03 20:55:47  scottl
 % Initial check-in.
 %
 %
@@ -41,7 +43,7 @@ metric='euc';
 
 %the following parameters control when things are grouped together.
 match_thresh = .009;
-scale_thresh = .010;
+scale_thresh = .009;
 split_thresh = .013;
 max_splits = 2;
 merge_thresh = 3;  %look for compoonents no more than 3 pixels apart
@@ -66,7 +68,7 @@ crop_regions = true;
 %figure, image, text, equation, footnote, figure_caption, decoration, abstract,
 %table, graph, eq_number, editor_list, table_caption,  pg_number
 rem_region_list = {'figure', 'figure_label', 'image', 'decoration', 'table', ...
-    'table_label', 'graph', 'equation', 'eq_number'};
+    'code_block', 'table_label', 'graph', 'equation', 'eq_number'};
 
 %should we display the page image before and after processing?  This uses
 %memory and takes longer to run
@@ -80,9 +82,9 @@ fg_val = 1;  %used in cluster averages initially
 
 %should we save connected component images?  This uses memory and takes longer
 %to run
-save_cc_page = false;
+save_cc_page = true;
 %prefix of filename to use when saving connected component images
-img_prefix = 'images/aa01_comps';
+img_prefix = 'results/nips5_comps';
 %file format to use when saving the image
 img_format = 'png';
 
@@ -105,16 +107,14 @@ pass = 1;
 tic;
 if num_pgs > 1
     for p=1:num_pgs
-        Comps(:,:,p) = imread(Files{p});
+        %since Matlab convention is 1 for background intensities, flip this and
+        %convert to a single precision matrix since we will renumber the 
+        %foreground pixels with component numbers
+        Comps{p} = single(~ imread(Files{p}));
     end
 else
-    Comps = imread(Files);
+    Comps{1} = single(~ imread(Files));
 end
-
-%since Matlab convention is 1 for background intensities, flip this and
-%convert to a double precision matrix since we will renumber the foreground
-%pixels with component numbers
-Comps = double(~Comps);
 
 %initialize our cluster groupings
 Clust = [];
@@ -141,7 +141,7 @@ for p=1:num_pgs
             jtag_file = [fl_name(1:dot_pos(end)), 'jtag'];
             pos = jtag_region_finder(jtag_file, rem_region_list);
             for i=1:size(pos,1)
-                Comps(pos(i,2):pos(i,4), pos(i,1):pos(i,3), p) = bg_val;
+                Comps{p}(pos(i,2):pos(i,4), pos(i,1):pos(i,3)) = bg_val;
             end
         end
     end
@@ -149,24 +149,25 @@ for p=1:num_pgs
     %to ensure unique component numbers, update the new components by the 
     %previous largest element
     if p ~= 1
-        tot_comps = max(max(max(Comps)));
+        tot_comps = max(max(Comps{p-1}));
     end
     %start by determining the connected components on this page
-    [Comps(:,:,p), num_comps] = bwlabel(Comps(:,:,p), num_dirs);
+    [Comps{p}, num_comps] = bwlabel(Comps{p}, num_dirs);
     fprintf('%.2fs: %d connected components found on this page\n', toc, ...
             num_comps);
     
-    Comps(:,:,p) = (tot_comps .* (Comps(:,:,p) ~= 0)) + Comps(:,:,p);
+    Comps{p} = (tot_comps .* (Comps{p} ~= 0)) + Comps{p};
     fprintf('%.2fs: Connected component numbers updated\n', toc);
     start_comp = tot_comps + 1;
     tot_comps = tot_comps + num_comps;
 
     if display_page || save_cc_page
-        %this colormap was used for printing puposes
-        %map = repmat([0 0 0], num_comps, 1);
-        %M = label2rgb(Comps(:,:,p), map);
-        %this colormap uses the black background with white letter font
-        M = label2rgb(Comps(:,:,p), 'white', 'k');
+        if num_comps > 0
+            %this colormap uses the black background with white letter font
+            M = label2rgb(Comps{p}, 'white', 'k');
+        else
+            M =  repmat(bg_col, size(Comps{p}));
+        end
         if display_page
             imshow(M);
             drawnow;
@@ -178,10 +179,10 @@ for p=1:num_pgs
     %first we need to fill in the L T R B pixel boundary values for each 
     %component
     Pos = zeros(num_comps, 4);
-    [RR, CC] = find(Comps(:,:,p) ~= 0);
+    [RR, CC] = find(Comps{p} ~= 0);
     for i=1:length(RR)
         %is this the first time seeing this component?
-        comp = Comps(RR(i), CC(i), p);
+        comp = Comps{p}(RR(i), CC(i));
         loc = comp - (start_comp - 1);
         if Pos(loc,1) == 0
             %set all 4 positions for this component to this location
@@ -208,10 +209,10 @@ for p=1:num_pgs
            (v_diff > max_elem_height) || (h_diff > max_elem_width)
             reject_list = [reject_list, i];
             %also remove them from Comps
-            region = Comps(t:b, l:r, p);
+            region = Comps{p}(t:b, l:r);
             idx = find(region == start_comp - 1 + i);
             region(idx) = bg_val;
-            Comps(t:b, l:r, p) = region;
+            Comps{p}(t:b, l:r) = region;
         end
     end
     keep_list = setdiff(1:num_comps, reject_list);
@@ -225,9 +226,9 @@ for p=1:num_pgs
     prev_loc  = 0;
     prev_row  = Inf;
     last_col  = NaN;
-    [RR, CC] = find(Comps(:,:,p) ~= 0);
+    [RR, CC] = find(Comps{p} ~= 0);
     for i=1:length(RR)
-        comp = Comps(RR(i), CC(i), p);
+        comp = Comps{p}(RR(i), CC(i));
         loc = comp - (start_comp - 1);
         if last_col == CC(i) && prev_comp ~= comp
             %not first valid component encountered in this column 
@@ -273,13 +274,13 @@ for p=1:num_pgs
     end
     %now get the left and right distances.  This requires working with the
     %transpose to ensure we get items in L-R order
-    [CC, RR] = find(Comps(:,:,p)' ~= 0);
+    [CC, RR] = find(Comps{p}' ~= 0);
     prev_comp = 0;
     prev_loc  = 0;
     prev_col  = Inf;
     last_row  = NaN;
     for i=1:length(CC)
-        comp = Comps(RR(i), CC(i), p);
+        comp = Comps{p}(RR(i), CC(i));
         loc = comp - (start_comp - 1);
         if last_row == RR(i) && prev_comp ~= comp
             %not first valid component encountered in this row 
@@ -331,7 +332,7 @@ for p=1:num_pgs
         Clust = [Clust; struct('comp', start_comp - 1 + i, ...
           'pos', Pos(i,:), 'nb', Nb(i,:), 'pg', p, 'num', 1, ...
           'avg', zeros(b-t+1, r-l+1))]; 
-        Clust(end).avg(find(Comps(t:b,l:r,p) == Clust(end).comp(1))) = fg_val;
+        Clust(end).avg(find(Comps{p}(t:b,l:r) == Clust(end).comp(1))) = fg_val;
 
         if display_page || save_cc_page
             M(t,l:r,:) = repmat(out_col,1,r-l+1);
@@ -387,17 +388,22 @@ for p=1:num_pgs
             end
             fprintf('\n\n%.2fs: Starting merge refine pass\n', toc);
             [Clust, Comps, new_list] = merge_refine(Clust, Comps, ...
-                refine_List, metric, merge_thresh, merge_pct, merge_min_comps);
+                refine_list, metric, merge_thresh, merge_pct, merge_min_comps);
 
             if pass == 2
                 %first time through we want to attempt to split over all
                 %clusters
                 refine_list = size(Clust,1):-1:1;
+            elseif pass > 2 && length(new_list) ~= 0
+                refine_list = new_list;
             end
             fprintf('\n%.2fs: Starting horizontal split refine pass\n', toc);
             [Clust, Comps, new_list] = split_refine(Clust, Comps, ...
                 refine_list, metric, max_splits, split_thresh);
-            if pass > 2 && length(new_list) ~= 0
+
+            if pass == 2
+                refine_list = size(Clust,1):-1:1;
+            elseif pass > 2 && length(new_list) ~= 0
                 refine_list = new_list;
             end
 
@@ -419,8 +425,8 @@ for p=1:num_pgs
 end
 
 %perform a final scale refine over the remaining elements
-fprintf('\n%.2fs: Starting scale refine pass\n', toc);
-[Clust, new_list] = scale_refine(Clust, size(Clust,1):-1:1, scale_thresh);
+%fprintf('\n%.2fs: Starting scale refine pass\n', toc);
+%[Clust, new_list] = scale_refine(Clust, size(Clust,1):-1:1, scale_thresh);
 
 %finally, sort the clusters
 Clust = sort_clusters(Clust);

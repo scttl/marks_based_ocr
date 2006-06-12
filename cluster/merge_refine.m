@@ -7,7 +7,7 @@ function [Clust, Comps, chg_list] = merge_refine(Clust,Comps,rl,dm,md,vp,mn)
 %   Clust should be an array of structs, each of which is assumed to contain 
 %   several fields of a particular format.  See cluster_comps for details.
 %
-%   Comps should be a 2 or 3 dimensional image matrix, where each entry 
+%   Comps should be a cell array indexed by page, where each entry of each entry
 %   represents a pixel, and each 'on' pixel is labelled with the component 
 %   number to which it belongs.
 %
@@ -42,11 +42,14 @@ function [Clust, Comps, chg_list] = merge_refine(Clust,Comps,rl,dm,md,vp,mn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.1 2006-06-03 20:55:48 scottl Exp $
+% $Id: merge_refine.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
-% Revision 1.1  2006-06-03 20:55:48  scottl
+% Revision 1.2  2006-06-12 20:56:01  scottl
+% changed comps to a cell array (indexed by page) to allow different sized pages
+%
+% Revision 1.1  2006/06/03 20:55:48  scottl
 % Initial check-in.
 %
 %
@@ -61,7 +64,7 @@ min_match_comp = 3;
 bg_val = 0;   %pixel value for background colours
 
 %should we display matches onscreen (wastes resources)
-display_matches = true;
+display_matches = false;
 
 
 % CODE START %
@@ -87,7 +90,7 @@ end
 
 chg_list = [];
 num_clusts = size(Clust, 1);
-max_comp  = max(max(max(Comps)));
+max_comp  = max(max(Comps{end}));
 
 %initially put all elements in the refine list if not passed
 if nargin < 3
@@ -126,13 +129,13 @@ while ~ isempty(refine_list)
                 if left < 1
                     left = 1;
                 end
-                if right > size(Comps,2)
-                    right = size(Comps,2);
+                if right > size(Comps{Clust(r).pg(i)},2)
+                    right = size(Comps{Clust(r).pg(i)},2);
                 end
-                [lr, lc] = find(Comps(top:bot, left:right, ...
-                           Clust(cl).pg(off)) == Clust(cl).comp(off));
-                [rr, rc] = find(Comps(top:bot, left:right, ...
-                           Clust(r).pg(i)) == Clust(r).comp(i));
+                [lr, lc] = find(Comps{Clust(cl).pg(off)}(top:bot,left:right) ...
+                           == Clust(cl).comp(off));
+                [rr, rc] = find(Comps{Clust(r).pg(i)}(top:bot,left:right) ...
+                           == Clust(r).comp(i));
                 match_found = false;
                 for j=1:length(lr)
                     for k=1:length(rr)
@@ -241,7 +244,7 @@ while ~ isempty(refine_list)
 
                         %update the cluster average
                         this.avg = zeros(bb-tt+1, rr-ll+1);
-                        this.avg(find(Comps(tt:bb,ll:rr, this.pg) ~= ...
+                        this.avg(find(Comps{this.pg}(tt:bb,ll:rr) ~= ...
                                bg_val)) = 1;
 
                         %update the cluster
@@ -259,11 +262,11 @@ while ~ isempty(refine_list)
                         end
 
                         %update Comps appropriately
-                        region = Comps(tt:bb, ll:rr, this.pg);
+                        region = Comps{this.pg}(tt:bb, ll:rr);
                         chg_idx = find(region == Clust(r).comp(i) | ...
                                        region == Clust(mf_clst).comp(idx));
                         region(chg_idx) = this.comp;
-                        Comps(tt:bb, ll:rr, this.pg) = region;
+                        Comps{this.pg}(tt:bb, ll:rr) = region;
 
                         %update neighbours of other elements that point at
                         %either of these components
@@ -341,13 +344,13 @@ while ~ isempty(refine_list)
                 if top < 1
                     top = 1;
                 end
-                if bot > size(Comps,1)
-                    bot = size(Comps,1);
+                if bot > size(Comps{Clust(r).pg(i)},1)
+                    bot = size(Comps{Clust(r).pg(i)},1);
                 end
-                [tr, tc] = find(Comps(top:bot, left:right, ...
-                           Clust(cl).pg(off)) == Clust(cl).comp(off));
-                [br, bc] = find(Comps(top:bot, left:right, ...
-                           Clust(r).pg(i)) == Clust(r).comp(i));
+                [tr, tc] = find(Comps{Clust(cl).pg(off)}(top:bot,left:right) ...
+                           == Clust(cl).comp(off));
+                [br, bc] = find(Comps{Clust(r).pg(i)}(top:bot, left:right) ...
+                           == Clust(r).comp(i));
                 match_found = false;
                 for j=1:length(tr)
                     for k=1:length(br)
@@ -453,7 +456,7 @@ while ~ isempty(refine_list)
 
                         %update the cluster average
                         this.avg = zeros(bb-tt+1, rr-ll+1);
-                        this.avg(find(Comps(tt:bb,ll:rr, this.pg) ~= ...
+                        this.avg(find(Comps{this.pg}(tt:bb,ll:rr) ~= ...
                                bg_val)) = 1;
 
                         if Clust(num_clusts).num == 0
@@ -470,11 +473,11 @@ while ~ isempty(refine_list)
                         end
 
                         %update Comps appropriately
-                        region = Comps(tt:bb, ll:rr, this.pg);
+                        region = Comps{this.pg}(tt:bb, ll:rr);
                         chg_idx = find(region == Clust(r).comp(i) | ...
                                        region == Clust(mf_clst).comp(idx));
                         region(chg_idx) = this.comp;
-                        Comps(tt:bb, ll:rr, this.pg) = region;
+                        Comps{this.pg}(tt:bb, ll:rr) = region;
 
                         %update neighbours of other elements that point at
                         %either of these components

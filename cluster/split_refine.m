@@ -7,7 +7,7 @@ function [Clust, Comps, chg_list] = split_refine(Clust,Comps,rl,dm,ms,thr)
 %   Clust should be an array of structs, each of which is assumed to contain 
 %   several fields of a particular format.  See cluster_comps for details.
 %
-%   Comps should be a 2 or 3 dimensional image matrix, where each entry 
+%   Comps should be cell array indexed by page, where each entry of each entry
 %   represents a pixel, and each 'on' pixel is labelled with the component 
 %   number to which it belongs.
 %
@@ -34,11 +34,14 @@ function [Clust, Comps, chg_list] = split_refine(Clust,Comps,rl,dm,ms,thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.1 2006-06-03 20:55:48 scottl Exp $
+% $Id: split_refine.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.1  2006-06-03 20:55:48  scottl
+% Revision 1.2  2006-06-12 20:56:01  scottl
+% changed comps to a cell array (indexed by page) to allow different sized pages
+%
+% Revision 1.1  2006/06/03 20:55:48  scottl
 % Initial check-in.
 %
 %
@@ -54,7 +57,7 @@ non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
 
 %should we display matches onscreen (wastes resources)
-display_matches = true;
+display_matches = false;
 
 
 % CODE START %
@@ -76,7 +79,7 @@ end
 
 chg_list = [];
 num_clusts = size(Clust, 1);
-max_comp  = max(max(max(Comps)));
+max_comp  = max(max(Comps{end}));
 
 %start by determining the pixel width of the smallest element in all the
 %clusters (only split if the cluster width is at least twice this).
@@ -173,10 +176,10 @@ while ~ isempty(refine_list)
                     for i=1:newcl.num
                         x = newcl.pos(i,:);
                         pg = newcl.pg(i);
-                        region = Comps(x(2):x(4), x(1):x(3), pg);
+                        region = Comps{pg}(x(2):x(4), x(1):x(3));
                         idx = find(region == Clust(r).comp(i));
                         region(idx) = newcl.comp(i);
-                        Comps(x(2):x(4), x(1):x(3), pg) = region;
+                        Comps{pg}(x(2):x(4), x(1):x(3)) = region;
                     end
 
                     %loop through each component, checking whether the top and 
@@ -204,11 +207,11 @@ while ~ isempty(refine_list)
                             while col ~= tr;
                                 row = tt -1;
                                 while row >= 1 && ...
-                                      Comps(row, col, newcl.pg(i)) == bg_val
+                                      Comps{newcl.pg(i)}(row, col) == bg_val
                                     row = row - 1;
                                 end
                                 if row ~= non_nb_val
-                                    vals = [vals, Comps(row, col, newcl.pg(i))];
+                                    vals = [vals, Comps{newcl.pg(i)}(row, col)];
                                 end
                                 col = col + 1;
                             end
@@ -234,14 +237,15 @@ while ~ isempty(refine_list)
                         if dif < ((tr - tl) / 2)
                             vals = [];
                             col = tl;
+                            last_row = size(Comps{newcl.pg(i)},1);
                             while col ~= tr;
                                 row = tb +1;
-                                while row <= size(Comps,1) && ...
-                                      Comps(row, col, newcl.pg(i)) == bg_val
+                                while row <= last_row && ...
+                                      Comps{newcl.pg(i)}(row, col) == bg_val
                                     row = row + 1;
                                 end
-                                if row <= size(Comps,1)
-                                    vals = [vals, Comps(row, col, newcl.pg(i))];
+                                if row <= last_row
+                                    vals = [vals, Comps{newcl.pg(i)}(row, col)];
                                 end
                                 col = col + 1;
                             end
