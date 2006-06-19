@@ -7,9 +7,9 @@ function  display_neighbours(Clust, Comps, comp)
 %   a avg field which is a matrix giving the average pixel intensity
 %   corresponding to the elements of that cluster.
 %
-%   Comps should be a 2 or 3 dimensional image matrix, where each entry
-%   represents a pixel, and each 'on' pixel is labelled with the component 
-%   number to which it belongs.
+%   Comps should be a cell array of labelled image matrices, where each entry
+%   of each image represents a pixel, and each 'on' pixel is labelled with the 
+%   component number to which it belongs.
 %
 %   comp should be either an individual valid component number, or a vector of
 %   components, each of which will be shown on screen for a configurable time
@@ -17,11 +17,14 @@ function  display_neighbours(Clust, Comps, comp)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_neighbours.m,v 1.1 2006-06-03 20:55:54 scottl Exp $
+% $Id: display_neighbours.m,v 1.2 2006-06-19 20:59:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_neighbours.m,v $
-% Revision 1.1  2006-06-03 20:55:54  scottl
+% Revision 1.2  2006-06-19 20:59:04  scottl
+% changes to reflect that Comps is now a cell array.
+%
+% Revision 1.1  2006/06/03 20:55:54  scottl
 % Initial check-in.
 %
 %
@@ -94,9 +97,10 @@ while length(comp) > 0
             r = Clust(bcl).pos(boff,3);
         end
     end
-    M = label2rgb(Comps(t:b,l:r, pg), 'white', 'k');
+    M = label2rgb(Comps{pg}(t:b,l:r), 'white', 'k');
     x = Clust(cl).pos(off,:);
     titlestr = {sprintf('Component %d: [%d,%d,%d,%d]', comp(1),x)};
+
     M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(comp_col,1,x(3)-x(1)+1);
     M(x(2)-t+1:x(4)-t+1,x(1)-l+1,:) = repmat(comp_col,x(4)-x(2)+1,1);
     M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(comp_col,x(4)-x(2)+1,1);
