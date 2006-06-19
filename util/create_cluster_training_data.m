@@ -21,11 +21,14 @@ function imgs = create_cluster_training_data(Clust, Comps, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_training_data.m,v 1.1 2006-06-12 20:53:27 scottl Exp $
+% $Id: create_cluster_training_data.m,v 1.2 2006-06-19 21:50:03 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_training_data.m,v $
-% Revision 1.1  2006-06-12 20:53:27  scottl
+% Revision 1.2  2006-06-19 21:50:03  scottl
+% remove line equalization code, since we now handle lines of varying height
+%
+% Revision 1.1  2006/06/12 20:53:27  scottl
 % initial revision.
 %
 
@@ -67,30 +70,18 @@ for p = 1:size(Pos,1)
         x = Pos{p}(l,:);
         imgs{line,1} = zeros(x(4)-x(2)+1, x(3)-x(1)+1);
         imgs{line,1}(find(Comps{p}(x(2):x(4), x(1):x(3)) ~= bg_val)) = fg_val;
+
+        %trim leading and trailing background columns
+        first_col = 1;
+        while ~ any(imgs{line,1}(:,first_col))
+            first_col = first_col + 1;
+        end
+        last_col = size(imgs{line,1},2);
+        while ~ any(imgs{line,1}(:,last_col))
+            last_col = last_col - 1;
+        end
+
         line = line + 1;
-    end
-end
-%we must ensure that all images are of the same height, so add zeros to the
-%bottom of shorter rows, and chop off any leading rowspace
-count = size(imgs,1);
-first_row = inf;
-for i = 1:count
-    row = 1;
-    while ~ any(imgs{i}(row,:))
-        row = row + 1;
-    end
-    first_row = min(first_row, row);
-end
-for i = 1:count
-    imgs{i} = imgs{i}(first_row:end,:);
-end
-max_height = 0;
-for i = 1:count
-    max_height = max(size(imgs{i},1), max_height);
-end
-for i = 1:count
-    if size(imgs{i},1) ~= max_height
-        imgs{i}(end+1:max_height,:) = 0;
     end
 end
 fprintf('\n%.2fs: finished creating images\n', toc);
