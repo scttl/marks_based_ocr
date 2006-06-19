@@ -1,7 +1,7 @@
-function display_ocr_results(indices, bitmaps, num)
+function display_ocr_results(indices, bitmaps, base_offs, num)
 %  DISPLAY_OCR_RESULTS  Construct an image of the OCR'd indices passed
 %
-%   display_ocr_results(indices, bitmaps, [num])
+%   display_ocr_results(indices, bitmaps, base_offs, [num])
 %
 %   indices should either be a vector of index values into the bitmaps cell 
 %   array, or it should be a cell array of index vectors (one per row).  Each
@@ -12,16 +12,23 @@ function display_ocr_results(indices, bitmaps, num)
 %   a single character in the alphabet, which are used to construct the output
 %   image.
 %
+%   base_offs should be a vector listing the offset relative to the baseline of
+%   the bottom of the corresponding bitmap.  This ensure characters are lined
+%   up correctly.
+%
 %   num is optional and if specified, determines the number of OCR'd
 %   lines to display.  If not specified, all indices are drawn.
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.1 2006-06-10 21:01:32 scottl Exp $
+% $Id: display_ocr_results.m,v 1.2 2006-06-19 21:02:44 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.1  2006-06-10 21:01:32  scottl
+% Revision 1.2  2006-06-19 21:02:44  scottl
+% aligned result bitmaps based on baseline offsets.
+%
+% Revision 1.1  2006/06/10 21:01:32  scottl
 % Initial revision.
 %
 
@@ -31,8 +38,8 @@ function display_ocr_results(indices, bitmaps, num)
 
 %set save_averages to true to write the averages to disk based on the params
 %below it
-save_averages = false;
-img_prefix = 'results/aa01_ocr';
+save_averages = true;
+img_prefix = 'results/nips5_line10to15_ocr';
 img_format = 'png';
 
 row_margin = 10;  %number of pixels between consecutive rows in the image
@@ -41,9 +48,9 @@ row_margin = 10;  %number of pixels between consecutive rows in the image
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 2 || nargin > 3
+if nargin < 3 || nargin > 4
     error('incorrect number of arguments specified!');
-elseif nargin == 3
+elseif nargin == 4
     num_rows = num;
     if num_rows > size(indices,1)
         num_rows = size(indices,1);
@@ -52,17 +59,32 @@ else
     num_rows = size(indices,1);
 end
 
+if length(bitmaps) ~= length(base_offs)
+    error('number of bitmaps must be the same as the number of base_offs!');
+end
+
 M = cell(num_rows,1);
 
 if ~ iscell(indices)
-    tmp = cell(1);
-    tmp{1} = indices;
-    indices = tmp;
+    indices = {indices};
 end
 
 max_width = 0;
 for i=1:num_rows
-    M{i} = cell2mat(bitmaps(indices{i}));
+    mm = bitmaps(indices{i});
+    moffs = base_offs(indices{i});
+    max_height = 0;
+    for j=1:length(mm)
+        max_height = max(max_height, size(mm{j},1)-moffs(j));
+    end
+    max_base = max(moffs);
+    for j=1:length(mm)
+        [h w] = size(mm{j});
+        mm{j} = [zeros(max_height - (h-moffs(j)), w); ...
+                 mm{j}; ...
+                 zeros(max_base - moffs(j), w)];
+    end
+    M{i} = cell2mat(mm);
     max_width = max(max_width, size(M{i},2));
 end
 
