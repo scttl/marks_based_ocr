@@ -14,11 +14,14 @@ function [Clust, Comps] = cluster_comps(Files)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
+% $Id: cluster_comps.m,v 1.3 2006-06-19 20:56:05 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.2  2006-06-12 20:56:01  scottl
+% Revision 1.3  2006-06-19 20:56:05  scottl
+% bugfix: better handling of neighbours of nested components
+%
+% Revision 1.2  2006/06/12 20:56:01  scottl
 % changed comps to a cell array (indexed by page) to allow different sized pages
 %
 % Revision 1.1  2006/06/03 20:55:47  scottl
@@ -82,7 +85,7 @@ fg_val = 1;  %used in cluster averages initially
 
 %should we save connected component images?  This uses memory and takes longer
 %to run
-save_cc_page = true;
+save_cc_page = false;
 %prefix of filename to use when saving connected component images
 img_prefix = 'results/nips5_comps';
 %file format to use when saving the image
@@ -233,11 +236,15 @@ for p=1:num_pgs
         if last_col == CC(i) && prev_comp ~= comp
             %not first valid component encountered in this column 
             val = RR(i) - prev_row;
-            if val < N_dist(loc,2)
-                %new closest top neighbour for comp
+            if val < N_dist(loc,2) && Pos(prev_loc,2) < Pos(loc,2)
+                %new closest top neighbour for comp.  The second test ensures
+                %we don't end up with nested components (ex. a C with a dot in
+                %its center), which would create an infinite loop if we try and
+                %follow neighbours.
                 N_dist(loc,2) = val;
                 Nb(loc,2) = prev_comp;
-            elseif val == N_dist(loc,2) && Nb(loc,2) ~= prev_comp
+            elseif val == N_dist(loc,2) && Nb(loc,2) ~= prev_comp && ...
+                   Pos(prev_loc,2) < Pos(loc,2)
                 %2nd component the same distance to comp.  Choose the
                 %component with larger L-R overlap with comp.
                 pn_loc = Nb(loc,2) - (start_comp - 1);
@@ -249,11 +256,12 @@ for p=1:num_pgs
                     Nb(loc,2) = prev_comp;
                 end
             end
-            if val < N_dist(prev_loc,4)
+            if val < N_dist(prev_loc,4) && Pos(loc,4) > Pos(prev_loc,4)
                 %comp is new closest bottom neighbour for prev_comp
                 N_dist(prev_loc,4) = val;
                 Nb(prev_loc,4) = comp;
-            elseif val == N_dist(prev_loc,4) && Nb(prev_loc,4) ~= comp
+            elseif val == N_dist(prev_loc,4) && Nb(prev_loc,4) ~= comp && ...
+                   Pos(loc,4) > Pos(prev_loc,4)
                 %2nd component the same distance to prev_comp.  Choose the
                 %component with larger L-R overlap with prev_comp.
                 pn_loc = Nb(prev_loc,4) - (start_comp - 1);
@@ -285,11 +293,12 @@ for p=1:num_pgs
         if last_row == RR(i) && prev_comp ~= comp
             %not first valid component encountered in this row 
             val = CC(i) - prev_col;
-            if val < N_dist(loc,1)
+            if val < N_dist(loc,1) && Pos(prev_loc,1) < Pos(loc,1)
                 %new closest left neighbour for comp
                 N_dist(loc,1) = val;
                 Nb(loc,1) = prev_comp;
-            elseif val == N_dist(loc,1) && Nb(loc,1) ~= prev_comp
+            elseif val == N_dist(loc,1) && Nb(loc,1) ~= prev_comp && ...
+                   Pos(prev_loc,1) < Pos(loc,1)
                 %2nd component the same distance to comp.  Choose the
                 %component with larger T-B overlap with comp.
                 pn_loc = Nb(loc,1) - (start_comp - 1);
@@ -301,11 +310,12 @@ for p=1:num_pgs
                     Nb(loc,1) = prev_comp;
                 end
             end
-            if val < N_dist(prev_loc,3)
+            if val < N_dist(prev_loc,3) && Pos(loc,3) > Pos(prev_loc,3)
                 %comp is new closest right neighbour for prev_comp
                 N_dist(prev_loc,3) = val;
                 Nb(prev_loc,3) = comp;
-            elseif val == N_dist(prev_loc,3) && Nb(prev_loc,3) ~= comp
+            elseif val == N_dist(prev_loc,3) && Nb(prev_loc,3) ~= comp && ...
+                   Pos(loc,3) > Pos(prev_loc,3)
                 %2nd component the same distance to prev_comp.  Choose the
                 %component with larger T-B overlap with prev_comp.
                 pn_loc = Nb(prev_loc,3) - (start_comp - 1);
