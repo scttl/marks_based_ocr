@@ -28,11 +28,14 @@ function [D, bitmaps, base_offs] = create_cluster_dictionary(Clust, Comps, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.2 2006-06-19 21:37:57 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.3 2006-06-21 21:47:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.2  2006-06-19 21:37:57  scottl
+% Revision 1.3  2006-06-21 21:47:12  scottl
+% use if test and iterate over all items instead of using i_offs
+%
+% Revision 1.2  2006/06/19 21:37:57  scottl
 % implemented baseline offset calculation, addition of a 'space' cluster.
 %
 % Revision 1.1  2006/06/12 20:57:50  scottl
@@ -133,15 +136,16 @@ else
 end
 for i = 1:num_clusts
     right_nbs = Clust(i).nb(:,3);
-    i_offs = find(right_nbs > 0);
-    right_nbs = right_nbs(i_offs);
     for j=1:length(right_nbs)
+        if right_nbs(j) == 0
+            continue;
+        end
         [cl, off] = get_cl_off(Clust, right_nbs(j));
         trans_clust = i;
         if add_space
             %check to see if 1 or more spaces exist between this character and
             %its right neighbour
-            dist = Clust(cl).pos(off,1) - Clust(i).pos(i_offs(j),3);
+            dist = Clust(cl).pos(off,1) - Clust(i).pos(j,3);
             while dist >= space_width
                 D.char_bigram(trans_clust,num_clusts+1) = ...
                               D.char_bigram(trans_clust,num_clusts+1) + 1;
