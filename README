@@ -1,0 +1,67 @@
+##################################################################################
+## FILE: README
+##
+## CVS: $Id: README,v 1.1 2006-07-04 19:19:04 scottl Exp $
+##
+## DESCRIPTION: Text file describing how to install and use the marks_based_ocr
+##              application, as well as any other neccessary notes.
+##
+## ARGUMENTS:
+##
+## REQUIRES:
+##
+################################################################################
+
+
+1. INSTALLING
+-------------
+
+1.1 - Requirements
+------------------
+
+* Matlab 7 or higher  (earlier versions won't work due to use of imview and
+                       find(...'first') etc.)
+
+1.2 - Notes
+-----------
+
+* Copy all files (and subdirs) in this directory to some location on the users
+  computer (note this location -- we'll denote it INS_PATH).
+
+* Add the following lines to your ~/matlab/startup.m (or type it from the
+  Matlab command prompt):
+
+  global MOCR_PATH;
+  MOCR_PATH = 'INS_PATH';
+  addpath(MOCR_PATH);
+  marks_ocr_init;
+
+
+(where INS_PATH is replaced by the actual path to where the files and subdirs
+ were installed)
+
+
+2. Configuration
+----------------
+
+Typically, modifiable parameters are found at the top of key files before
+being passed on to other functions as neccessary.  Descriptions of each 
+parameter are located within such a file and sensible defaults are already
+defined.
+
+* for clustering and connected components, see cluster/cluster_comps.m
+
+* for line finding, see util/get_lines.m
+
+* ...
+
+
+3. Running
+----------
+* There are 3 main tasks: creating training data, clustering components of 
+  file images and constructing a language model from them, and performing ocr
+  on lines of training data, given a constructed language model.
+
+* To create new training cases, the following commands are useful:
+
+* ...
