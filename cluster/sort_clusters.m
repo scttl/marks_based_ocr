@@ -1,31 +1,34 @@
-function C = sort_clusters(C)
+function [Clust, Comps] = sort_clusters(Clust, Comps)
 % SORT_CLUSTERS   Sort (by descending number of elements) the Clusters passed
 %
-%   C = SORT_CLUSTERS(C)
+%   [Clust, Comps] = SORT_CLUSTERS(Clust, Comps)
 %
-%   C should be an array of structs, each of which is assumed to contain an
-%   integer valued num field.  This field represent the number of elements
-%   belonging to that cluster, and will be our key for sorting.
+%   Clust should be a struct with several fields including the number of 
+%   components that belong to each cluster.
 %
-%   The array elements are returned unchanged but in decreasing order
-%   according to the num field.
+%   Comps should be a struct containing several fields including the cluster
+%   id to which it belongs.  We need to pass in Comps since once it is sorted
+%   these values will have to be changed.
 %
-%   NOTE: due to the nature of the implementation, all clusters with the same
-%   number of elements end up being flipped so that the former first listed
-%   element ends up last and vice versa (within the group of clusters with the
-%   same number of elements).
+%   The Clust array elements are returned in decreasing order
+%   according to the number of components belonging to them, but are otherwise
+%   unchanged.  Similarly Comps.clust is updated to reflect the new cluster 
+%   numbering.
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.1 2006-06-03 20:55:48 scottl Exp $
+% $Id: sort_clusters.m,v 1.2 2006-07-05 01:17:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
-% Revision 1.1  2006-06-03 20:55:48  scottl
+% Revision 1.2  2006-07-05 01:17:37  scottl
+% rewritten based on new cluster and component structures.
+%
+% Revision 1.1  2006/06/03 20:55:48  scottl
 % Initial check-in.
 %
-%
+
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
@@ -33,11 +36,22 @@ function C = sort_clusters(C)
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin ~= 1
+if nargin ~= 2
     error('incorrect number of arguments passed!');
 end
 
-% note we need to flip it to get decreasing order below, but this throws
-% elements with the same number out of order.
-[Dummy, I] = sort([C.num]);
-C = C(fliplr(I));
+[Dummy, idx] = sort([Clust.num_comps],1,'descend');
+Clust.comps = Clust.comps(idx);
+Clust.num_comps = Clust.num_comps(idx);
+Clust.avg = Clust.avg(idx);
+Clust.norm_sq = Clust.norm_sq(idx);
+Clust.refined = Clust.refined(idx);
+Clust.offset = Clust.offset(idx);
+if ~isempty(Clust.bigram)
+    Clust.bigram = Clust.bigram(idx,:);
+end
+
+%now we update the components associated cluster id
+for ii = 1:Clust.num
+    Comps.clust(Clust.comps{ii}) = ii;
+end
