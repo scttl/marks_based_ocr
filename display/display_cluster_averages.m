@@ -3,20 +3,23 @@ function display_cluster_averages(Clust, num)
 %
 %   display_cluster_averages(Clust, num)
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   a avg field which is a matrix giving the average pixel intensity
-%   corresponding to the elements of that cluster.
+%   Clust should be a struct containing a cell array field labelled average, 
+%   each of which is assumed to contain a matrix giving the average pixel 
+%   intensity corresponding to the elements of that cluster.
 %
 %   num is optional and if specified, determines the number of cluster
 %   averages to display.  If not specified, all clusters averages are shown.
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.1 2006-06-03 20:55:54 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.2 2006-07-05 01:05:34 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
-% Revision 1.1  2006-06-03 20:55:54  scottl
+% Revision 1.2  2006-07-05 01:05:34  scottl
+% updated based on new Cluster structure.
+%
+% Revision 1.1  2006/06/03 20:55:54  scottl
 % Initial check-in.
 %
 %
@@ -31,7 +34,7 @@ cl_w = 0;
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
-img_prefix = 'images/aa01_clust';
+img_prefix = 'results/speedup_match_only';
 img_format = 'png';
 
 % CODE START %
@@ -43,45 +46,51 @@ if nargin < 1 || nargin > 2
 elseif nargin == 2
     num_clust = num;
 else
-    num_clust = size(Clust,1);
+    num_clust = Clust.num;
 end
 
 num_cols = ceil(sqrt(num_clust));
 num_rows = ceil(num_clust / num_cols);
 
-%first get the dimensions of the largest cluster
-for i=1:num_clust
-    sz = size(Clust(i).avg);
-    if sz(1) > cl_h
-        cl_h = sz(1);
-    end
-    if sz(2) > cl_w
-        cl_w = sz(2);
-    end
+%first get the dimensions of the largest cluster, as well as the number of
+%elements
+cl_h = 0;
+cl_w = 0;
+num_comps = zeros(1,num_clust);
+for ii=1:num_clust
+    sz = size(Clust.avg{ii});
+    cl_h = max(cl_h, sz(1));
+    cl_w = max(cl_w, sz(2));
 end
 
 M = zeros(num_rows * (cl_h + row_pix_border), ...
           num_cols * (col_pix_border + cl_w + col_pix_border));
+
+%get a sorted index of clusters in descending order based on their number of 
+%components
+[Dummy, sorted_clust_idx] = sort(Clust.num_comps,1,'descend');
 
 row = 1;
 col = 1;
 X =[];
 Y =[];
 Txt = cell(1, num_clust);
-for i=1:num_clust
+txt_idx = 1;
+for ii=sorted_clust_idx'
     %center the average of i at the current row and col position in M
-    sz = size(Clust(i).avg);
+    sz = size(Clust.avg{ii});
     tp = (row-1) * (cl_h + row_pix_border) + ceil(cl_h/2) - ceil(sz(1)/2) +1;
     bt = tp + sz(1) -1;
     lf = (col-1) * (cl_w + 2*col_pix_border) + ceil(cl_w/2) - ceil(sz(2)/2) +1;
     rg = lf + sz(2) -1;
-    M(tp:bt,lf:rg) = Clust(i).avg;
+    M(tp:bt,lf:rg) = Clust.avg{ii};
 
     %build the text area which will be overlaid on the image, showing the size 
     %of each cluster (number of elements)
     X = [X, ((col-1) * (cl_w + 2 * col_pix_border) + ceil(cl_w/2))];
     Y = [Y, ((row) * (cl_h + row_pix_border) - ceil(row_pix_border/2))];
-    Txt{i} = num2str(Clust(i).num);
+    Txt{txt_idx} = num2str(Clust.num_comps(ii));
+    txt_idx = txt_idx + 1;
 
     col = col+1;
     if col > num_cols
@@ -257,4 +266,3 @@ for i=1:length(X)
     y = Y(i) - ceil(h/2) + 1;
     M(y:y+h-1, x:x+w-1) = img;
 end
-
