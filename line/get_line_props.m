@@ -1,7 +1,7 @@
-function Offs = get_baselines(imgs, thresh)
+function offs = get_baselines(imgs, thresh)
 % get_baselines  Determine baseline offset in each image line passed.
 %
-%   Offs = get_baselines(imgs, [threshold])
+%   offs = get_baselines(imgs, [threshold])
 %
 %   Given an individual or cell array of line images, this function attempts
 %   to find the baseline (assuming the image contains a single line textual 
@@ -24,11 +24,14 @@ function Offs = get_baselines(imgs, thresh)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_line_props.m,v 1.1 2006-06-19 21:50:46 scottl Exp $
+% $Id: get_line_props.m,v 1.2 2006-07-05 00:53:10 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_line_props.m,v $
-% Revision 1.1  2006-06-19 21:50:46  scottl
+% Revision 1.2  2006-07-05 00:53:10  scottl
+% changed cluster and component structure, audited this file.
+%
+% Revision 1.1  2006/06/19 21:50:46  scottl
 % initial revision.
 %
 
@@ -48,25 +51,25 @@ end
 
 if iscell(imgs)
     num_imgs = length(imgs);
-    for i=1:num_imgs
-        fprintf('processing image %d\n', i);
-        sz = size(imgs{i});
-        Offs(i) = sz(1);
-        row_sums = sum(imgs{i},2);
+    for ii=1:num_imgs
+        fprintf('processing image %d\n', ii);
+        sz = size(imgs{ii});
+        offs(ii) = sz(1);
+        row_sums = sum(imgs{ii},2);
         idx = find((row_sums ./ sz(2)) >= base_thresh, 1, 'last');
         if idx
-            Offs(i) = idx;
+            offs(ii) = idx;
         end
     end
 else
     %single image matrix
     fprintf('processing image 1\n');
     sz = size(imgs);
-    Offs = sz(1);
+    offs = sz(1);
     row_sums = sum(imgs,2);
     idx = find((row_sums ./ sz(2)) >= base_thresh, 1, 'last');
     if idx
-        Offs = idx;
+        offs = idx;
     end
 end
 
