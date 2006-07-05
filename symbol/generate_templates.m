@@ -4,14 +4,14 @@ function [bitmaps,charnames]=dofont(fontname, cn)
 %   [bitmaps,charnames]=dofont(fontname, [character_list])
 %   This procedure takes the list of ASCII characters passed in via 
 %   character_list, or uses upper and lower case, letters, period and space if
-%   not give, to create bitmap images (logical arrays) of each character using
+%   not given, to create bitmap images (logical arrays) of each character using
 %   the fontfile passed in fontname (should include the path as well)
 %
 %   fontname should give the full path and name of a .pk (packed font file).
 %   If the font doesn't exist, an error is returned
 %
 %   character_list is optional and if specified should be a character array
-%   listing the individal ASCII characters to generate bitmaps off.  If not 
+%   listing the individal ASCII characters to generate bitmaps of.  If not 
 %   given, we generate bitmaps of: A-Z, a-z, ' ', '.'
 %
 %   See Also: pk2bm UNIX utility
@@ -19,11 +19,14 @@ function [bitmaps,charnames]=dofont(fontname, cn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_templates.m,v 1.1 2006-06-10 21:01:36 scottl Exp $
+% $Id: generate_templates.m,v 1.2 2006-07-05 01:01:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_templates.m,v $
-% Revision 1.1  2006-06-10 21:01:36  scottl
+% Revision 1.2  2006-07-05 01:01:54  scottl
+% small spelling fixups.
+%
+% Revision 1.1  2006/06/10 21:01:36  scottl
 % Initial revision.
 %
 
@@ -99,7 +102,7 @@ for ii=1:numchars
     bm{ii} = zeros(offsets(ii,3), offsets(ii,4));
 
     %we convert the string into a matrix, then trim the 2 leading spaces, and
-    %training single newline character from the matrix, then convert this to
+    %trailing single newline character from the matrix, then convert this to
     %a numeric array
     on_idx = find(strtrim(reshape(res{1}{5}, offsets(ii,4)+3, ...
              offsets(ii,3))') == '*');
