@@ -4,21 +4,76 @@ function [Clust, Comps] = cluster_comps(Files)
 %   [Clust, Comps] = CLUSTER_COMPS(FILES)
 %   FILES should either be a string, or a cell array of strings listing the
 %   path and name of the file(s) to be processed.  We assume that each file
-%   has a binary (black and white) intensity, and that each file is the
-%   same size (number of pixels).
+%   has a binary (black and white) intensity.
 %
-%   Clust is a cell array, with each entry containing a vector of all the
-%   connected components found to be equivalent after processing
+%   Clust is a struct meant to hold information on all clusters found while
+%   processing FILES.  It contains the following fields:
+%     num   - a scalar denoting the number of clusters in the struct.
+%     num_comps - a vector giving the number of components belonging to each
+%                 cluster.
+%     comps - a cell array denoting for each cluster, which components belong
+%             to it (listed as a vector of component id's).  Each component id 
+%             is specified by its row number in the fields of the struct.
+%     avg - a cell array, where each entry is a numeric matrix that gives the 
+%           average pixel intensity of each pixel based on the components that 
+%           belong to that cluster
+%     norm_sq - a vector specifying the L2 norm squared of each avg (used to 
+%               speed up distance calculations)
+%     refined - a vector of booleans specifying whether each cluster needs to
+%               be refined.
+%     offset - this holds the most frequently occuring relative position of the
+%              bottom edge of the component from the baseline.  Positive values
+%              refer to the number of pixels below the baseline, the bottom of
+%              the image lies, and negative refers to pixels above the baseline.
+%              Note that this is not calculated in this function (thus 
+%              found_offsets is false -- see below).
+%     found_offsets - this is a boolean that will be set to true if offset 
+%                     values for each cluster have been calculated and false
+%                     otherwise.
+%     num_trans - a scalar that determines the number of left-right component
+%                 transitions found.  Note that this is not calculated here
+%     bigram - a num x num matrix that denotes (smoothed) transition 
+%              probabilities.  Again, this isn't calculated here.
 %
-%   Comps is a cell array of connected component labels, one page per entry.
+%   Comps is a struct meant to hold information on all the connected components
+%   found while processing FILES.  It contains the following fields:
+%     max_comp - integer specifying the largest component number index.
+%     files - a cell array of strings listing the path and name of the file(s)
+%             processed.
+%     pg_size - a 2 column array giving the number of rows and columns of each
+%               page processed.
+%     clust - a vector listing the index into the Clust array to which 
+%             each component belongs.
+%     pos - an nx4 numeric matrix listing the pixel co-ordinates of the left,
+%           top, right, and bottom edges of the tight bounding box around the
+%           component on the page it was found.  There is one such row for each
+%           connected component.
+%     pg - a vector of length n giving the page number upon which the component
+%          was found.  This number can be used to index Comps.files and 
+%          determine the filename corresponding to this page.
+%     nb - an nx4 numeric matrix listing its left, top, right, and bottom 
+%          nearest neighbours by component id.
+%     nb_dist - an nx4 numeric matrix listing its left, top, right, and bottom 
+%               nearest neighbours distances (in pixels)
+%     offset - this vector will hold the relative position of the bottom edge
+%              of the component as the number of pixels below (if positive) or
+%              above (if negative) from the baseline of the line to which it 
+%              was found.  Note that this is not calculated in this function.
+%     found_offsets - this is a boolean that will be set to true if offset 
+%                     values for each cluster have been calculated and false
+%                     otherwise.
+%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.3 2006-06-19 20:56:05 scottl Exp $
+% $Id: cluster_comps.m,v 1.4 2006-07-05 01:14:30 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.3  2006-06-19 20:56:05  scottl
+% Revision 1.4  2006-07-05 01:14:30  scottl
+% rewritten based on new Cluster and Component structures.
+%
+% Revision 1.3  2006/06/19 20:56:05  scottl
 % bugfix: better handling of neighbours of nested components
 %
 % Revision 1.2  2006/06/12 20:56:01  scottl
@@ -91,290 +146,336 @@ img_prefix = 'results/nips5_comps';
 %file format to use when saving the image
 img_format = 'png';
 
+
+% CODE START %
+%%%%%%%%%%%%%%
+tic;
 %the number of pages of elements to cluster (we assume 1 page per file passed)
 num_pgs = size(Files,1);
 
-%the total number of components found over all pages examined
-tot_comps = 0;
+%initialize the Comps and Clust structs
+Clust.num = uint16(0);
+Clust.num_comps = [];
+Clust.comps = {};
+Clust.avg = {};
+Clust.norm_sq = [];
+Clust.refined = [];
+Clust.offset = int16([]);
+Clust.found_offsets = false;
+Clust.num_trans = 0;
+Clust.bigram = [];
+
+Comps.max_comp = 0;
+if num_pgs == 1
+    Comps.files = {Files};
+else
+    Comps.files = Files;
+end
+Comps.pg_size = uint16([]);
+Comps.clust = uint16([]);
+Comps.pos = uint16([]);
+Comps.pg = uint32([]);
+Comps.nb = [];
+Comps.nb_dist = uint16([]);
+Comps.offset = int16([]);
+Comps.found_offsets = false;
+
 
 %this is used to determine when to use straight-matching
 pass = 1;
 
-
-% CODE START %
-%%%%%%%%%%%%%%
-
-%begin by loading the file contents into memory.  Each file is a 2 dimensional 
-%matrix of binary pixel intensities.  We create a 3d array Comps with one 
-%such page matrix per entry.
-tic;
-if num_pgs > 1
-    for p=1:num_pgs
-        %since Matlab convention is 1 for background intensities, flip this and
-        %convert to a single precision matrix since we will renumber the 
-        %foreground pixels with component numbers
-        Comps{p} = single(~ imread(Files{p}));
-    end
-else
-    Comps{1} = single(~ imread(Files));
-end
-
-%initialize our cluster groupings
-Clust = [];
-fprintf('%.2fs: Initialization complete\n', toc);
-
 %iterate through each page adding items to our cluster list
-for p=1:num_pgs
+for pp=1:num_pgs
 
-    fprintf('Processing page %d\n', p);
+    fprintf('Processing page %d\n', pp);
+
+    %begin by loading the page contents into memory.  Since Matlab convention
+    %is 1 for background intensities, flip this.
+    Lbl_img = imread(Comps.files{pp});
+    if bg_val ~= 1
+        Lbl_img = ~Lbl_img;
+    end
+    Comps.pg_size(pp,:) = size(Lbl_img);
 
     if crop_regions
         %remove the regions listed based on the associated jtag file
         %(we assume the jtag file is in the same directory as the image file,
         % and has the same name, but with the extension .jtag instead)
-        if num_pgs > 1
-            fl_name = Files{p};
-        else
-            fl_name = Files;
-        end
-        dot_pos = strfind(fl_name, '.');
-        if length(dot_pos) == 0
+        dot_pos = strfind(Comps.files{pp}, '.');
+        if isempty(dot_pos)
             warning('file has no extension, unable to parse regions');
         else
-            jtag_file = [fl_name(1:dot_pos(end)), 'jtag'];
+            jtag_file = [Comps.files{pp}(1:dot_pos(end)), 'jtag'];
             pos = jtag_region_finder(jtag_file, rem_region_list);
             for i=1:size(pos,1)
-                Comps{p}(pos(i,2):pos(i,4), pos(i,1):pos(i,3)) = bg_val;
+                Lbl_img(pos(i,2):pos(i,4), pos(i,1):pos(i,3)) = bg_val;
             end
         end
+        fprintf('%.2fs: done cropping unwanted regions from this page\n', ...
+                toc);
     end
 
-    %to ensure unique component numbers, update the new components by the 
-    %previous largest element
-    if p ~= 1
-        tot_comps = max(max(Comps{p-1}));
-    end
-    %start by determining the connected components on this page
-    [Comps{p}, num_comps] = bwlabel(Comps{p}, num_dirs);
+    %determine the connected components on this page
+    [Lbl_img, num_new_comps] = bwlabel(Lbl_img, num_dirs);
     fprintf('%.2fs: %d connected components found on this page\n', toc, ...
-            num_comps);
-    
-    Comps{p} = (tot_comps .* (Comps{p} ~= 0)) + Comps{p};
-    fprintf('%.2fs: Connected component numbers updated\n', toc);
-    start_comp = tot_comps + 1;
-    tot_comps = tot_comps + num_comps;
+            num_new_comps);
 
     if display_page || save_cc_page
-        if num_comps > 0
+        if num_new_comps > 0
             %this colormap uses the black background with white letter font
-            M = label2rgb(Comps{p}, 'white', 'k');
+            Rgb_img = label2rgb(Lbl_img, 'white', 'k');
         else
-            M =  repmat(bg_col, size(Comps{p}));
+            Rgb_img =  repmat(bg_col, size(Lbl_img));
         end
         if display_page
-            imshow(M);
+            imshow(Rgb_img);
             drawnow;
             hold on;
             fprintf('%.2fs: Image of connected components rendered\n', toc);
         end
     end
 
+    %determine the positions of the components on this page
+    prev_max_comp = Comps.max_comp;
+    Comps.max_comp = Comps.max_comp + num_new_comps;
+    Comps.pos = [Comps.pos; zeros(num_new_comps,4)];
+
     %first we need to fill in the L T R B pixel boundary values for each 
     %component
-    Pos = zeros(num_comps, 4);
-    [RR, CC] = find(Comps{p} ~= 0);
-    for i=1:length(RR)
+    [R, C] = find(Lbl_img ~= 0);
+    for ii=1:length(R)
+        comp = Lbl_img(R(ii), C(ii));
+        loc = comp + prev_max_comp;
         %is this the first time seeing this component?
-        comp = Comps{p}(RR(i), CC(i));
-        loc = comp - (start_comp - 1);
-        if Pos(loc,1) == 0
+        if Comps.pos(loc,1) == 0
             %set all 4 positions for this component to this location
-            Pos(loc,1) = CC(i); Pos(loc,2) = RR(i); Pos(loc,3) = CC(i);
-            Pos(loc,4) = RR(i);
+            Comps.pos(loc,1) = C(ii); Comps.pos(loc,2) = R(ii); 
+            Comps.pos(loc,3) = C(ii); Comps.pos(loc,4) = R(ii);
         else
             %update the R position and see if we should update T or B
-            Pos(loc,3) = CC(i);
-            if RR(i) < Pos(loc,2)
-                Pos(loc,2) = RR(i);
+            Comps.pos(loc,3) = C(ii);
+            if R(ii) < Comps.pos(loc,2)
+                Comps.pos(loc,2) = R(ii);
             end
-            if RR(i) > Pos(loc,4)
-                Pos(loc,4) = RR(i);
+            if R(ii) > Comps.pos(loc,4)
+                Comps.pos(loc,4) = R(ii);
             end
         end
     end
-    %prune any components that don't meet the size requirements
-    reject_list = [];
-    for i=1:num_comps
-        l = Pos(i,1); t = Pos(i,2); r = Pos(i,3); b = Pos(i,4);
-        v_diff = (b - t);
-        h_diff = (r - l);
-        if (v_diff < min_elem_height) || (h_diff < min_elem_width) || ...
-           (v_diff > max_elem_height) || (h_diff > max_elem_width)
-            reject_list = [reject_list, i];
-            %also remove them from Comps
-            region = Comps{p}(t:b, l:r);
-            idx = find(region == start_comp - 1 + i);
-            region(idx) = bg_val;
-            Comps{p}(t:b, l:r) = region;
-        end
-    end
-    keep_list = setdiff(1:num_comps, reject_list);
     fprintf('%.2fs: Position of each component found\n', toc);
 
+
+    %prune any components that don't meet the size requirements
+    start_comp = prev_max_comp + 1;
+    comp_idcs = start_comp:Comps.max_comp;
+    V_diff = Comps.pos(comp_idcs,4) - Comps.pos(comp_idcs,2);
+    H_diff = Comps.pos(comp_idcs,3) - Comps.pos(comp_idcs,1);
+    reject_list = prev_max_comp + find(V_diff < min_elem_height | ...
+                   H_diff < min_elem_width | V_diff > max_elem_height | ...
+                   H_diff > max_elem_width);
+    for ii=1:length(reject_list)
+        %also remove them from the component image
+        pos = Comps.pos(reject_list(ii),:);
+        region = Lbl_img(pos(2):pos(4), pos(1):pos(3));
+        idx = find(region == (reject_list(ii) - prev_max_comp));
+        region(idx) = bg_val;
+        Lbl_img(pos(2):pos(4), pos(1):pos(3)) = region;
+    end
+    %squeeze out the rejected components, and update the numbers in the label
+    %image
+    keep_list = setdiff(comp_idcs, reject_list);
+    Comps.pos = Comps.pos([1:prev_max_comp, keep_list],:);
+    reg_len = length(reject_list);
+    num_new_comps = num_new_comps - reg_len;
+    Comps.max_comp = Comps.max_comp - reg_len;
+    comp_idcs = start_comp:Comps.max_comp;
+    for ii=comp_idcs
+        %update the label image
+        pos = Comps.pos(ii,:);
+        region = Lbl_img(pos(2):pos(4), pos(1):pos(3));
+        idx = find(region == (keep_list(ii - prev_max_comp) - prev_max_comp));
+        region(idx) = ii;
+        Lbl_img(pos(2):pos(4), pos(1):pos(3)) = region;
+    end
+    fprintf('%.2fs: Rejected Components pruned\n', toc);
+
+
     %determine the nearest neighbour for each component in each direction
-    Nb  = zeros(num_comps, 4);
-    N_dist = Inf + zeros(num_comps, 4);
+    Comps.nb = [Comps.nb; zeros(num_new_comps,4)];
+    Comps.nb_dist = [Comps.nb_dist; Inf(num_new_comps, 4)];
     %first get the top and bottom distances
-    prev_comp = 0;
     prev_loc  = 0;
     prev_row  = Inf;
     last_col  = NaN;
-    [RR, CC] = find(Comps{p} ~= 0);
-    for i=1:length(RR)
-        comp = Comps{p}(RR(i), CC(i));
-        loc = comp - (start_comp - 1);
-        if last_col == CC(i) && prev_comp ~= comp
+    [R, C] = find(Lbl_img ~= 0);
+    for ii=1:length(R)
+        loc = Lbl_img(R(ii), C(ii));
+        if last_col == C(ii) && prev_loc ~= loc
             %not first valid component encountered in this column 
-            val = RR(i) - prev_row;
-            if val < N_dist(loc,2) && Pos(prev_loc,2) < Pos(loc,2)
+            val = R(ii) - prev_row;
+            if val < Comps.nb_dist(loc,2) && ...
+               Comps.pos(prev_loc,2) < Comps.pos(loc,2)
                 %new closest top neighbour for comp.  The second test ensures
-                %we don't end up with nested components (ex. a C with a dot in
-                %its center), which would create an infinite loop if we try and
-                %follow neighbours.
-                N_dist(loc,2) = val;
-                Nb(loc,2) = prev_comp;
-            elseif val == N_dist(loc,2) && Nb(loc,2) ~= prev_comp && ...
-                   Pos(prev_loc,2) < Pos(loc,2)
+                %we cant end up with self-pointing neighbours due to nested 
+                %components (ex. a C with a dot in its center), which would have
+                %C point to the dot as its closest top neighbour which 
+                %points to C as its top neighbour etc.
+                Comps.nb_dist(loc,2) = val;
+                Comps.nb(loc,2) = prev_loc;
+            elseif val==Comps.nb_dist(loc,2) && Comps.nb(loc,2) ~= prev_loc ...
+                   && Comps.pos(prev_loc,2) < Comps.pos(loc,2)
                 %2nd component the same distance to comp.  Choose the
                 %component with larger L-R overlap with comp.
-                pn_loc = Nb(loc,2) - (start_comp - 1);
-                pn_ovr = min(Pos(loc,3), Pos(pn_loc,3)) - ...
-                          max(Pos(loc,1), Pos(pn_loc,1));
-                pc_ovr = min(Pos(loc,3), Pos(prev_loc,3)) - ...
-                          max(Pos(loc,1), Pos(prev_loc,1));
-                if pc_ovr > pn_ovr
-                    Nb(loc,2) = prev_comp;
+                pn_loc = Comps.nb(loc,2);
+                pn_ovr = min(Comps.pos(loc,3), Comps.pos(pn_loc,3)) - ...
+                         max(Comps.pos(loc,1), Comps.pos(pn_loc,1));
+                pl_ovr = min(Comps.pos(loc,3), Comps.pos(prev_loc,3)) - ...
+                         max(Comps.pos(loc,1), Comps.pos(prev_loc,1));
+                if pl_ovr > pn_ovr
+                    Comps.nb(loc,2) = prev_loc;
                 end
             end
-            if val < N_dist(prev_loc,4) && Pos(loc,4) > Pos(prev_loc,4)
-                %comp is new closest bottom neighbour for prev_comp
-                N_dist(prev_loc,4) = val;
-                Nb(prev_loc,4) = comp;
-            elseif val == N_dist(prev_loc,4) && Nb(prev_loc,4) ~= comp && ...
-                   Pos(loc,4) > Pos(prev_loc,4)
-                %2nd component the same distance to prev_comp.  Choose the
-                %component with larger L-R overlap with prev_comp.
-                pn_loc = Nb(prev_loc,4) - (start_comp - 1);
-                pn_ovr = min(Pos(prev_loc,3), Pos(pn_loc,3)) - ...
-                          max(Pos(prev_loc,1), Pos(pn_loc,1));
-                c_ovr = min(Pos(prev_loc,3), Pos(loc,3)) - ...
-                          max(Pos(prev_loc,1), Pos(loc,1));
-                if c_ovr > pn_ovr
-                    Nb(prev_loc,4) = comp;
+            if val < Comps.nb_dist(prev_loc,4) && ...
+               Comps.pos(loc,4) > Comps.pos(prev_loc,4)
+                %loc is new closest bottom neighbour for prev_loc
+                Comps.nb_dist(prev_loc,4) = val;
+                Comps.nb(prev_loc,4) = loc;
+            elseif val==Comps.nb_dist(prev_loc,4) && ...
+                   Comps.nb(prev_loc,4) ~= loc && ...
+                   Comps.pos(loc,4) > Comps.pos(prev_loc,4)
+                %2nd component the same distance to prev_loc.  Choose the
+                %component with larger L-R overlap with prev_loc.
+                pn_loc = Comps.nb(prev_loc,4);
+                pn_ovr = min(Comps.pos(prev_loc,3), Comps.pos(pn_loc,3)) - ...
+                         max(Comps.pos(prev_loc,1), Comps.pos(pn_loc,1));
+                l_ovr = min(Comps.pos(prev_loc,3), Comps.pos(loc,3)) - ...
+                        max(Comps.pos(prev_loc,1), Comps.pos(loc,1));
+                if l_ovr > pn_ovr
+                    Comps.nb(prev_loc,4) = loc;
                 end
             end
         end
-        %update component and row accordingly
-        prev_comp = comp;
-        prev_row  = RR(i);
+        %update component, row, and column accordingly
         prev_loc  = loc;
-        last_col  = CC(i);
+        prev_row  = R(ii);
+        last_col  = C(ii);
     end
     %now get the left and right distances.  This requires working with the
     %transpose to ensure we get items in L-R order
-    [CC, RR] = find(Comps{p}' ~= 0);
-    prev_comp = 0;
+    [C, R] = find(Lbl_img' ~= 0);
     prev_loc  = 0;
     prev_col  = Inf;
     last_row  = NaN;
-    for i=1:length(CC)
-        comp = Comps{p}(RR(i), CC(i));
-        loc = comp - (start_comp - 1);
-        if last_row == RR(i) && prev_comp ~= comp
+    for ii=1:length(C)
+        loc = Lbl_img(R(ii), C(ii));
+        if last_row == R(ii) && prev_loc ~= loc
             %not first valid component encountered in this row 
-            val = CC(i) - prev_col;
-            if val < N_dist(loc,1) && Pos(prev_loc,1) < Pos(loc,1)
-                %new closest left neighbour for comp
-                N_dist(loc,1) = val;
-                Nb(loc,1) = prev_comp;
-            elseif val == N_dist(loc,1) && Nb(loc,1) ~= prev_comp && ...
-                   Pos(prev_loc,1) < Pos(loc,1)
-                %2nd component the same distance to comp.  Choose the
-                %component with larger T-B overlap with comp.
-                pn_loc = Nb(loc,1) - (start_comp - 1);
-                pn_ovr = min(Pos(loc,4), Pos(pn_loc,4)) - ...
-                          max(Pos(loc,2), Pos(pn_loc,2));
-                pc_ovr = min(Pos(loc,4), Pos(prev_loc,4)) - ...
-                          max(Pos(loc,2), Pos(prev_loc,2));
-                if pc_ovr > pn_ovr
-                    Nb(loc,1) = prev_comp;
+            val = C(ii) - prev_col;
+            if val < Comps.nb_dist(loc,1) && ...
+               Comps.pos(prev_loc,1) < Comps.pos(loc,1)
+                %new closest left neighbour for loc
+                Comps.nb_dist(loc,1) = val;
+                Comps.nb(loc,1) = prev_loc;
+            elseif val==Comps.nb_dist(loc,1) && Comps.nb(loc,1) ~= prev_loc ...
+                   &&  Comps.pos(prev_loc,1) < Comps.pos(loc,1)
+                %2nd component the same distance to loc.  Choose the
+                %component with larger T-B overlap with loc.
+                pn_loc = Comps.nb(loc,1);
+                pn_ovr = min(Comps.pos(loc,4), Comps.pos(pn_loc,4)) - ...
+                         max(Comps.pos(loc,2), Comps.pos(pn_loc,2));
+                pl_ovr = min(Comps.pos(loc,4), Comps.pos(prev_loc,4)) - ...
+                         max(Comps.pos(loc,2), Comps.pos(prev_loc,2));
+                if pl_ovr > pn_ovr
+                    Comps.nb(loc,1) = prev_loc;
                 end
             end
-            if val < N_dist(prev_loc,3) && Pos(loc,3) > Pos(prev_loc,3)
-                %comp is new closest right neighbour for prev_comp
-                N_dist(prev_loc,3) = val;
-                Nb(prev_loc,3) = comp;
-            elseif val == N_dist(prev_loc,3) && Nb(prev_loc,3) ~= comp && ...
-                   Pos(loc,3) > Pos(prev_loc,3)
-                %2nd component the same distance to prev_comp.  Choose the
-                %component with larger T-B overlap with prev_comp.
-                pn_loc = Nb(prev_loc,3) - (start_comp - 1);
-                pn_ovr = min(Pos(prev_loc,4), Pos(pn_loc,4)) - ...
-                          max(Pos(prev_loc,2), Pos(pn_loc,2));
-                c_ovr = min(Pos(prev_loc,4), Pos(loc,4)) - ...
-                          max(Pos(prev_loc,2), Pos(loc,2));
-                if c_ovr > pn_ovr
-                    Nb(prev_loc,3) = comp;
+            if val < Comps.nb_dist(prev_loc,3) && ...
+               Comps.pos(loc,3) > Comps.pos(prev_loc,3)
+                %loc is new closest right neighbour for prev_loc
+                Comps.nb_dist(prev_loc,3) = val;
+                Comps.nb(prev_loc,3) = loc;
+            elseif val==Comps.nb_dist(prev_loc,3) && ...
+                   Comps.nb(prev_loc,3) ~= loc && ...
+                   Comps.pos(loc,3) > Comps.pos(prev_loc,3)
+                %2nd component the same distance to prev_loc.  Choose the
+                %component with larger T-B overlap with prev_loc.
+                pn_loc = Comps.nb(prev_loc,3);
+                pn_ovr = min(Comps.pos(prev_loc,4), Comps.pos(pn_loc,4)) - ...
+                         max(Comps.pos(prev_loc,2), Comps.pos(pn_loc,2));
+                l_ovr = min(Comps.pos(prev_loc,4), Comps.pos(loc,4)) - ...
+                        max(Comps.pos(prev_loc,2), Comps.pos(loc,2));
+                if l_ovr > pn_ovr
+                    Comps.nb(prev_loc,3) = loc;
                 end
             end
         end
-        %update component and row accordingly
-        prev_comp = comp;
-        prev_col  = CC(i);
+        %update loc, column and row accordingly
         prev_loc  = loc;
-        last_row  = RR(i);
+        prev_col  = C(ii);
+        last_row  = R(ii);
     end
-    clear CC RR;
+    clear C R;
     fprintf('%.2fs: Neighbours of each component found\n', toc);
-    num_clusts = size(Clust,1);
-    for i=keep_list
-        l = Pos(i,1); t = Pos(i,2); r = Pos(i,3); b = Pos(i,4);
-        Clust = [Clust; struct('comp', start_comp - 1 + i, ...
-          'pos', Pos(i,:), 'nb', Nb(i,:), 'pg', p, 'num', 1, ...
-          'avg', zeros(b-t+1, r-l+1))]; 
-        Clust(end).avg(find(Comps{p}(t:b,l:r) == Clust(end).comp(1))) = fg_val;
+
+
+    %initialize the remaining Comps fields
+    Comps.pg(comp_idcs,1) = pp;
+    clust_idcs = Clust.num+1:Clust.num+num_new_comps;
+    Comps.clust(comp_idcs,1) = clust_idcs;
+    Comps.offset(comp_idcs,1) = 0;
+    fprintf('%.2fs: Remaining component fields initialized\n', toc);
+
+
+    %add each component as a new cluster
+    Clust.num = Clust.num + num_new_comps;
+    Clust.num_comps(clust_idcs,1) = 1;
+    Clust.comps(clust_idcs,1) = num2cell(comp_idcs');
+    Clust.avg(clust_idcs,1) = cell(num_new_comps,1);
+    Clust.norm_sq(clust_idcs,1) = 0;
+    Clust.refined(clust_idcs,1) = false;
+    Clust.offset(clust_idcs,1) = 0;
+
+    %update the avg and norm_sq fields
+    for ii=comp_idcs
+        l = Comps.pos(ii,1); t = Comps.pos(ii,2); r = Comps.pos(ii,3); ...
+        b = Comps.pos(ii,4);
+        cc = Comps.clust(ii);
+        Clust.avg{cc} = zeros(b-t+1, r-l+1);
+        on_idx = find(Lbl_img(t:b,l:r) == ii);
+        %the norm_squared value is the number of 'on' pixels since each gets
+        %an initial intensity of 1.
+        Clust.norm_sq(cc) = length(on_idx);
+        Clust.avg{cc}(on_idx) = fg_val;
 
         if display_page || save_cc_page
-            M(t,l:r,:) = repmat(out_col,1,r-l+1);
-            M(t:b,l,:) = repmat(out_col,b-t+1,1);
-            M(t:b,r,:) = repmat(out_col,b-t+1,1);
-            M(b,l:r,:) = repmat(out_col,1,r-l+1);
+            Rgb_img(t,l:r,:) = repmat(out_col,1,r-l+1);
+            Rgb_img(t:b,l,:) = repmat(out_col,b-t+1,1);
+            Rgb_img(t:b,r,:) = repmat(out_col,b-t+1,1);
+            Rgb_img(b,l:r,:) = repmat(out_col,1,r-l+1);
         end
     end
     if display_page
-        imshow(M);
+        imshow(Rgb_img);
         fprintf('Ready to start matching.  Press a key to begin\n');
         pause;
     end
     if save_cc_page
         fprintf('%.2fs: Writing components of page %d to disk\n', toc, p);
-        imwrite(M, [img_prefix, num2str(p), '.', img_format], img_format);
+        imwrite(Rgb_img, [img_prefix, num2str(p), '.', img_format], img_format);
     end
     fprintf('%.2fs: New components added to individual new clusters\n', toc);
 
     %perform refinements until the number of clusters remains constant
-    refine_list = size(Clust,1):-1:num_clusts+1;
     while true
-        num_clusts = size(Clust,1);
+        num_clusts = Clust.num;
 
         %First look for straight matches among the clusters.  Initially this
         %should drastically reduce the number of clusters.  Just use simple
         %euclidian distance (to keep run-time down).
-        if p ~= num_pgs || pass == 1
+        if pp ~= num_pgs || pass == 1
             fprintf('\n\n%.2fs: Starting straight-match refine pass\n', toc);
-            [Clust, refine_list] = match_refine(Clust, refine_list, 'euc', ...
-                                   match_thresh);
-            if p == num_pgs
+            [Clust, Comps] = match_refine(Clust, Comps, 'euc', match_thresh);
+            if pp == num_pgs
                 pass = 2;
             end
         else
@@ -384,8 +485,8 @@ for p=1:num_pgs
             if pass > 2
                 fprintf('\n\n%.2fs: Starting %s match refine pass\n', toc, ...
                         metric);
-                [Clust, new_list] = match_refine(Clust, refine_list, metric, ...
-                                    match_thresh);
+                [Clust, Comps, new_list] = match_refine(Clust, Comps, ...
+                                           refine_list, metric, match_thresh);
                 if length(new_list) ~= 0
                     refine_list = new_list;
                 end
@@ -394,25 +495,25 @@ for p=1:num_pgs
             if pass == 2
                 %first time through we want to attempt to merge over all
                 %clusters
-                refine_list = size(Clust,1):-1:1;
+                refine_list = 1:Clust.num;
             end
-            fprintf('\n\n%.2fs: Starting merge refine pass\n', toc);
-            [Clust, Comps, new_list] = merge_refine(Clust, Comps, ...
-                refine_list, metric, merge_thresh, merge_pct, merge_min_comps);
+%            fprintf('\n\n%.2fs: Starting merge refine pass\n', toc);
+%            [Clust, Comps, new_list] = merge_refine(Clust, Comps, ...
+%                refine_list, metric, merge_thresh, merge_pct, merge_min_comps);
 
             if pass == 2
                 %first time through we want to attempt to split over all
                 %clusters
-                refine_list = size(Clust,1):-1:1;
+                refine_list = Clust.num:-1:1;
             elseif pass > 2 && length(new_list) ~= 0
                 refine_list = new_list;
             end
-            fprintf('\n%.2fs: Starting horizontal split refine pass\n', toc);
-            [Clust, Comps, new_list] = split_refine(Clust, Comps, ...
-                refine_list, metric, max_splits, split_thresh);
+%            fprintf('\n%.2fs: Starting horizontal split refine pass\n', toc);
+%            [Clust, Comps, new_list] = split_refine(Clust, Comps, ...
+%                refine_list, metric, max_splits, split_thresh);
 
             if pass == 2
-                refine_list = size(Clust,1):-1:1;
+                refine_list = Clust.num:-1:1;
             elseif pass > 2 && length(new_list) ~= 0
                 refine_list = new_list;
             end
@@ -420,17 +521,11 @@ for p=1:num_pgs
             pass = pass + 1;
         end
 
-        if num_clusts == size(Clust,1);
+        if num_clusts == Clust.num;
             fprintf('\n%.2fs: no further reduction in cluster size: %d\n', ...
-                    toc, num_clusts);
+                    toc, Clust.num);
             break;
         end
-    end
-
-    if display_page
-        imshow(M);
-        fprintf('Press any key to continue (to next page if one exists)\n');
-        pause;
     end
 end
 
@@ -439,10 +534,10 @@ end
 %[Clust, new_list] = scale_refine(Clust, size(Clust,1):-1:1, scale_thresh);
 
 %finally, sort the clusters
-Clust = sort_clusters(Clust);
+[Clust, Comps] = sort_clusters(Clust, Comps);
 
-fprintf('TOTAL NUMBER OF COMPONENTS FOUND: %d\n', tot_comps);
-fprintf('TOTAL NUMBER OF CLUSTERS FOUND: %d\n', size(Clust,1));
+fprintf('TOTAL NUMBER OF COMPONENTS FOUND: %d\n', Comps.max_comp);
+fprintf('TOTAL NUMBER OF CLUSTERS FOUND: %d\n', Clust.num);
 
 
 

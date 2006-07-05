@@ -1,21 +1,13 @@
-function [Clust, Comps, chg_list] = split_refine(Clust,Comps,rl,dm,ms,thr)
+function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 % SPLIT_REFINE   Regroup inappropriately mergred clusters as separate clusters
 %
-%   [Clust, Comps, chg_list] = split_refine(Clust, Comps, refine_list, ...
-%                              dist_metric, max_splits, thresh)
+%   [Clust, Comps] = split_refine(Clust, Comps, dist_metric, max_splits, thresh)
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   several fields of a particular format.  See cluster_comps for details.
+%   Clust should be struct containing several fields of a particular format.  
+%   See cluster_comps for details.
 %
-%   Comps should be cell array indexed by page, where each entry of each entry
-%   represents a pixel, and each 'on' pixel is labelled with the component 
-%   number to which it belongs.
-%
-%   refine_list is optional and if specified, determines which items are
-%   to be refined (ie searched for a match).  It should be a vector of cluster
-%   indices and will be processed in the order given.  If not specified, this 
-%   method will attempt to refine all clusters, starting from the highest 
-%   numbered one.
+%   Comps should be a struct containing component information.  Again see 
+%   cluster_comps for details.
 %
 %   dist_metric is optional and if specified determines the type of distance
 %   metric used for matching.  Valid options for this parameter are 'euc'
@@ -34,11 +26,14 @@ function [Clust, Comps, chg_list] = split_refine(Clust,Comps,rl,dm,ms,thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
+% $Id: split_refine.m,v 1.3 2006-07-05 01:20:02 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.2  2006-06-12 20:56:01  scottl
+% Revision 1.3  2006-07-05 01:20:02  scottl
+% rewritten based on new Cluster and Component structures.
+%
+% Revision 1.2  2006/06/12 20:56:01  scottl
 % changed comps to a cell array (indexed by page) to allow different sized pages
 %
 % Revision 1.1  2006/06/03 20:55:48  scottl
@@ -57,388 +52,208 @@ non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
 
 %should we display matches onscreen (wastes resources)
-display_matches = false;
+display_matches = true;
 
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 2 || nargin > 6
+if nargin < 2 || nargin > 5
     error('incorrect number of arguments specified!');
 elseif nargin >= 3
-    refine_list = rl;
+    dist_metric = dm;
     if nargin >= 4
-        dist_metric = dm;
-        if nargin >= 5
-            max_splits = ms;
-            if nargin == 6
-                dist_thresh = thr;
-            end
+        max_splits = ms;
+        if nargin == 5
+            dist_thresh = thr;
         end
     end
 end
 
-chg_list = [];
-num_clusts = size(Clust, 1);
-max_comp  = max(max(Comps{end}));
-
 %start by determining the pixel width of the smallest element in all the
 %clusters (only split if the cluster width is at least twice this).
-for i=1:num_clusts
-    clust_min = min(Clust(i).pos(:,3) - Clust(i).pos(:,1));
-    if clust_min < min_width
-        min_width = clust_min;
-    end
-end
+min_width = min(Comps.pos(:,3) - Comps.pos(:,1));
 
-%initially put all elements in the refine list if not passed
-if nargin < 3
-    refine_list = num_clusts:-1:1;
-end
-keep_list = 1:num_clusts;
+rr = find(Clust.refined == false, 1, 'first');
+while ~isempty(rr)
+    fprintf('                                                         \r');
+    fprintf('cluster: %d  -- ', rr);
 
-while ~ isempty(refine_list)
-
-    %determine if the first item in the list can be refined by spliting it
-    %into up to split+1 pieces and matching each part with another element
+    %determine if this cluster can be refined by spliting it into up to 
+    %split+1 pieces and matching each part with another cluster
 
     % first ensure that it is large enough to be split
-    r = refine_list(1);
-    fprintf('                                                              \r');
-    fprintf('cluster: %d -- ', r);
-    c_width = size(Clust(r).avg, 2);
+    c_width = size(Clust.avg{rr}, 2);
     if (c_width >= 2 * min_width)
-        r_pos = find(keep_list == r,1);
-        ind = [keep_list(1:r_pos-1), keep_list(r_pos+1:end)];
-        mres = find_match(max_splits, Clust(r).avg, Clust, ind, min_width, ...
+        idcs = [1:rr-1,rr+1:Clust.num];
+        mres = find_match(max_splits, Clust.avg{rr}, Clust, idcs, min_width, ...
                           dist_metric, dist_thresh);
         if ~isempty(mres)
             %appropriate match found, reaverage items as appropriate
             fprintf('match found!\r');
-            chg_list = [chg_list, mres.clust];
             if display_matches
                 num_matches = length(mres.clust) + 1;
                 clf;
-                subplot(2, num_matches, 1), imshow(Clust(r).avg), ...
+                subplot(2, num_matches, 1), imshow(Clust.avg{rr}), ...
                         xlabel('original');
             end
 
-            %first find all components that list one of r's components as a
-            %neighbour
-            NB = cell(Clust(r).num);
-            for i=1:num_clusts
-                if i==r
-                    continue;
-                end
-                for j=1:Clust(r).num
-                    idx = find(Clust(i).nb == Clust(r).comp(j));
-                    if ~isempty(idx)
-                        if size(idx,2) > 1
-                            %this can happen if Clust(i).nb contains a single 
-                            %row, but has multiple matches within that row 
-                            %(ex left and top neighbour).  Rare but it does 
-                            %appear
-                            idx = idx';
-                        end
-                        NB{j} = [NB{j}, [repmat(i,1,length(idx)); idx']];
-                    end
-                end
-            end
-
             while ~isempty(mres.clust)
-                if ~isempty(mres.sep_pos)
-                    %must update the R positions of each item currently in this
-                    %cluster (and possibly crop the T or B positions), as well 
-                    %as updating the R neighbour (and maybe T and B)
-                    newcl.pg   = Clust(r).pg;
-                    newcl.num  = Clust(r).num;
-                    newcl.comp = max_comp + (1:Clust(r).num)';
-                    max_comp   = max_comp + newcl.num;
-                    newcl.pos  = Clust(r).pos;
-                    newcl.pos(:,3) = Clust(r).pos(:,1) + mres.sep_pos(1) - 1;
-                    newcl.avg  = Clust(r).avg(:,1:mres.sep_pos(1));
-                    newcl.nb   = Clust(r).nb;
-                    newcl.nb(:,3) = Clust(r).comp;
-                    [row,Dummy] = find(newcl.avg ~= bg_val);
-                    row = sort(row);
-                    if row(end) ~= size(newcl.avg,1)
-                        %decrease the bottom positions
-                        newcl.pos(:,4) = newcl.pos(:,4) - ...
-                              (size(newcl.avg,1) - row(end));
-                        newcl.avg = newcl.avg(1:row(end),:);
-                    end
-                    if row(1) ~= 1
-                        %push top positions up
-                        newcl.pos(:,2) = newcl.pos(:,2) + row(1) - 1;
-                        newcl.avg = newcl.avg(row(1):end,:);
-                    end
-
-                    %update Comps to reflect the new component numbers
-                    for i=1:newcl.num
-                        x = newcl.pos(i,:);
-                        pg = newcl.pg(i);
-                        region = Comps{pg}(x(2):x(4), x(1):x(3));
-                        idx = find(region == Clust(r).comp(i));
-                        region(idx) = newcl.comp(i);
-                        Comps{pg}(x(2):x(4), x(1):x(3)) = region;
-                    end
-
-                    %loop through each component, checking whether the top and 
-                    %bottom neighbours overlap the new component by at least 
-                    %half the pixels, if they don't we may have to look for a 
-                    %new top and/or bottom neighbour that matches better
-                    %
-                    %we also potentially update any neighbours pointing to this
-                    %unsplit component to the appropriate overlapping split part
-                    for i=1:newcl.num
-                        tl = newcl.pos(i,1); tt = newcl.pos(i,2);
-                        tr = newcl.pos(i,3); tb = newcl.pos(i,4);
-
-                        %check the overlap with the current top neighbour
-                        if newcl.nb(i,2) ~= non_nb_val
-                            [tnbcl, tnboff] = get_cl_off(Clust, newcl.nb(i,2));
-                            dif = min(tr, Clust(tnbcl).pos(tnboff,3)) - ...
-                                  max(tl, Clust(tnbcl).pos(tnboff,1));
-                        else 
-                            dif = -Inf;
-                        end
-                        if dif < ((tr - tl) / 2)
-                            vals = [];
-                            col = tl;
-                            while col ~= tr;
-                                row = tt -1;
-                                while row >= 1 && ...
-                                      Comps{newcl.pg(i)}(row, col) == bg_val
-                                    row = row - 1;
-                                end
-                                if row ~= non_nb_val
-                                    vals = [vals, Comps{newcl.pg(i)}(row, col)];
-                                end
-                                col = col + 1;
-                            end
-                            %the top neighbour is the maximum occuring value in 
-                            %vals
-                            if isempty(vals)
-                                newcl.nb(i,2) = non_nb_val;  %no top neighbour
-                            else
-                                [Dummy, idx] = max(hist(vals, max(vals) - ...
-                                               min(vals) + 1));
-                                newcl.nb(i,2) = idx + min(vals) - 1;
-                            end
-                        end
-
-                        %check the overlap with current bottom neighbour
-                        if newcl.nb(i,4) ~= non_nb_val
-                            [bnbcl, bnboff] = get_cl_off(Clust, newcl.nb(i,4));
-                            dif = min(tr, Clust(bnbcl).pos(bnboff,3)) - ...
-                                  max(tl, Clust(bnbcl).pos(bnboff,1));
-                        else
-                            dif = -Inf;
-                        end
-                        if dif < ((tr - tl) / 2)
-                            vals = [];
-                            col = tl;
-                            last_row = size(Comps{newcl.pg(i)},1);
-                            while col ~= tr;
-                                row = tb +1;
-                                while row <= last_row && ...
-                                      Comps{newcl.pg(i)}(row, col) == bg_val
-                                    row = row + 1;
-                                end
-                                if row <= last_row
-                                    vals = [vals, Comps{newcl.pg(i)}(row, col)];
-                                end
-                                col = col + 1;
-                            end
-                            %the bottom neighbour is the maximum occuring value 
-                            %in vals
-                            if isempty(vals)
-                                newcl.nb(i,4) = non_nb_val; %no bottom neighbour
-                            else
-                                [Dummy, idx] = max(hist(vals, max(vals) - ...
-                                               min(vals) + 1));
-                                newcl.nb(i,4) = idx + min(vals) - 1;
-                            end
-                        end
-
-                        %now see if the component numbers of any of those 
-                        %components which list this (unsplit) component as a 
-                        %neighbour, should be updated to the now split component
-                        keep_cols = [];
-                        for k=1:size(NB{i},2)
-                            [row,col] = ind2sub([Clust(NB{i}(1,k)).num, 4], ...
-                                                NB{i}(2,k));
-                            %any left neighbours should be associated with the
-                            %first component, any right neighbours should be 
-                            %associated with the last component
-                            if col == 3 || ... %left neighbour
-                               (col ~= 1 && ... % not right neighbour AND
-                               ((newcl.pos(i,3) - ...
-                               Clust(NB{i}(1,k)).pos(row,1)) >= ...
-                               ((Clust(NB{i}(1,k)).pos(row,3) - ...
-                               Clust(NB{i}(1,k)).pos(row,1))/2))) %max overlap
-                                                     %top or bottom neighbour
-                                %in either of these cases point this component 
-                                %at the new split component
-                                Clust(NB{i}(1,k)).nb(row,col) = newcl.comp(i);
-                            else
-                                keep_cols = [keep_cols,k];
-                            end
-                        end
-                        NB{i} = NB{i}(:,keep_cols);
-                    end
-
-                    % update r's L position and neighbour of each item so it 
-                    % is set correctly next time through the loop
-                    Clust(r).pos(:,1) = Clust(r).pos(:,1) + mres.sep_pos(1);
-                    Clust(r).avg = Clust(r).avg(:,mres.sep_pos(1)+1:end);
-                    Clust(r).nb(:,1) = newcl.comp;
-                    mres.sep_pos = mres.sep_pos(2:end);
+                mc = mres.clust(1);
+                if isempty(mres.sep_pos)
+                    %right-most matching piece.  Use refined existing components
+                    [Clust, Comps] = add_and_reaverage(Clust, Comps, ...
+                                     mc, rr);
                 else
-                    %last piece, everything should already be updated in terms
-                    %of neighbours and component numbers etc.
-                    newcl = Clust(r);
+                    %not right-most piece.  Create new components for the 
+                    %split part and update positions, neighbours etc. of the 
+                    %right part.
+                    num_new_comps = Clust.num_comps(rr);
+                    new_idcs = Comps.max_comp + [1:num_new_comps]';
+                    old_idcs = Clust.comps{rr};
+                    Comps.max_comp = Comps.max_comp + num_new_comps;
+                    Comps.clust(new_idcs) = mc;
+                    Comps.pos(new_idcs,:) = Comps.pos(old_idcs,:);
+                    rem_pos = Comps.pos(old_idcs,1) + mres.sep_pos(1) - 1;
+                    Comps.pos(new_idcs,3) = rem_pos;
+                    Comps.pos(old_idcs,1) = rem_pos + 1;
+                    %potentially update the top and bottom position too
+                    Comps.pos(new_idcs,2) = Comps.pos(new_idcs,2)+mres.top(1)-1;
+                    Comps.pos(new_idcs,4) = Comps.pos(new_idcs,4) - ...
+                                           (size(mres.avg{1},1) - mres.bot(1));
+                    Comps.pg(new_idcs) = Comps.pg(old_idcs);
+                    Comps.nb(new_idcs,:) = Comps.nb(old_idcs,:);
+                    Comps.nb(new_idcs,3) = old_idcs;
+                    Comps.nb(old_idcs,1) = new_idcs;
+                    Comps.nb_dist(new_idcs,:) = Comps.nb_dist(old_idcs,:);
+                    Comps.nb_dist(new_idcs,3) = 1;
+                    Comps.nb_dist(old_idcs,1) = 1;
 
-                    [row,Dummy] = find(newcl.avg ~= bg_val);
-                    row = sort(row);
-                    if row(end) ~= size(newcl.avg,1)
-                        %decrease the bottom positions
-                        newcl.pos(:,4) = newcl.pos(:,4) - ...
-                              (size(newcl.avg,1) - row(end));
-                        newcl.avg = newcl.avg(1:row(end),:);
-                    end
-                    if row(1) ~= 1
-                        %push top positions up
-                        newcl.pos(:,2) = newcl.pos(:,2) + row(1) - 1;
-                        newcl.avg = newcl.avg(row(1):end,:);
-                    end
+                    %potentially update any components that list the old
+                    %component as a top, right, or bottom neighbour
+                    %@@@to do!
+                    %find(Comps.nb(:,3) == any of old_idcs)
+
+                    Comps.offset(new_idcs) = Comps.offset(old_idcs) + ...
+                           int16(Comps.pos(new_idcs,4)) - ...
+                           int16(Comps.pos(old_idcs,4));
+
+                    %add these new components to the appropriate cluster
+                    num_prev_comps = Clust.num_comps(mc);
+                    Clust.num_comps(mc) = Clust.num_comps(mc) + num_new_comps;
+                    Clust.comps{mc} = [Clust.comps{mc}; new_idcs];
+                    Clust.avg{mc} = (num_prev_comps/Clust.num_comps(mc) .* ...
+                                    Clust.avg{mc}) + ...
+                                    (num_new_comps/Clust.num_comps(mc) .* ...
+                                    mres.avg{1});
+                    Clust.norm_sq(mc) = sum(sum(Clust.avg{mc}.^2));
                 end
+
                 if display_matches
-                    %add newcl.avg to the display
+                    %add the new piece to the display
                     pos = num_matches - length(mres.clust) + 1;
-                    subplot(2, num_matches, pos), imshow(newcl.avg), ...
+                    subplot(2, num_matches, pos), imshow(mres.avg{1}), ...
                         xlabel(sprintf('piece %d\n', pos - 1));
                     subplot(2, num_matches, num_matches + pos), ...
-                        imshow(Clust(mres.clust(1)).avg), xlabel(...
-                        sprintf('matching cluster %d\n', mres.clust(1)));
+                        imshow(Clust.avg{mc}), xlabel(...
+                        sprintf('matching cluster %d\n', mc));
                 end
-                %now re-average the items and update mres
-                Clust(mres.clust(1)) = add_and_reaverage(...
-                           Clust(mres.clust(1)), newcl, mres.m{1}, mres.m2{1});
                 mres.clust = mres.clust(2:end);
-                mres.m = mres.m(2:end);
-                mres.m2 = mres.m2(2:end);
+                mres.sep_pos = mres.sep_pos(2:end);
+                mres.avg = mres.avg(2:end);
+                mres.top = mres.top(2:end);
+                mres.bot = mres.bot(2:end);
             end
-            % remove r from the cluster list
-            keep_list = ind;
 
             if display_matches
                 drawnow;
                 pause(2);
             end
         else
+            Clust.refined(rr) = true;
             fprintf('no match\r');
         end
+    else
+        Clust.refined(rr) = true;
+        fprintf('too narrow\r');
     end
-    refine_list = refine_list(2:end);
+    rr = find(Clust.refined == false, 1, 'first');
 end
-fprintf('\n');
 
-% remove those items not on the keep list, and sort the results
-[Dummy, Dummy, chg_list] = intersect(unique(chg_list), keep_list);
-%Clust = sort_clusters(Clust(keep_list));
-Clust = Clust(keep_list);
 
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function match = find_match(num_splits, C, Clust, ind, min_width, ...
+function match = find_match(num_splits, C, Clust, idcs, min_width, ...
                  dist_metric, thresh)
 %this function attempts to recursively match halves using at most num_splits
-%splits.
-%match will be empty if no successful match could be found otherwise, it will
-%be a struct with fields: match.clust, match.sep_pos, match.m, and match.m2.  
-%The first field will contain at least 1 scalar item specifying the matching 
-%cluster index, the second will contain size(match.clust)-1 items listing the
-%positions of the separators used to find the matchings, and the last 2 fields
-%are cell arrays of resized maximally overlapping versions of Clust(i) (in m) 
-%and C (in m2) that were used to find the matching.
+%splits.  Match will be empty if no successful match could be found otherwise, 
+%it will be a struct with fields: match.clust, match.sep_pos, and match.avg
+%The first field will contain at least 1 scalar item specifying the 
+%matching cluster index, the second will contain size(match.clust)-1 items 
+%listing the positions of the separators used to find the matchings, and the
+%final will be a cell array listing the intensity images were used in the
+%matching of each piece
+
+%@@@ implement calls to other distance metrics
 
 bg_val = 0;  %value used for backgroundpixels
 
-%always attempt to find a single match over all of C
-for i=1:size(Clust,1)
-    if isempty(find(ind == i,1))
-        continue;
-    end
-    if strcmp(dist_metric,'euc')
-        [match_l, Mi, Mc] = euc_match(Clust(i).avg, C, thresh);
-    elseif strcmp(dist_metric, 'conv_euc')
-        [match_l, Mi, Mc] = conv_euc_match(Clust(i).avg, C, thresh);
-    elseif strcmp(dist_metric, 'hausdorff')
-        [match_l, Mi, Mc] = hausdorff_match(Clust(i).avg, C, thresh);
-    elseif strcmp(dist_metric, 'ham')
-        [match_l, Mi, Mc] = ham_match(Clust(i).avg, C, thresh);
-    else
-        error('incorrect distance metric specified!');
-    end
-
-    if match_l
-        %match found
-        match.clust = i;
-        match.sep_pos = [];
-        match.m = {Mi};
-        match.m2 = {Mc};
-        return;
-    end
+%attempt first to find a single valid match of all of C in Clust
+D = euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+[val,idx] = min(D);
+if val <= thresh
+    %match found
+    match.clust = idcs(idx);
+    match.sep_pos = [];
+    match.avg = {C};
+    match.top = 1;
+    match.bot = size(C,1);
+    return;
 end
 
 if num_splits >= 1
     %recursive case, first look for a left-side match
     c_width = size(C,2);
-    for i=1:size(Clust,1)
-        if isempty(find(ind == i,1))
-            continue;
-        end
-        cut_pos = min_width;
-        while (cut_pos <= (c_width - min_width))
-            L = C(:,1:cut_pos);
-            [row, col] = find(L ~= bg_val);
+    cut_pos = min_width;
+    while(cut_pos <= (c_width - min_width))
+        L = C(:,1:cut_pos);
+        R = C(:,cut_pos+1:end);
+
+        %first trim any blank space from L to create a tight bounding box
+        [lrow, lcol] = find(L ~= bg_val);
+        lrow = sort(lrow);
+        lcol = sort(lcol);
+        L = L(lrow(1):lrow(end),lcol(1):lcol(end));
+
+        D = euc_dist(L, Clust.avg(idcs), sum(sum(L.^2)), Clust.norm_sq(idcs));
+        [val, idx] = min(D);
+        if val <= thresh
+            %ensure we can find a right half match in up to one fewer splits
+            %first trim blank space form R
+            [row, col] = find(R ~= bg_val);
             row = sort(row);
             col = sort(col);
-            L = L(row(1):row(end),col(1):col(end));
-            R = C(:,cut_pos+1:end);
-            if strcmp(dist_metric,'euc')
-                [match_l, Mi, Mc] = euc_match(Clust(i).avg, L, thresh);
-            elseif strcmp(dist_metric, 'conv_euc')
-                [match_l, Mi, Mc] = conv_euc_match(Clust(i).avg, L, thresh);
-            elseif strcmp(dist_metric, 'hausdorff')
-                [match_l, Mi, Mc] = hausdorff_match(Clust(i).avg, L, thresh);
-            elseif strcmp(dist_metric, 'ham')
-                [match_l, Mi, Mc] = ham_match(Clust(i).avg, L, thresh);
-            else
-                error('incorrect distance metric specified!');
-            end
-            if match_l
-                %ensure the right half matches in up to one fewer splits
-                [row, col] = find(R ~= bg_val);
-                row = sort(row);
-                R = R(row(1):row(end),:);
-                mres = find_match(num_splits-1, R, Clust, ind, min_width, ...
-                                  dist_metric, thresh);
-                if ~isempty(mres)
-                    %right match found!
-                    match.clust = [i, mres.clust];
-                    match.sep_pos = [cut_pos, mres.sep_pos];
-                    match.m = {Mi, mres.m{:}};
-                    match.m2 = {Mc, mres.m2{:}};
-                    return;
+            R = R(row(1):row(end), col(1):col(end));
+            mres = find_match(num_splits-1, R, Clust, idcs, min_width, ...
+                              dist_metric, thresh);
+            if ~isempty(mres)
+                %right match found!
+                match.clust = [idcs(idx), mres.clust];
+                match.sep_pos = [cut_pos, mres.sep_pos];
+                match.avg = {L, mres.avg{:}};
+                if length(mres.top) == 1
+                    match.top = [lrow(1), row(1)];
+                    match.bot = [lrow(end), row(end)];
+                else
+                    match.top = [lrow(1), mres.top];
+                    match.bot = [lrow(end), mres.bot];
                 end
+                return;
             end
-            cut_pos = cut_pos + 1;
         end
+        cut_pos = cut_pos + 1;
     end
 end
 %if we get down here, a match hasn't been found, set match to an empty array
 match = [];
-

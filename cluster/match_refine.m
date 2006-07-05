@@ -1,16 +1,15 @@
-function [Clust, chg_list] = match_refine(Clust, rl, dm, thr)
+function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
 % match_refine  Attempt to match near-identical Clusters
 %
-%   [Clust, chg_list] = match_refine(Clust, refine_list, dist_metric, thresh)
+%   [Clust, Comps, chg_list] = match_refine(Clust, Comps, refine_list, ...
+%                                           dist_metric, thresh)
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   several fields of a particular format.  See cluster_comps for details.
+%   Clust should be a struct containing several fields specifying which 
+%   components belong to each cluster, and their averages etc.  See 
+%   cluster_comps for details.
 %
-%   refine_list is optional and if specified, determines which items are
-%   to be refined (ie searched for a match).  It should be a vector of cluster
-%   indices and will be processed in the order given.  If not specified, this 
-%   method will attempt to refine all clusters, starting from the highest 
-%   numbered one.
+%   Comps should be a struct containing component information.  See 
+%   cluster_comps for details.
 %
 %   dist_metric is optional and if specified determines the type of distance
 %   metric used for matching.  Valid options for this parameter are 'euc'
@@ -22,16 +21,17 @@ function [Clust, chg_list] = match_refine(Clust, rl, dm, thr)
 %   Euclidian distance allowable for two cluster averages to be considered 
 %   matching.  If not specified, it defaults to .009
 %
-%   the refined list of clusters is returned in Clust, as is the indices of 
-%   those clusters that changed in chg_list
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.1 2006-06-03 20:55:48 scottl Exp $
+% $Id: match_refine.m,v 1.2 2006-07-05 01:16:58 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.1  2006-06-03 20:55:48  scottl
+% Revision 1.2  2006-07-05 01:16:58  scottl
+% rewritten based on new Cluster and Component structures.
+%
+% Revision 1.1  2006/06/03 20:55:48  scottl
 % Initial check-in.
 %
 %
@@ -46,79 +46,58 @@ display_images = false;  %set this to true to display matches as they are found
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 1 || nargin > 4
+if nargin < 2 || nargin > 4
     error('incorrect number of arguments specified!');
-elseif nargin >= 2
-    refine_list = rl;
-    if nargin >= 3
-        dist_metric = dm;
-        if nargin == 4
-            distance_thresh = thr;
-        end
+elseif nargin >= 3
+    dist_metric = dm;
+    if nargin >= 4
+        distance_thresh = thr;
     end
 end
 
-num_clusts = size(Clust, 1);
-chg_list = [];
-
-%go through each cluster to see if it matches another cluster
-if nargin < 2
-    refine_list = num_clusts:-1:1;
-end
-keep_list = 1:num_clusts;
-
-while ~isempty(refine_list)
-    r = refine_list(1);
+%go through each unrefined cluster and attempt to group it with other clusters
+rr = find(Clust.refined == false, 1, 'first');
+while ~isempty(rr)
     fprintf('                                                         \r');
-    fprintf('cluster: %d  -- ', r);
-    match_found = false;
+    fprintf('cluster: %d  -- ', rr);
 
-    for i=keep_list
-        if i == r
-            continue;
-        end
+    D = euc_dist(Clust.avg{rr}, Clust.avg, Clust.norm_sq(rr), Clust.norm_sq);
+%        elseif strcmp(dist_metric, 'conv_euc')
+%            [match_found, Mr, Mi, d] = conv_euc_match(Clust(r).avg, ...
+%                                   Clust(i).avg, distance_thresh);
+%        elseif strcmp(dist_metric, 'hausdorff')
+%            [match_found, Mr, Mi, d] = hausdorff_match(Clust(r).avg, ...
+%                                   Clust(i).avg, distance_thresh);
+%        elseif strcmp(dist_metric, 'ham')
+%            [match_found, Mr, Mi, d] = ham_match(Clust(r).avg, ...
+%                                   Clust(i).avg, distance_thresh);
+%        else
+%            error('incorrect distance metric specified!');
+%        end
+    match_idcs = find(D <= distance_thresh);
+    match_idcs = match_idcs(match_idcs ~= rr);
+    num_match = length(match_idcs);
 
-        if strcmp(dist_metric,'euc')
-            [match_found, Mr, Mi, d] = euc_match(Clust(r).avg, Clust(i).avg, ...
-                                   distance_thresh);
-        elseif strcmp(dist_metric, 'conv_euc')
-            [match_found, Mr, Mi, d] = conv_euc_match(Clust(r).avg, ...
-                                   Clust(i).avg, distance_thresh);
-        elseif strcmp(dist_metric, 'hausdorff')
-            [match_found, Mr, Mi, d] = hausdorff_match(Clust(r).avg, ...
-                                   Clust(i).avg, distance_thresh);
-        elseif strcmp(dist_metric, 'ham')
-            [match_found, Mr, Mi, d] = ham_match(Clust(r).avg, ...
-                                   Clust(i).avg, distance_thresh);
-        else
-            error('incorrect distance metric specified!');
-        end
-
-        if match_found
-            fprintf('found a match between %d and %d\r', r, i);
-            if display_images
-                clf;
-                subplot(1,2,1), imshow(Clust(r).avg), xlabel('r'), ...
-                title(sprintf('distance: %f', d));
-                subplot(1,2,2), imshow(Clust(i).avg), xlabel('i');
-                drawnow;
-                pause(.5);
+    if num_match > 0
+        fprintf('found %d matches for cluster %d\r', num_match, rr);
+        if display_images
+            clf;
+            num_match = min(num_match, 5);  %only show the first 5 matches
+            subplot(1,num_match+1,1), imshow(Clust.avg{rr});
+            xlabel('r'); title('Main Cluster');
+            for ii=1:num_match
+                subplot(1,1+num_match,1+ii), imshow(Clust.avg{match_idcs(ii)});
+                xlabel(match_idcs(ii)); 
+                title(sprintf('dist: %.3f', D(match_idcs(ii))));
             end
-
-            %merge the clusters together
-            Clust(i) = add_and_reaverage(Clust(i), Clust(r), Mi, Mr);
-            pos = find(keep_list == r,1);
-            keep_list = [keep_list(1:pos-1), keep_list(pos+1:end)];
-            chg_list = [chg_list, i];
-            break;
+            drawnow;
+            pause(.5);
         end
-    end
-    if ~ match_found
+        %merge the clusters together, note that this will re-order the clusters
+        [Clust, Comps] = add_and_reaverage(Clust, Comps, rr, match_idcs);
+    else
+        Clust.refined(rr) = true;
         fprintf('no match\r');
     end
-    refine_list = refine_list(2:end);
+    rr = find(Clust.refined == false, 1, 'first');
 end
-
-%refinement complete, now delete those items not on the keep list
-[Dummy, Dummy, chg_list] = intersect(unique(chg_list), keep_list);
-Clust = Clust(keep_list);
