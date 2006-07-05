@@ -21,11 +21,14 @@ function display_ocr_results(indices, bitmaps, base_offs, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.2 2006-06-19 21:02:44 scottl Exp $
+% $Id: display_ocr_results.m,v 1.3 2006-07-05 01:07:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.2  2006-06-19 21:02:44  scottl
+% Revision 1.3  2006-07-05 01:07:46  scottl
+% don't save results by default.
+%
+% Revision 1.2  2006/06/19 21:02:44  scottl
 % aligned result bitmaps based on baseline offsets.
 %
 % Revision 1.1  2006/06/10 21:01:32  scottl
@@ -38,8 +41,8 @@ function display_ocr_results(indices, bitmaps, base_offs, num)
 
 %set save_averages to true to write the averages to disk based on the params
 %below it
-save_averages = true;
-img_prefix = 'results/nips5_line10to15_ocr';
+save_averages = false;
+img_prefix = 'results/nips5_line1to50_ocr';
 img_format = 'png';
 
 row_margin = 10;  %number of pixels between consecutive rows in the image
@@ -61,6 +64,9 @@ end
 
 if length(bitmaps) ~= length(base_offs)
     error('number of bitmaps must be the same as the number of base_offs!');
+elseif size(bitmaps,1) > 1
+    %convert to a column array
+    bitmaps = bitmaps';
 end
 
 M = cell(num_rows,1);
@@ -68,6 +74,8 @@ M = cell(num_rows,1);
 if ~ iscell(indices)
     indices = {indices};
 end
+
+
 
 max_width = 0;
 for i=1:num_rows
