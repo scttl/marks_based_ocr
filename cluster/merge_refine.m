@@ -1,29 +1,20 @@
-function [Clust, Comps, chg_list] = merge_refine(Clust,Comps,rl,dm,md,vp,mn)
+function [Clust, Comps] = merge_refine(Clust,Comps,dm,md,vp,mn)
 % MERGE_REFINE  Merge together inappropriately separated clusters
 %
 %   [Clust, Comps, chg_list] = merge_refine(Clust, Comps, refine_list, ...
 %                    dist_metric, max_dist, valid_pct, min_num)
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   several fields of a particular format.  See cluster_comps for details.
+%   Clust should be a struct containing cluster information.  See cluster_comps
+%   for details on the format of each field.
 %
-%   Comps should be a cell array indexed by page, where each entry of each entry
-%   represents a pixel, and each 'on' pixel is labelled with the component 
-%   number to which it belongs.
-%
-%   refine_list is optional and if specified, determines which items are
-%   to be refined (ie searched for a match).  It should be a vector of cluster
-%   indices and will be processed in the order given.  If not specified, this 
-%   method will attempt to refine all clusters, starting from the highest 
-%   numbered one.
+%   Comps should be a struct containing information for each component.  See 
+%   cluster_comps for details.
 %
 %   dist_metric is optional and if specified determines the type of distance
 %   metric used for matching.  Valid options for this parameter are 'euc'
 %   (straight Euclidian distance -- the default), 'conv' (Euclidian distance
 %   after convolving the matrices to find maximal overlapping point), or
-%   'hausdorff' to use Hausdorff distance.  NOTE: for mergers, the distance
-%   metric specified is ignored (only used for consistency with other refine
-%   calls).
+%   'hausdorff' to use Hausdorff distance.
 %
 %   max_dist is optional and if specified, determines the amount of tolerance 
 %   (maximum number of pixels separating the closest parts of 2 components to
@@ -42,11 +33,15 @@ function [Clust, Comps, chg_list] = merge_refine(Clust,Comps,rl,dm,md,vp,mn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.2 2006-06-12 20:56:01 scottl Exp $
+% $Id: merge_refine.m,v 1.3 2006-07-05 01:21:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
-% Revision 1.2  2006-06-12 20:56:01  scottl
+% Revision 1.3  2006-07-05 01:21:23  scottl
+% started rewriting based on new Cluster and Component structures.  Not
+% complete yet!
+%
+% Revision 1.2  2006/06/12 20:56:01  scottl
 % changed comps to a cell array (indexed by page) to allow different sized pages
 %
 % Revision 1.1  2006/06/03 20:55:48  scottl
@@ -57,7 +52,7 @@ function [Clust, Comps, chg_list] = merge_refine(Clust,Comps,rl,dm,md,vp,mn)
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 dist_metric = 'euc';
-pixel_thresh = 3;
+max_dist = 3;
 valid_pct = .85;
 min_match_comp = 3;
 
@@ -70,213 +65,112 @@ display_matches = false;
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin < 2 || nargin > 7
+if nargin < 2 || nargin > 6
     error('incorrect number of arguments specified!');
 elseif nargin >= 3
-    refine_list = rl;
+    dist_metric = dm;
     if nargin >= 4
-        dist_metric = dm;
+        max_dist = md;
         if nargin >= 5
-            pixel_thresh = md;
-            if nargin >= 6
-                valid_pct = vp;
-                if nargin == 7
-                    min_match_comp = mn;
-                end
+            valid_pct = vp;
+            if nargin == 6
+                min_match_comp = mn;
             end
         end
     end
 end
 
-chg_list = [];
-num_clusts = size(Clust, 1);
-max_comp  = max(max(Comps{end}));
+num_clusts = length(Clust);
 
 %initially put all elements in the refine list if not passed
-if nargin < 3
-    refine_list = num_clusts:-1:1;
-end
-keep_list = 1:num_clusts;
+rr = find(Clust.refined == false,1,'first');
+while ~ isempty(rr)
 
-while ~ isempty(refine_list)
-
-    %determine if the first item in the list can be refined by merging it
-    %with a neighbouring component that is always the same cluster
-    r = refine_list(1);
+    %determine if this item can be refined by merging it with a cluster
+    %that almost always appears adjacent to it
     fprintf('                                                        \r');
     fprintf('cluster: %d -- ', r);
     lcl = []; tcl = [];
-    if Clust(r).num < min_match_comp
+    if Clust.num_comps(rr) < min_match_comp
         %too few components in this cluster for a valid merge
-        refine_list = refine_list(2:end);
+        Clust.refined(rr) = true;
+        rr = find(Clust.refined == false,1,'first');
         continue;
     end
+    r_comps = Clust.comps(rr);
 
-    for i=1:Clust(r).num
-        lnb = Clust(r).nb(i,1);
-        if lnb ~= 0
-            [cl,off] = get_cl_off(Clust, Clust(r).nb(i,1));
-            if (Clust(r).pos(i,1) - Clust(cl).pos(off,3)) > pixel_thresh
-                continue;  %match distance too large
-            else
-                %ensure that there are 'on' pixels within the distance
-                top = min(Clust(r).pos(i,2), Clust(cl).pos(off,2));
-                bot = max(Clust(r).pos(i,4), Clust(cl).pos(off,4));
-                left = min(Clust(cl).pos(off,3), Clust(r).pos(i,1)) - ...
-                       pixel_thresh + 1;
-                right = max(Clust(cl).pos(off,3), Clust(r).pos(i,1)) + ...
-                       pixel_thresh - 1;
-                if left < 1
-                    left = 1;
-                end
-                if right > size(Comps{Clust(r).pg(i)},2)
-                    right = size(Comps{Clust(r).pg(i)},2);
-                end
-                [lr, lc] = find(Comps{Clust(cl).pg(off)}(top:bot,left:right) ...
-                           == Clust(cl).comp(off));
-                [rr, rc] = find(Comps{Clust(r).pg(i)}(top:bot,left:right) ...
-                           == Clust(r).comp(i));
-                match_found = false;
-                for j=1:length(lr)
-                    for k=1:length(rr)
-                        if abs(rr(k) - lr(j)) + abs(rc(k) - lc(j)) <= ...
-                           pixel_thresh
-                            lcl = [lcl, [cl; off]];
-                            match_found = true;
-                            break;
-                        end
-                    end
-                    if match_found
-                        break;
-                    end
-                end
-            end
+    %first look for a valid left neighbour cluster
+    lnb_comps = Comps.nb(r_comps,1);
+    valid_idx = lnb_comps ~= 0;
+    r_comps = r_comps(valid_idx);
+    lnb_comps = lnb_comps(valid_idx);
+    l_dist = Comps.pos(r_comps,1) - Comps.pos(lnb_comps,3);
+    valid_idx = l_dist <= max_dist;
+    r_comps = r_comps(valid_idx);
+    lnb_comps = lnb_comps(valid_idx);
+    if length(lnb_comps) >= min_match_comp
+        %determine the most frequent cluster of the remaining valid
+        %left neighbour components
+        lnb_clusts = Comps.clust(lnb_comps);
+        lnb_clust_list = unique(lnb_clusts);
+        if length(lnb_clust_list) == 1
+            mf_num = length(lnb_clusts);
+            mf_clust = lnb_clust_list;
+        else
+            [mf_num, mf_clust] = max(hist(lnb_clusts, lnb_club_list));
+            mf_clust = lnb_clust_list(mf_clst);
         end
-    end
-    if ~isempty(lcl)
-        % determine the most frequently occuring cluster in lcl
-        [mf_cnt, mf_clst] = max(hist(lcl(1,:), max(lcl(1,:)) - ...
-                            min(lcl(1,:)) + 1));
-        mf_clst = mf_clst + min(lcl(1,:)) - 1;
-        if mf_cnt >= min_match_comp && (mf_cnt / Clust(r).num) >= valid_pct ...
-           && (mf_cnt / Clust(mf_clst).num) >= valid_pct
+
+        %ensure that the most frequent lnb cluster has the required minimum
+        %number of components, makes up at least valid_pct of the total number 
+        %of that clusters components as well as valid_pct of r's total number of
+        %components.
+        if mf_num >= min_match_comp && ...
+           (mf_num / Clust.num_comps(mf_clust)) >= valid_pct && ...
+           (mf_num / Clust.num_comps(rr)) >= valid_pct
             %valid merge found, update neighbours, component averages etc.
             fprintf('valid left merge found\r');
             if display_matches
                 clf;
-                subplot(1,2,1), imshow(Clust(mf_clst).avg), ...
-                    xlabel(Clust(mf_clst).num);
-                subplot(1,2,2), imshow(Clust(r).avg), ...
-                    xlabel(Clust(r).num);
+                subplot(1,2,1), imshow(Clust.avg{mf_clust});
+                xlabel(Clust.num_comps(mf_clst));
+                subplot(1,2,2), imshow(Clustavg{rr});
+                xlabel(Clust.num_comps(rr));
                 drawnow;
-                pause(2);
+                pause(.5);
             end
 
-            %add the new cluster to hold the merged items
+            merge_idx = Comps.clust(lnb_comps) == mf_clust;
+            r_merge_comps = r_comps(merge_idx);
+            lnb_merge_comps = lnb_comps(merge_idx);
+
+            %update the merged components.  Note that the right pos, neighbour
+            %and neighbour distance don't change
+            %positions
+            Comps.pos(r_merge_comps,1) = Comps.pos(lnb_merge_comps,1);
+            Comps.pos(r_merge_comps,2) = min(...
+               Comps.pos(r_merge_comps,2), Comps.pos(lnb_merge_comps,2));
+            Comps.pos(r_merge_comps,4) = max(...
+               Comps.pos(r_merge_comps,4), Comps.pos(lnb_merge_comps,4));
+
+            %neighbours
+            Comps.nb(r_merge_comps,1) = Comps.nb(lnb_merge_comps,1);
+            Comps.nb_dist(r_merge_comps,1) = Comps.nb_dist(lnb_merge_comps,1);
+            %for top and bottom, take the closer of the two possible neighbours.
+            %If there is a tie, take the maximally overlapping neighbour
+            [Dummy, idx] = 
+
+            %clusters -- we'll create a new cluster below
+            Comps.clust(r_merge_comps) = num_clusts+1;
+
+            %offsets
+
+            %remove the now merged left-neighbour components
+
+
             num_clusts = num_clusts + 1;
             keep_list = [keep_list, num_clusts];
             chg_list = [chg_list, num_clusts];
-            Clust(num_clusts).num = 0;
-
-            r_keep = 1:Clust(r).num;
-            mf_keep = 1:Clust(mf_clst).num;
-            for i=1:Clust(r).num
-                lnb = Clust(r).nb(i,1);
-                if lnb ~= 0
-                    idx = find(Clust(mf_clst).comp == lnb, 1);
-                    if ~isempty(idx)
-                        this.comp = max_comp + 1;
-                        max_comp = max_comp + 1;
-                        mfc_pos = Clust(mf_clst).pos(idx,:);
-                        r_pos = Clust(r).pos(i,:);
-                        ll = mfc_pos(1); tt = min(mfc_pos(2), r_pos(2));
-                        rr = r_pos(3); bb = max(mfc_pos(4), r_pos(4));
-                        this.pos = [ll, tt, rr, bb];
-                        
-                        %update the new merge components neighbours
-                        mfc_nb = Clust(mf_clst).nb(idx,:);
-                        r_nb = Clust(r).nb(i,:);
-                        if mfc_nb(2) == 0 || mfc_nb(2) == r_nb(2) || ...
-                           mfc_nb(2) == Clust(r).comp(i)
-                            tnb = r_nb(2);
-                        elseif r_nb(2) == 0 || ...
-                           r_nb(2) == Clust(mf_clst).comp(idx)
-                            tnb = mfc_nb(2);
-                        else
-                            %take the maximally overlapping match of the two
-                            %@@ this may not be optimal: --- -- ---
-                            %                             llllrrrr
-                            [cl,off] = get_cl_off(Clust, mfc_nb(2));
-                            pos = Clust(cl).pos(off,:);
-                            mfc_ovrlp = min(rr, pos(3)) - max(ll, pos(1));
-                            [cl,off] = get_cl_off(Clust, r_nb(2));
-                            pos = Clust(cl).pos(off,:);
-                            r_ovrlp = min(rr, pos(3)) - max(ll, pos(1));
-                            if r_ovrlp >= mfc_ovrlp
-                                tnb = r_nb(2);
-                            else
-                                tnb = mfc_nb(2);
-                            end
-                        end
-                        if mfc_nb(4) == 0 || mfc_nb(4) == r_nb(4) || ...
-                           mfc_nb(4) == Clust(r).comp(i)
-                            bnb = r_nb(4);
-                        elseif r_nb(4) == 0 || ...
-                           r_nb(4) == Clust(mf_clst).comp(idx)
-                            bnb = mfc_nb(4);
-                        else
-                            [cl,off] = get_cl_off(Clust, mfc_nb(4));
-                            pos = Clust(cl).pos(off,:);
-                            mfc_ovrlp = min(rr, pos(3)) - max(ll, pos(1));
-                            [cl,off] = get_cl_off(Clust, r_nb(4));
-                            pos = Clust(cl).pos(off,:);
-                            r_ovrlp = min(rr, pos(3)) - max(ll, pos(1));
-                            if r_ovrlp >= mfc_ovrlp
-                                bnb = r_nb(4);
-                            else
-                                bnb = mfc_nb(4);
-                            end
-                        end
-                        this.nb = [mfc_nb(1), tnb, r_nb(3), bnb];
-
-                        this.pg = Clust(r).pg(i);
-                        this.num = 1;
-
-                        %update the cluster average
-                        this.avg = zeros(bb-tt+1, rr-ll+1);
-                        this.avg(find(Comps{this.pg}(tt:bb,ll:rr) ~= ...
-                               bg_val)) = 1;
-
-                        %update the cluster
-                        if Clust(num_clusts).num == 0
-                            Clust(num_clusts) = this;
-                        else
-                            if any(size(this.avg)~=size(Clust(num_clusts).avg))
-                                %resize this.avg to be the same size
-                                this.avg = imresize(this.avg, ...
-                                           size(Clust(num_clusts).avg));
-                            end
-                            Clust(num_clusts) = add_and_reaverage(...
-                            Clust(num_clusts), this, Clust(num_clusts).avg, ...
-                            this.avg);
-                        end
-
-                        %update Comps appropriately
-                        region = Comps{this.pg}(tt:bb, ll:rr);
-                        chg_idx = find(region == Clust(r).comp(i) | ...
-                                       region == Clust(mf_clst).comp(idx));
-                        region(chg_idx) = this.comp;
-                        Comps{this.pg}(tt:bb, ll:rr) = region;
-
-                        %update neighbours of other elements that point at
-                        %either of these components
-                        for j=keep_list
-                            chg_idx = find(Clust(j).nb == Clust(r).comp(i) | ...
-                                      Clust(j).nb == Clust(mf_clst).comp(idx));
-                            if ~isempty(chg_idx)
-                                Clust(j).nb(chg_idx) = this.comp;
-                            end
-                        end
 
                         %flag this item for removal from r
                         pos = find(r_keep == i,1);
@@ -399,8 +293,8 @@ while ~ isempty(refine_list)
                 if tnb ~= 0
                     idx = find(Clust(mf_clst).comp == tnb, 1);
                     if ~isempty(idx)
-                        this.comp = max_comp + 1;
-                        max_comp = max_comp + 1;
+                        this.comp = Comps.max_comp + 1;
+                        Comps.max_comp = Comps.max_comp + 1;
                         mfc_pos = Clust(mf_clst).pos(idx,:);
                         r_pos = Clust(r).pos(i,:);
                         ll = min(mfc_pos(1), r_pos(1)); tt = mfc_pos(2);
