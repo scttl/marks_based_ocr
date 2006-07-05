@@ -29,11 +29,15 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.2 2006-06-19 21:48:29 scottl Exp $
+% $Id: do_ocr.m,v 1.3 2006-07-05 00:57:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.2  2006-06-19 21:48:29  scottl
+% Revision 1.3  2006-07-05 00:57:33  scottl
+% small fix to use length instead of size (remove dependence on data being a
+% row vector)
+%
+% Revision 1.2  2006/06/19 21:48:29  scottl
 % implemented baselines in character models and training case lines.
 %
 % Revision 1.1  2006/06/10 21:01:44  scottl
@@ -79,7 +83,7 @@ if ~ iscell(data)
     [vals, segs] = solveline(data, aug_char_bitmaps, lang_model, ...
     ins_prob, del_prob, min_window_width, max_window_width);
 else
-    num_cases = size(data,1);
+    num_cases = length(data);
     vals = cell(0);
     segs = cell(0);
     for i=1:num_cases
