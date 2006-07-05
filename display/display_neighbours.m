@@ -1,15 +1,10 @@
-function  display_neighbours(Clust, Comps, comp)
+function  display_neighbours(Comps, comp)
 % display_neighbours    Draws components and immediate surrounding neighbours
 %
-%   display_neighbours(Clust, Comps, comp)
+%   display_neighbours(Comps, comp)
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   a avg field which is a matrix giving the average pixel intensity
-%   corresponding to the elements of that cluster.
-%
-%   Comps should be a cell array of labelled image matrices, where each entry
-%   of each image represents a pixel, and each 'on' pixel is labelled with the 
-%   component number to which it belongs.
+%   Comps should be a struct containing various fields (see cluster_comps for
+%   specifics)
 %
 %   comp should be either an individual valid component number, or a vector of
 %   components, each of which will be shown on screen for a configurable time
@@ -17,11 +12,14 @@ function  display_neighbours(Clust, Comps, comp)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_neighbours.m,v 1.2 2006-06-19 20:59:04 scottl Exp $
+% $Id: display_neighbours.m,v 1.3 2006-07-05 01:06:49 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_neighbours.m,v $
-% Revision 1.2  2006-06-19 20:59:04  scottl
+% Revision 1.3  2006-07-05 01:06:49  scottl
+% rewritten based on new cluster and component structures.
+%
+% Revision 1.2  2006/06/19 20:59:04  scottl
 % changes to reflect that Comps is now a cell array.
 %
 % Revision 1.1  2006/06/03 20:55:54  scottl
@@ -37,68 +35,47 @@ nb_col = reshape([255,0,0],1,1,3);  %this is red
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin ~= 3
+if nargin ~= 2
     error('incorrect number of arguments specified!');
 end
 
 while length(comp) > 0
     %determine the neighbours of this component
-    [cl, off] = get_cl_off(Clust, comp(1));
-    if isnan(cl)
+    if comp(1) < 1 || comp(1) > Comps.max_comp
         %this component isn't found, skip on to the next one
         comp = comp(2:end);
         continue;
     end
-    pg = Clust(cl).pg(off);
-    l = Clust(cl).pos(off,1); t = Clust(cl).pos(off,2);
-    r = Clust(cl).pos(off,3); b = Clust(cl).pos(off,4);
-    nb = Clust(cl).nb(off,:);
+
+    M = imread(Comps.files{Comps.pg(comp(1))});
+    x = Comps.pos(comp(1),:);
+    nb = Comps.nb(comp(1),:);
+    l = x(1); t = x(2); r = x(3); b = x(4);
     if nb(1) ~= 0
         %left neighbour exists
-        [lcl, loff] = get_cl_off(Clust, nb(1));
-        l = Clust(lcl).pos(loff,1);
-        if Clust(lcl).pos(loff,2) < t
-            t = Clust(lcl).pos(loff,2);
-        end
-        if Clust(lcl).pos(loff,4) > b
-            b = Clust(lcl).pos(loff,4);
-        end
+        l = Comps.pos(nb(1),1);
+        t = min(t, Comps.pos(nb(1),2));
+        b = max(b, Comps.pos(nb(1),4));
     end
     if nb(2) ~= 0
         %top neighbour exists
-        [tcl, toff] = get_cl_off(Clust, nb(2));
-        t = Clust(tcl).pos(toff,2);
-        if Clust(tcl).pos(toff,1) < l
-            l = Clust(tcl).pos(toff,1);
-        end
-        if Clust(tcl).pos(toff,3) > r
-            r = Clust(tcl).pos(toff,3);
-        end
+        t = Comps.pos(nb(2),2);
+        l = min(l, Comps.pos(nb(2),1));
+        r = max(r, Comps.pos(nb(2),3));
     end
     if nb(3) ~= 0
         %right neighbour exists
-        [rcl, roff] = get_cl_off(Clust, nb(3));
-        r = Clust(rcl).pos(roff,3);
-        if Clust(rcl).pos(roff,2) < t
-            t = Clust(rcl).pos(roff,2);
-        end
-        if Clust(rcl).pos(roff,4) > b
-            b = Clust(rcl).pos(roff,4);
-        end
+        r = Comps.pos(nb(3),3);
+        t = min(t, Comps.pos(nb(3),2));
+        b = max(b, Comps.pos(nb(3),4));
     end
     if nb(4) ~= 0
         %bottom neighbour exists
-        [bcl, boff] = get_cl_off(Clust, nb(4));
-        b = Clust(bcl).pos(boff,4);
-        if Clust(bcl).pos(boff,1) < l
-            l = Clust(bcl).pos(boff,1);
-        end
-        if Clust(bcl).pos(boff,3) > r
-            r = Clust(bcl).pos(boff,3);
-        end
+        b = Comps.pos(nb(4),4);
+        l = min(l, Comps.pos(nb(4),1));
+        r = max(r, Comps.pos(nb(4),3));
     end
-    M = label2rgb(Comps{pg}(t:b,l:r), 'white', 'k');
-    x = Clust(cl).pos(off,:);
+    M = label2rgb(~M(t:b,l:r), 'white', 'k');
     titlestr = {sprintf('Component %d: [%d,%d,%d,%d]', comp(1),x)};
 
     M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(comp_col,1,x(3)-x(1)+1);
@@ -106,7 +83,7 @@ while length(comp) > 0
     M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(comp_col,x(4)-x(2)+1,1);
     M(x(4)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(comp_col,1,x(3)-x(1)+1);
     if nb(1) ~= 0
-        x = Clust(lcl).pos(loff,:);
+        x = Comps.pos(nb(1),:);
         M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(nb_col,1,x(3)-x(1)+1);
         M(x(2)-t+1:x(4)-t+1,x(1)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
         M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
@@ -114,7 +91,7 @@ while length(comp) > 0
         titlestr = {titlestr{:}, sprintf('lnb [%d,%d,%d,%d]', x)};
     end
     if nb(2) ~= 0
-        x = Clust(tcl).pos(toff,:);
+        x = Comps.pos(nb(2),:);
         M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(nb_col,1,x(3)-x(1)+1);
         M(x(2)-t+1:x(4)-t+1,x(1)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
         M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
@@ -122,7 +99,7 @@ while length(comp) > 0
         titlestr = {titlestr{:}, sprintf('tnb [%d,%d,%d,%d]', x)};
     end
     if nb(3) ~= 0
-        x = Clust(rcl).pos(roff,:);
+        x = Comps.pos(nb(3),:);
         M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(nb_col,1,x(3)-x(1)+1);
         M(x(2)-t+1:x(4)-t+1,x(1)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
         M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
@@ -130,7 +107,7 @@ while length(comp) > 0
         titlestr = {titlestr{:}, sprintf('rnb [%d,%d,%d,%d]', x)};
     end
     if nb(4) ~= 0
-        x = Clust(bcl).pos(boff,:);
+        x = Comps.pos(nb(4),:);
         M(x(2)-t+1,x(1)-l+1:x(3)-l+1,:) = repmat(nb_col,1,x(3)-x(1)+1);
         M(x(2)-t+1:x(4)-t+1,x(1)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
         M(x(2)-t+1:x(4)-t+1,x(3)-l+1,:) = repmat(nb_col,x(4)-x(2)+1,1);
