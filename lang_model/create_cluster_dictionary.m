@@ -1,11 +1,13 @@
-function [D, bitmaps, base_offs] = create_cluster_dictionary(Clust, Comps, ...
+function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
                                    num, P)
 % CREATE_CLUSTER_DICTIONARY Create a list and counts of blobs (chars)
 %
-%   [D, bitmaps, base_offs] = CREATE_CLUSTER_DICTIONARY(Clust, Comps, [num], ...
+%   [Clust, Comps] = CREATE_CLUSTER_DICTIONARY(Clust, Comps, [num], ...
 %                             [Pos])
-%   Files should be a cell array (or single string), and give the full 
-%   path and name of the file(s) to be used in creating the dictionary.
+%
+%   This function uses already clustered page data to come up with baseline
+%   offsets and counts of cluster transitions for use in constructing a 
+%   dictionary.
 %
 %   num is optional, and if specified determines the number of clusters (i.e.
 %   characters) to use.  This is done based on a descending order of number of 
@@ -16,23 +18,18 @@ function [D, bitmaps, base_offs] = create_cluster_dictionary(Clust, Comps, ...
 %   number of entries as Comps, and should be like Pos returned in get_lines.
 %   If not passed, it will be calculated in this function (which takes longer).
 %
-%   D is a struct with fields: char, char_count, char_bigram
-%
-%   bitmaps is a cell array of logical arrays showing the individual clusters
-%   (i.e. characters).
-%
-%   base_offs is a vector giving positive or negative vertical offsets of the
-%   individual clusters (i.e. characters) from the baseline of each line of
-%   text.
-%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.3 2006-06-21 21:47:12 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.4 2006-07-05 01:00:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.3  2006-06-21 21:47:12  scottl
+% Revision 1.4  2006-07-05 01:00:04  scottl
+% re-written after changing cluster and component structures.  Character counts,
+% and bigram model is now stored in Clust.
+%
+% Revision 1.3  2006/06/21 21:47:12  scottl
 % use if test and iterate over all items instead of using i_offs
 %
 % Revision 1.2  2006/06/19 21:37:57  scottl
@@ -54,6 +51,8 @@ add_space = true;  %should we add a space character bitmap and bigram count?
 space_width = 12;  %typical value between words (the space width)
 space_height = 12; %how tall should the space character be from the baseline 
 
+smoothing_counts = 1;  %add plus-one smoothing to ensure all transitions are
+                       %possible.
 D = {};
 Pos = {};
 
@@ -72,91 +71,97 @@ elseif nargin >= 3
 end
 
 %sort the clusters to ensure they are ordered by number of elements
-Clust = sort_clusters(Clust);
+[Clust, Comps] = sort_clusters(Clust, Comps);
 
-num_pgs = length(Comps);
+num_pgs = size(Comps.pg_size,1);
 if isempty(Pos) || length(Pos) < num_pgs
     %must run get_lines to determine all line boundaries
     fprintf('%.2fs: determining line boundaries of all pages\n', toc);
-    Pos = get_lines(Clust, Comps);
+    Pos = get_lines(Comps);
     fprintf('%.2fs: finished determining line boundaries\n', toc);
 end
 
-fprintf('%.2fs: calculating baseline offsets for each cluster\n', toc);
-base_offs = cell(1,num_clusts);
-for p=1:num_pgs
-    for line=1:size(Pos{p},1)
-        l = Pos{p}(line,1); t = Pos{p}(line,2); r = Pos{p}(line,3);
-        b = Pos{p}(line,4);
-        baseline = get_baselines(Comps{p}(t:b,l:r) ~= bg_val, baseline_thresh);
-
-        comp_ids = unique(Comps{p}(t:b, l:r));
-        comp_ids = comp_ids(comp_ids ~= bg_val);
-        for i=1:length(comp_ids)
-            [cl, off] = get_cl_off(Clust, comp_ids(i));
-            if cl <= num_clusts
-                base_offs{cl} = [base_offs{cl}, Clust(cl).pos(off,4) - ...
-                                (t-1+baseline)];
+if ~ Clust.found_offsets
+    fprintf('%.2fs: calculating baseline offsets for each cluster\n', toc);
+    if ~ Comps.found_offsets
+        fprintf('%.2fs: calculating baseline offsets for each component\n',toc);
+        for pp=1:num_pgs
+            idx = find(Comps.pg == pp);
+            M = ~imread(Comps.files{pp});
+            for line=1:size(Pos{pp},1)
+                lpos = Pos{pp}(line,:);
+                lidx = find(Comps.pos(idx,2) >= lpos(2) & ...
+                            Comps.pos(idx,4) <= lpos(4));
+                lidx = idx(lidx);
+                offs = get_baselines(M(lpos(2):lpos(4),lpos(1):lpos(3)) ~= ...
+                       bg_val, baseline_thresh);
+                Comps.offset(lidx) = (Comps.pos(lidx,4) - lpos(2)) - offs;
             end
         end
+        Comps.found_offsets = true;
+        fprintf('%.2fs: finished calculating component offsets\n',toc);
     end
+    %take the mode of each Component offset belonging to that cluster
+    for cc=1:Clust.num
+        offs = single(Comps.offset(Clust.comps{cc}));
+        off_vals = unique(offs);
+        if length(off_vals) == 1
+            Clust.offset(cc) = offs(1);
+        elseif length(off_vals) > 1
+            [Dummy, mf_bin] = max(hist(offs,off_vals));
+            Clust.offset(cc) = off_vals(mf_bin);
+        end
+    end
+    Clust.found_offsets = true;
+    fprintf('%.2fs: finished calculating baseline offsets\n', toc);
 end
 
-%now take the mode of each array of offsets to determine the best overall
-%offset
-for i=1:length(base_offs)
-    max_bin = max(base_offs{i});
-    min_bin = min(base_offs{i});
-    [Dummy, idx] = max(hist(base_offs{i}, max_bin - min_bin + 1));
-    base_offs{i} = min_bin + idx - 1;
-end
-base_offs = cell2mat(base_offs);
-fprintf('%.2fs: finished calculating baseline offsets\n', toc);
-
-for i=1:num_clusts
-    D.char_id(i) = i;
-    D.char_count(i) = Clust(i).num;
-    bitmaps{i} = zeros(size(Clust(i).avg));
-    bitmaps{i}(find(Clust(i).avg >= intensity_thresh)) = 1;
-end
-
-%add the 'space character' bitmap to the end if specified
+%add the 'space character' Cluster to the end if specified
 if add_space
-    bitmaps{num_clusts+1} = bg_val + zeros(space_height, space_width);
-    base_offs(num_clusts+1) = 0;
+    Clust.num = Clust.num + 1;
+    Clust.num_comps(Clust.num) = 0;
+    Clust.comps{Clust.num} = [];
+    Clust.avg{Clust.num} = bg_val + zeros(space_height, space_width);
+    Clust.norm_sq(Clust.num) = 0;
+    Clust.offset(Clust.num) = 0;
 end
 fprintf('%.2fs: finished counting chars and creating bitmaps\n', toc);
 
 %now create the bigram counts
+idx = find(Comps.nb(:,3) ~= 0);
+Trans = double([Comps.clust(idx), Comps.clust(Comps.nb(idx,3))]);
+trans_dist = Comps.pos(Trans(:,2),1) - Comps.pos(Trans(:,1),3);
 if add_space
-    D.char_bigram = zeros(num_clusts+1);
-    D.char_count(num_clusts+1) = 0;
-else
-    D.char_bigram = zeros(num_clusts);
+    %add space transitions (based on distance)
+    blank_clust = Clust.num;
+    blank_trans = floor(trans_dist / space_width);
+    Clust.num_comps(Clust.num) = sum(blank_trans);
+    blank_idx = find(blank_trans > 0);
+    Trans = [Trans; blank_clust+zeros(length(blank_idx),1), Trans(blank_idx,2)];
+    Trans(blank_idx,2) = blank_clust;
+    blank_trans(blank_idx) = blank_trans(blank_idx) - 1;
+    num_b_trans = sum(blank_trans(blank_idx));
+    Trans = [Trans; blank_clust+zeros(num_b_trans,2)];
 end
-for i = 1:num_clusts
-    right_nbs = Clust(i).nb(:,3);
-    for j=1:length(right_nbs)
-        if right_nbs(j) == 0
-            continue;
-        end
-        [cl, off] = get_cl_off(Clust, right_nbs(j));
-        trans_clust = i;
-        if add_space
-            %check to see if 1 or more spaces exist between this character and
-            %its right neighbour
-            dist = Clust(cl).pos(off,1) - Clust(i).pos(j,3);
-            while dist >= space_width
-                D.char_bigram(trans_clust,num_clusts+1) = ...
-                              D.char_bigram(trans_clust,num_clusts+1) + 1;
-                D.char_count(num_clusts+1) = D.char_count(num_clusts+1) +1;
-                dist = dist - space_width;
-                trans_clust = num_clusts + 1;
-            end
-        end
-        if cl <= num_clusts
-            D.char_bigram(trans_clust, cl) = D.char_bigram(trans_clust,cl) + 1;
-        end
-    end
+Clust.num_trans = size(Trans,1);
+Clust.bigram = zeros(Clust.num);
+for ii=1:size(Trans,1)
+    fr = Trans(ii,1); to = Trans(ii,2);
+    Clust.bigram(fr,to) = Clust.bigram(fr,to) + 1;
 end
+
+%add smothing counts to the totals;
+Clust.bigram = Clust.bigram + smoothing_counts;
+Z = sum(Clust.bigram,2);
+if any(Z == 0)
+    %this can happen if a component never transitions to another component
+    %i.e. only appeaars on the far right edge of pages.  Smoothing should
+    %normally take care of this, but to prevent dividing by 0, we augment
+    %the sum
+    zero_rows = find(Z == 0);
+    warning('No transitions seen from cluster %d\n', zero_rows);
+    Z(zero_rows) = 1;
+end
+Clust.bigram = Clust.bigram ./ repmat(Z,1,Clust.num);
+
 fprintf('%.2fs: finished creating character bigram matrix\n', toc);
