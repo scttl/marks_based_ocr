@@ -18,10 +18,13 @@ function d = euc_dist(img1, other_imgs, norm_sq1, other_norms)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: euc_dist.m,v 1.3 2006-07-06 17:52:03 scottl Exp $
+% $Id: euc_dist.m,v 1.4 2006-07-06 19:22:34 scottl Exp $
 %
 % $Log: euc_dist.m,v $
-% Revision 1.3  2006-07-06 17:52:03  scottl
+% Revision 1.4  2006-07-06 19:22:34  scottl
+% bugfix to ensure we always normalize distances.
+%
+% Revision 1.3  2006/07/06 17:52:03  scottl
 % added cvs info, pre-allocated distance vector.
 %
 
@@ -37,23 +40,25 @@ if iscell(other_imgs)
         S2(ii,:) = size(other_imgs{ii});
     end
 else
+    num = 1;
     S2 = size(other_imgs);
 end
 
 eq_idx = (S1(1) == S2(:,1) & S1(2) == S2(:,2));
-d = inf(length(eq_idx),1);
+d = inf(num,1);
+areas = min(repmat(prod(S1), num, 1), prod(S2,2));
 num_eq = sum(eq_idx);
 if num_eq > 0
     d(eq_idx) = sqrt(norm_sq1 + other_norms(eq_idx) - 2 * accumarray(...
                 reshape(repmat(1:num_eq,S1(1),1), num_eq * S1(1),1), ...
-                sum(repmat(img1,num_eq,1) .* cell2mat(other_imgs(eq_idx)),2)));
+                sum(repmat(img1,num_eq,1).*cell2mat(other_imgs(eq_idx)),2)))...
+                ./ areas(eq_idx);
 end
 neq_idx = ~ eq_idx;
 num_neq = sum(neq_idx);
 if num_neq > 0
     rows = min(repmat(S1(1),num_neq,1), S2(neq_idx,1));
     cols = min(repmat(S1(2),num_neq,1), S2(neq_idx,2));
-    areas = min(repmat(prod(S1), num_neq,1), prod(S2(neq_idx),2));
     idx = find(neq_idx);
     diffs = zeros(num_neq,1);
 
@@ -62,5 +67,6 @@ if num_neq > 0
         MM2 = other_imgs{idx(ii)}(1:rows(ii), 1:cols(ii));
         diffs(ii) = sum(sum(MM1 .* MM2));
     end
-    d(neq_idx) = sqrt(norm_sq1 + other_norms(neq_idx) - 2* diffs) ./ areas;
+    d(neq_idx) = sqrt(norm_sq1 + other_norms(neq_idx) - 2* diffs) ...
+                 ./ areas(neq_idx);
 end
