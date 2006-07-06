@@ -16,6 +16,15 @@ function d = euc_dist(img1, other_imgs, norm_sq1, other_norms)
 % the two images passed.
 %
 
+% CVS INFO %
+%%%%%%%%%%%%
+% $Id: euc_dist.m,v 1.3 2006-07-06 17:52:03 scottl Exp $
+%
+% $Log: euc_dist.m,v $
+% Revision 1.3  2006-07-06 17:52:03  scottl
+% added cvs info, pre-allocated distance vector.
+%
+
 S1 = size(img1);
 
 if iscell(other_imgs)
@@ -32,6 +41,7 @@ else
 end
 
 eq_idx = (S1(1) == S2(:,1) & S1(2) == S2(:,2));
+d = inf(length(eq_idx),1);
 num_eq = sum(eq_idx);
 if num_eq > 0
     d(eq_idx) = sqrt(norm_sq1 + other_norms(eq_idx) - 2 * accumarray(...
