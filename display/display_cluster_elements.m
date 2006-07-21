@@ -1,71 +1,111 @@
-function display_cluster_elements(Comps, Clust, x)
-% DISPLAY_CLUSTER_ELEMENTS   Display the first x elements of each Cluster
+function display_cluster_elements(Clust, Comps, idx, num)
+% DISPLAY_CLUSTER_ELEMENTS   Display the elements of clusters
 %
-%   DISPLAY_CLUSTER_ELEMENTS(Comps, Clust, x)
+%   DISPLAY_CLUSTER_ELEMENTS(Clust, Comps, idx, [num])
 %
-%   Clust should be an array of structs, each of which is assumed to contain 
-%   a pos field which is a four-tuple of co-ordinates (L,T,R,B) specifying a
-%   submatrix of Comps to be drawn.
+%   Clust and Comps should be as defined in cluster_comps.m
 %
 %   Comps should be a binary image.
 %
-%   x should be the number of elements to draw for each cluster (defaults to
-%   10 if there are that many elements).  It can also be the string 'all', in
-%   which case all elements of only the first element passed are drawn, with 
-%   10 elements per row.
+%   idx should be the list of Cluster indices whose elements should be drawn.
+%
+%   num is optional and if specified determines the (maximum) number of elements
+%   that should be drawn for each cluster.  If not specified it defaults to 50.
+%   The elements are randomly sampled from each cluster (containing > 50 
+%   elements)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.1 2006-06-03 20:55:54 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.2 2006-07-21 20:27:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
-% Revision 1.1  2006-06-03 20:55:54  scottl
+% Revision 1.2  2006-07-21 20:27:09  scottl
+% rewritten based on new Clust and Comps structures.
+%
+% Revision 1.1  2006/06/03 20:55:54  scottl
 % Initial check-in.
-%
-%
+
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-num_to_draw = 10;
-num_clusts = size(Clust,1);
-draw_one_clust = false;
+num_to_draw = 50;
+row_pix_border = 10;
+col_pix_border = 3;
+
+%set save_elements to true to write the elements image to disk based on the 
+%params below it
+save_elements = false;
+img_prefix = 'results/cluster_elements';
+img_format = 'png';
 
 
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin >= 3
-    if ischar(x)
-        draw_one_clust = true;
-    else
-        num_to_draw = x;
+if nargin < 3 || nargin > 4
+    error('incorrect number of arguments specified!');
+elseif nargin == 4
+    num_to_draw = num;
+end
+
+%collect the random Component indices of each cluster
+comp_list = [];
+num_clusts = length(idx);
+lrg_idx = find(Clust.num_comps(idx) > num_to_draw);
+lrg_idx = idx(lrg_idx);
+sm_idx = setdiff(idx, lrg_idx);
+for ii=lrg_idx
+    this_comps = Clust.comps{ii}(ceil(rand(num_to_draw,1) .* ...
+                                 Clust.num_comps(ii)));
+    comp_list = [comp_list; this_comps];
+end
+comp_list = [comp_list; cell2mat(Clust.comps(sm_idx))];
+
+%create a cell arrray to hold the component images
+M = cell(num_clusts,num_to_draw);
+num_added = zeros(num_clusts,1);
+size_vals = zeros(num_clusts,num_to_draw,2);
+pgs_to_check = unique(Comps.pg(comp_list));
+
+%create a mapping for cluster indices into rows of M
+map = zeros(Clust.num,1);
+map(idx) = 1:num_clusts;
+
+%extract the required components from each page and add them to M in the
+%appropriate position
+for pp = pgs_to_check'
+    Img = imread(Comps.files{pp});
+    this_comps = find(Comps.pg(comp_list) == pp);
+    this_comps = comp_list(this_comps);
+    for ii = this_comps'
+        row = map(Comps.clust(ii));
+        num_added(row) = num_added(row) + 1;
+        pos = Comps.pos(ii,:);
+        M{row, num_added(row)} = ~Img(pos(2):pos(4), pos(1):pos(3));
+        size_vals(row,num_added(row),:) = ...
+                 reshape(size(M{row, num_added(row)}),1,1,2);
     end
 end
 
-%binarize the input matrix so we can draw in black and white (if not already)
-Comps = Comps ~= 0;
-if draw_one_clust
-    num_rows = ceil(Clust(1).num / num_to_draw);
-    for j = 1:Clust(1).num
-        l = Clust(1).pos(j, 1);
-        t = Clust(1).pos(j, 2);
-        r = Clust(1).pos(j, 3);
-        b = Clust(1).pos(j, 4);
-        subplot(num_rows, num_to_draw, j), ...
-        imagesc(Comps(t:b,l:r)), axis equal, axis off, colormap gray;
+%convert M to an appropriately spaced image
+col_w = max(max(size_vals(:,:,2)));
+MM = zeros(sum(max(size_vals(:,:,1),[],2))+ num_clusts*row_pix_border, ...
+           (col_w + col_pix_border) * num_to_draw);
+row = 1;
+for ii=1:size(M,1)
+    col = 1;
+    for jj=1:num_added(ii)
+        MM(row:row+size_vals(ii,jj,1)-1, col:col+size_vals(ii,jj,2)-1) = ...
+           M{ii,jj};
+        col = col + col_w + col_pix_border - 1;
     end
-else
-    for i=1:num_clusts;
-        j = 1;
-        while j <= Clust(i).num & j <= num_to_draw
-            l = Clust(i).pos(j, 1);
-            t = Clust(i).pos(j, 2);
-            r = Clust(i).pos(j, 3);
-            b = Clust(i).pos(j, 4);
-            subplot(num_clusts, num_to_draw, (num_to_draw *(i-1))+j), ...
-            imagesc(Comps(t:b,l:r)), axis equal, axis off, colormap gray;
-            j = j+1;
-        end
-    end
+    row = row + max(size_vals(ii,:,1)) + row_pix_border - 1;
+end
+imview(MM);
+
+%save the image to disk if required.
+if save_elements
+    fprintf('writing cluster elements image to disk\n');
+    imwrite(MM, [img_prefix, '.', img_format], img_format);
 end
