@@ -1,7 +1,7 @@
 function display_cluster_averages(Clust, num)
 %  DISPLAY_CLUSTER_AVERAGES  Display clusters and their # of items as an image
 %
-%   display_cluster_averages(Clust, num)
+%   display_cluster_averages(Clust, [num])
 %
 %   Clust should be a struct containing a cell array field labelled average, 
 %   each of which is assumed to contain a matrix giving the average pixel 
@@ -12,11 +12,14 @@ function display_cluster_averages(Clust, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.2 2006-07-05 01:05:34 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.3 2006-07-21 20:17:26 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
-% Revision 1.2  2006-07-05 01:05:34  scottl
+% Revision 1.3  2006-07-21 20:17:26  scottl
+% made textual character display more robust to small row/column widths.
+%
+% Revision 1.2  2006/07/05 01:05:34  scottl
 % updated based on new Cluster structure.
 %
 % Revision 1.1  2006/06/03 20:55:54  scottl
@@ -27,14 +30,14 @@ function display_cluster_averages(Clust, num)
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 row_pix_border = 15;
-col_pix_border = 3;
+col_pix_border = 5;
 cl_h = 0;
 cl_w = 0;
 
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
-img_prefix = 'results/speedup_match_only';
+img_prefix = 'results/cluster_averages';
 img_format = 'png';
 
 % CODE START %
@@ -76,18 +79,22 @@ X =[];
 Y =[];
 Txt = cell(1, num_clust);
 txt_idx = 1;
-for ii=sorted_clust_idx'
+half_h = ceil(cl_h/2);
+half_w = ceil(cl_w/2);
+for ii=sorted_clust_idx(1:num_clust)'
     %center the average of i at the current row and col position in M
     sz = size(Clust.avg{ii});
-    tp = (row-1) * (cl_h + row_pix_border) + ceil(cl_h/2) - ceil(sz(1)/2) +1;
+    tp = (row-1) * (cl_h + row_pix_border) + half_h - ceil(sz(1)/2) +1;
     bt = tp + sz(1) -1;
-    lf = (col-1) * (cl_w + 2*col_pix_border) + ceil(cl_w/2) - ceil(sz(2)/2) +1;
+    lf = ((col-1) * (cl_w + col_pix_border)) + col * col_pix_border + half_w ...
+         - ceil(sz(2)/2) +1;
     rg = lf + sz(2) -1;
     M(tp:bt,lf:rg) = Clust.avg{ii};
 
     %build the text area which will be overlaid on the image, showing the size 
     %of each cluster (number of elements)
-    X = [X, ((col-1) * (cl_w + 2 * col_pix_border) + ceil(cl_w/2))];
+    X = [X, ((col-1) * (cl_w + col_pix_border)) + col * col_pix_border + ...
+             ceil(cl_w/2)];
     Y = [Y, ((row) * (cl_h + row_pix_border) - ceil(row_pix_border/2))];
     Txt{txt_idx} = num2str(Clust.num_comps(ii));
     txt_idx = txt_idx + 1;
@@ -230,11 +237,12 @@ zero = [0 0 1 1 1 1 0;
         0 1 0 0 0 0 1;
         0 0 1 1 1 1 0];
 
-for i=1:length(X)
+sz = size(M);
+for ii=1:length(X)
     %convert the string into a large image matrix
     img = [];
-    for c=1:length(Txt{i})
-        switch Txt{i}(c)
+    for cc=1:length(Txt{ii})
+        switch Txt{ii}(cc)
         case '1'
             img = [img, one];
         case '2'
@@ -260,9 +268,32 @@ for i=1:length(X)
         end
     end
 
-    %overlay img centered about the X,Y position
+    %overlay img centered about the X,Y position.  We may have to truncate/
+    %overwrite other parts of M
     [h,w] = size(img);
-    x = X(i) - ceil(w/2) + 1;
-    y = Y(i) - ceil(h/2) + 1;
+    x = X(ii) - ceil(w/2) + 1;
+    if x < 1
+        diff = -x + 1;
+        img = img(:,1+diff:end);
+        w = w - diff;
+        x = 1;
+    end
+    if x+w-1 > sz(2)
+        diff = x+w-1 - sz(2);
+        img = img(:,1:end-diff);
+        w = w - diff;
+    end
+    y = Y(ii) - ceil(h/2) + 1;
+    if y < 1
+        diff = -y + 1;
+        img = img(1+diff:end,:);
+        h = h - diff;
+        y = 1;
+    end
+    if y+h-1 > sz(1)
+        diff = y+h-1 - sz(1);
+        img = img(1:end-diff,:);
+        h = h - diff;
+    end
     M(y:y+h-1, x:x+w-1) = img;
 end
