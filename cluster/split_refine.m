@@ -26,11 +26,14 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.3 2006-07-05 01:20:02 scottl Exp $
+% $Id: split_refine.m,v 1.4 2006-07-22 04:12:58 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.3  2006-07-05 01:20:02  scottl
+% Revision 1.4  2006-07-22 04:12:58  scottl
+% implemented other distance metrics, cleaned up display bug
+%
+% Revision 1.3  2006/07/05 01:20:02  scottl
 % rewritten based on new Cluster and Component structures.
 %
 % Revision 1.2  2006/06/12 20:56:01  scottl
@@ -90,11 +93,32 @@ while ~isempty(rr)
         if ~isempty(mres)
             %appropriate match found, reaverage items as appropriate
             fprintf('match found!\r');
+            num_matches = length(mres.clust);
             if display_matches
-                num_matches = length(mres.clust) + 1;
                 clf;
-                subplot(2, num_matches, 1), imshow(Clust.avg{rr}), ...
+                subplot(2, num_matches+1, 1), imshow(Clust.avg{rr}), ...
                         xlabel('original');
+            end
+
+            num_new_comps = Clust.num_comps(rr);
+            old_idcs = Clust.comps{rr};
+            %these matrices list the indices of the neighbour components, their
+            %components, and their median L-R position of those components that
+            %list one of the split comoponents as a top, right,or bot. neighbour
+            r_nbs = [];
+            t_nbs = [];
+            b_nbs = [];
+            for ii= 1:length(old_idcs)
+                this_rnbs = find(Comps.nb(:,3) == old_idcs(ii));
+                r_nbs = [r_nbs; [repmat(ii,length(this_rnbs),1), this_rnbs]];
+                this_tnbs = find(Comps.nb(:,2) == old_idcs(ii));
+                t_nbs = [t_nbs; [repmat(ii,length(this_tnbs),1), this_tnbs, ...
+                            Comps.pos(this_tnbs,1) + ...
+                            (floor(diff(Comps.pos(this_tnbs,[1,3]),1,2) ./2))]];
+                this_bnbs = find(Comps.nb(:,4) == old_idcs(ii));
+                b_nbs = [b_nbs; [repmat(ii,length(this_bnbs),1), this_bnbs, ...
+                            Comps.pos(this_bnbs,1) + ...
+                            (floor(diff(Comps.pos(this_bnbs,[1,3]),1,2) ./2))]];
             end
 
             while ~isempty(mres.clust)
@@ -107,9 +131,7 @@ while ~isempty(rr)
                     %not right-most piece.  Create new components for the 
                     %split part and update positions, neighbours etc. of the 
                     %right part.
-                    num_new_comps = Clust.num_comps(rr);
                     new_idcs = Comps.max_comp + [1:num_new_comps]';
-                    old_idcs = Clust.comps{rr};
                     Comps.max_comp = Comps.max_comp + num_new_comps;
                     Comps.clust(new_idcs) = mc;
                     Comps.pos(new_idcs,:) = Comps.pos(old_idcs,:);
@@ -129,9 +151,23 @@ while ~isempty(rr)
                     Comps.nb_dist(old_idcs,1) = 1;
 
                     %potentially update any components that list the old
-                    %component as a top, right, or bottom neighbour
-                    %@@@to do!
-                    %find(Comps.nb(:,3) == any of old_idcs)
+                    %component as a top, right, or bottom neighbour.
+                    %neighbours listing the split component as a right neighbour
+                    %should be updated to point at the left-most i.e first
+                    %piece of the split component
+                    if length(mres.clust) == num_matches
+                        %left-most piece
+                        Comps.nb(r_nbs(:,2)) = new_idcs(r_nbs(:,1));
+                    end
+                    %update top and bottom neighbours whos median L-R position
+                    %is to the left of the right position of the split
+                    %component piece
+                    top_idx = find(t_nbs(:,3)<=Comps.pos(new_idcs(t_nbs(:,1))));
+                    Comps.nb(t_nbs(top_idx,2),2) = new_idcs(t_nbs(top_idx,1));
+                    %t_nbs = t_nbs(setdiff([1:size(t_nbs,1)]',top_idx));
+                    bot_idx = find(b_nbs(:,3)<=Comps.pos(new_idcs(b_nbs(:,1))));
+                    Comps.nb(b_nbs(bot_idx,2),2) = new_idcs(b_nbs(bot_idx,1));
+                    %b_nbs = b_nbs(setdiff([1:size(b_nbs,1)]',bot_idx));
 
                     Comps.offset(new_idcs) = Comps.offset(old_idcs) + ...
                            int16(Comps.pos(new_idcs,4)) - ...
@@ -146,14 +182,25 @@ while ~isempty(rr)
                                     (num_new_comps/Clust.num_comps(mc) .* ...
                                     mres.avg{1});
                     Clust.norm_sq(mc) = sum(sum(Clust.avg{mc}.^2));
+
+                    if length(mres.sep_pos) == 1
+                        %slice off the now removed part of the average from the 
+                        %old cluster, and trim any blankspace
+                        Clust.avg{rr} = Clust.avg{rr}(:,mres.sep_pos(1)+1:end);
+                        [row, col] = find(Clust.avg{rr} ~= bg_val);
+                        row = sort(row); col = sort(col);
+                        Clust.avg{rr} = Clust.avg{rr}(row(1):row(end),...
+                                                      col(1):col(end));
+                        Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
+                    end
                 end
 
                 if display_matches
                     %add the new piece to the display
-                    pos = num_matches - length(mres.clust) + 1;
-                    subplot(2, num_matches, pos), imshow(mres.avg{1}), ...
+                    pos = num_matches+1 - (length(mres.clust)-1);
+                    subplot(2, num_matches+1, pos), imshow(mres.avg{1}), ...
                         xlabel(sprintf('piece %d\n', pos - 1));
-                    subplot(2, num_matches, num_matches + pos), ...
+                    subplot(2, num_matches+1, num_matches+pos+1), ...
                         imshow(Clust.avg{mc}), xlabel(...
                         sprintf('matching cluster %d\n', mc));
                 end
@@ -195,12 +242,21 @@ function match = find_match(num_splits, C, Clust, idcs, min_width, ...
 %final will be a cell array listing the intensity images were used in the
 %matching of each piece
 
-%@@@ implement calls to other distance metrics
-
-bg_val = 0;  %value used for backgroundpixels
+bg_val = 0;  %value used for background pixels
 
 %attempt first to find a single valid match of all of C in Clust
-D = euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+if strcmp(dist_metric, 'euc')
+    D = euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+elseif strcmp(dist_metric, 'hausdorff')
+    D = hausdorff_dist(C, Clust.avg(idcs));
+elseif strcmp(dist_metric, 'ham')
+    D = ham_dist(C, Clust.avg(idcs));
+elseif strcmp(dist_metric, 'conv_euc')
+    D = conv_euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+else
+    error('incorrect distance metric specified!');
+end
+
 [val,idx] = min(D);
 if val <= thresh
     %match found
