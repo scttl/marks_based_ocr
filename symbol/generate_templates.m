@@ -1,7 +1,7 @@
-function [bitmaps,charnames]=dofont(fontname, cn)
+function [bitmaps, offsets, charnames]=dofont(fontname, cn)
 % DOFONT  Create bitmaps of characters using the pk font passed
 %
-%   [bitmaps,charnames]=dofont(fontname, [character_list])
+%   [bitmaps, offsets, charnames]=dofont(fontname, [character_list])
 %   This procedure takes the list of ASCII characters passed in via 
 %   character_list, or uses upper and lower case, letters, period and space if
 %   not given, to create bitmap images (logical arrays) of each character using
@@ -19,11 +19,15 @@ function [bitmaps,charnames]=dofont(fontname, cn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_templates.m,v 1.2 2006-07-05 01:01:54 scottl Exp $
+% $Id: generate_templates.m,v 1.3 2006-07-28 22:19:03 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_templates.m,v $
-% Revision 1.2  2006-07-05 01:01:54  scottl
+% Revision 1.3  2006-07-28 22:19:03  scottl
+% create tight bounding boxes, and calculate vertical offsets instead of
+% resizing.
+%
+% Revision 1.2  2006/07/05 01:01:54  scottl
 % small spelling fixups.
 %
 % Revision 1.1  2006/06/10 21:01:36  scottl
@@ -93,38 +97,32 @@ for ii=1:numchars
 
     res = regexp(w, pat, 'tokens');
 
-    offsets(ii,1) = str2num(res{1}{3});
-    offsets(ii,2) = str2num(res{1}{4});
+    vals(ii,1) = str2num(res{1}{3});
+    vals(ii,2) = str2num(res{1}{4});
     
-    offsets(ii,3) = str2num(res{1}{1});
-    offsets(ii,4) = str2num(res{1}{2});
+    vals(ii,3) = str2num(res{1}{1});
+    vals(ii,4) = str2num(res{1}{2});
 
-    bm{ii} = zeros(offsets(ii,3), offsets(ii,4));
+    bitmaps{ii} = zeros(vals(ii,3), vals(ii,4));
 
     %we convert the string into a matrix, then trim the 2 leading spaces, and
     %trailing single newline character from the matrix, then convert this to
     %a numeric array
-    on_idx = find(strtrim(reshape(res{1}{5}, offsets(ii,4)+3, ...
-             offsets(ii,3))') == '*');
-    bm{ii}(on_idx) = 1;
+    on_idx = find(strtrim(reshape(res{1}{5}, vals(ii,4)+3, ...
+             vals(ii,3))') == '*');
+    bitmaps{ii}(on_idx) = 1;
 
 end
 
-tops=offsets(:,2)+1;
-bots=tops-offsets(:,3);
-maxtop=max(tops);
-minbot=min(bots);
-
-for ii=1:numchars
-    ww=size(bm{ii},2);
-    bitmaps{ii}=logical([zeros(maxtop-tops(ii),ww); ...
-                         bm{ii}; ...
-                         zeros(bots(ii)-minbot,ww)]);
-end
+%the baseline offsets are calculated as the difference between the height of
+%the character and its corresponding yoff.  Note that we must subtract 1 from
+%this value because of the way the offsets are done in metafont. 
+offsets = vals(:,3) - vals(:,2) - 1;
 
 %must manually fixup the space character (if it appears) since it isn't
 %completely blank
 space_idx = find(charnames == ' ');
 if space_idx
-    bitmaps{space_idx}=logical(zeros(size(bitmaps{space_idx})));
+    bitmaps{space_idx} = logical(zeros(size(bitmaps{space_idx})));
+    offsets(space_idx) = 0;
 end
