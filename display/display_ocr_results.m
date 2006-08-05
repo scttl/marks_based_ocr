@@ -1,4 +1,4 @@
-function display_ocr_results(indices, bitmaps, base_offs, num)
+function display_ocr_results(indices, start_pos, bitmaps, base_offs, num)
 %  DISPLAY_OCR_RESULTS  Construct an image of the OCR'd indices passed
 %
 %   display_ocr_results(indices, bitmaps, base_offs, [num])
@@ -7,6 +7,10 @@ function display_ocr_results(indices, bitmaps, base_offs, num)
 %   array, or it should be a cell array of index vectors (one per row).  Each
 %   entry is assumed to lie within the length of the bitmaps array.  Multiple
 %   vectors are drawn in order (from top-to-bottom).
+%
+%   start_pos should either be a vector of column positions at which to start
+%   placing each bitmap in the corresponding indices entry, or it should be a
+%   cell array of such vectors (one per row).
 %
 %   bitmaps should be a cell array of logical arrays, each of which represents
 %   a single character in the alphabet, which are used to construct the output
@@ -21,11 +25,14 @@ function display_ocr_results(indices, bitmaps, base_offs, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.3 2006-07-05 01:07:46 scottl Exp $
+% $Id: display_ocr_results.m,v 1.4 2006-08-05 17:35:29 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.3  2006-07-05 01:07:46  scottl
+% Revision 1.4  2006-08-05 17:35:29  scottl
+% added ability to display segment points, removed dependence on imview.
+%
+% Revision 1.3  2006/07/05 01:07:46  scottl
 % don't save results by default.
 %
 % Revision 1.2  2006/06/19 21:02:44  scottl
@@ -45,15 +52,19 @@ save_averages = false;
 img_prefix = 'results/nips5_line1to50_ocr';
 img_format = 'png';
 
+display_segments = true;  %draw the segement lines in a different colour?
+segment_col = reshape([255,0,0],1,1,3);  %this is red
+
 row_margin = 10;  %number of pixels between consecutive rows in the image
+
 
 % CODE START %
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 3 || nargin > 4
+if nargin < 4 || nargin > 5
     error('incorrect number of arguments specified!');
-elseif nargin == 4
+elseif nargin == 5
     num_rows = num;
     if num_rows > size(indices,1)
         num_rows = size(indices,1);
@@ -78,34 +89,52 @@ end
 
 
 max_width = 0;
-for i=1:num_rows
-    mm = bitmaps(indices{i});
-    moffs = base_offs(indices{i});
+for ii=1:num_rows
+    mm = bitmaps(indices{ii});
+    moffs = base_offs(indices{ii});
     max_height = 0;
-    for j=1:length(mm)
-        max_height = max(max_height, size(mm{j},1)-moffs(j));
+    for jj=1:length(mm)
+        max_height = max(max_height, size(mm{jj},1)-moffs(jj));
     end
     max_base = max(moffs);
-    for j=1:length(mm)
-        [h w] = size(mm{j});
-        mm{j} = [zeros(max_height - (h-moffs(j)), w); ...
-                 mm{j}; ...
-                 zeros(max_base - moffs(j), w)];
+    for jj=1:length(mm)
+        [h w] = size(mm{jj});
+        mm{jj} = [zeros(max_height - (h-moffs(jj)), w); ...
+                 mm{jj}; ...
+                 zeros(max_base - moffs(jj), w)];
     end
-    M{i} = cell2mat(mm);
-    max_width = max(max_width, size(M{i},2));
+    M{ii} = [];
+    for jj=1:length(mm)
+        w = size(M{ii},2);
+        extra_width = start_pos(jj) + size(mm{jj},2) - 1 - w;
+        if extra_width > 0
+            M{ii} = [M{ii}, zeros(max_height+max_base,extra_width)];
+        end
+        M{ii}(:,start_pos(jj):start_pos(jj)+size(mm{jj},2)-1) = mm{jj} | ...
+              M{ii}(:,start_pos(jj):start_pos(jj)+size(mm{jj},2)-1);
+    end
+    max_width = max(max_width, size(M{ii},2));
 end
 
 %convert each image into one big array
-%first pad the images to have the same number of columns
-for i=1:num_rows
-    [h w] = size(M{i});
-    M{i} = [M{i}, zeros(h, max_width - w)];
+%first pad the images to have the same number of columns, and optionally draw
+%the segment line.
+for ii=1:num_rows
+    [h w] = size(M{ii});
+    M{ii} = [M{ii}, zeros(h, max_width - w)];
+    if display_segments
+        %add the segment line to the image (after converting to RGB)
+        M{ii} = label2rgb(M{ii}, 'white', 'k');
+        for jj=1:length(start_pos)
+            M{ii}(:,start_pos(jj),:) = repmat(segment_col, ...
+                                       [max_height+max_base,1,1]);
+        end
+    end
 end
 M = cell2mat(M);
 
 %now view the image
-imview(M);
+imshow(M);
 
 %save the image to disk if required.
 if save_averages
