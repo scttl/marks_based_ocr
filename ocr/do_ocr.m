@@ -29,11 +29,14 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.3 2006-07-05 00:57:33 scottl Exp $
+% $Id: do_ocr.m,v 1.4 2006-08-05 17:31:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.3  2006-07-05 00:57:33  scottl
+% Revision 1.4  2006-08-05 17:31:54  scottl
+% changed default minimum width.
+%
+% Revision 1.3  2006/07/05 00:57:33  scottl
 % small fix to use length instead of size (remove dependence on data being a
 % row vector)
 %
@@ -47,9 +50,9 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-ins_prob = .1;  %1e-10;
-del_prob = .05; %1e-10;
-min_window_width = 1;
+ins_prob = .1;
+del_prob = .1;
+min_window_width = 10;
 max_window_width = 4;
 
 
@@ -86,12 +89,12 @@ else
     num_cases = length(data);
     vals = cell(0);
     segs = cell(0);
-    for i=1:num_cases
-        fprintf('%.2fs: augmenting character bitmaps for line %d\n', toc, i);
+    for ii=1:num_cases
+        fprintf('%.2fs: augmenting character bitmaps for line %d\n', toc, ii);
         aug_char_bitmaps = augment_bitmaps(char_bitmaps, char_offsets, ...
-                           size(data{i},1), data_offsets(i));
-        fprintf('%.2fs: attempting to solve line %d\n', toc, i);
-        [vals{i,1},segs{i,1}] = solveline(data{i}, aug_char_bitmaps, ...
+                           size(data{ii},1), data_offsets(ii));
+        fprintf('%.2fs: attempting to solve line %d\n', toc, ii);
+        [vals{ii,1},segs{ii,1}] = solveline(data{ii}, aug_char_bitmaps, ...
            lang_model, ins_prob, del_prob, min_window_width, max_window_width);
     end
 end
@@ -108,11 +111,11 @@ function aug_maps = augment_bitmaps(bitmaps, bitmap_offs, line_height, baseline)
 
 num_chars = length(bitmaps);
 
-for i=1:num_chars
-    [char_h, char_w] = size(bitmaps{i});
+for ii=1:num_chars
+    [char_h, char_w] = size(bitmaps{ii});
     l=1;
     r=char_w;
-    b=baseline+bitmap_offs(i);
+    b=baseline+bitmap_offs(ii);
     t=b-char_h+1;
 
     if t < 1  || b > line_height %bitmap at its offset is taller than the line
@@ -126,13 +129,13 @@ for i=1:num_chars
         else
             height = bottom;
         end
-        aug_maps{i} = zeros(height, char_w);
-        aug_maps{i}(t:b,l:r) = bitmaps{i};
-        aug_maps{i} = imresize(aug_maps{i}, [line_height, ...
-                      ceil((line_height/height)*char_w)], 'bilinear');
+        aug_maps{ii} = zeros(height, char_w);
+        aug_maps{ii}(t:b,l:r) = bitmaps{ii};
+        aug_maps{ii} = imresize(aug_maps{ii}, [line_height, ...
+                      ceil((line_height/height)*char_w)], 'nearest');
     else
-        aug_maps{i} = zeros(line_height, char_w);
-        aug_maps{i}(t:b,l:r) = bitmaps{i};
+        aug_maps{ii} = zeros(line_height, char_w);
+        aug_maps{ii}(t:b,l:r) = bitmaps{ii};
     end
 end
 
