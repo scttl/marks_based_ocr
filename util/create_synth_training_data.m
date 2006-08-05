@@ -21,11 +21,14 @@ function [vals, imgs] = create_synth_training_data(Files, chars, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_synth_training_data.m,v 1.1 2006-06-10 21:01:47 scottl Exp $
+% $Id: create_synth_training_data.m,v 1.2 2006-08-05 17:39:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_synth_training_data.m,v $
-% Revision 1.1  2006-06-10 21:01:47  scottl
+% Revision 1.2  2006-08-05 17:39:33  scottl
+% small grammatical fix.
+%
+% Revision 1.1  2006/06/10 21:01:47  scottl
 % Initial revision.
 %
 
@@ -171,7 +174,7 @@ end
 %build_tex_image: given an input string, create a TeX formatted file around it,
 %compile it, and pass it to the dvipng utility to create an image representation
 %then load that image back into matlab, and clean up created files
-%NOTE: currently cannot change font etc. right now
+%NOTE: currently cannot change font etc.
 function img = build_tex_image(str)
 
 tex_file='/tmp/tmp_ocr.tex';
