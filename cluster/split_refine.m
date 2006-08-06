@@ -26,11 +26,14 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.4 2006-07-22 04:12:58 scottl Exp $
+% $Id: split_refine.m,v 1.5 2006-08-06 22:08:24 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.4  2006-07-22 04:12:58  scottl
+% Revision 1.5  2006-08-06 22:08:24  scottl
+% bugfix to handle split matches of different size when re-averaging.
+%
+% Revision 1.4  2006/07/22 04:12:58  scottl
 % implemented other distance metrics, cleaned up display bug
 %
 % Revision 1.3  2006/07/05 01:20:02  scottl
@@ -55,7 +58,7 @@ non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
 
 %should we display matches onscreen (wastes resources)
-display_matches = true;
+display_matches = false;
 
 
 % CODE START %
@@ -84,7 +87,7 @@ while ~isempty(rr)
     %determine if this cluster can be refined by spliting it into up to 
     %split+1 pieces and matching each part with another cluster
 
-    % first ensure that it is large enough to be split
+    %first ensure that it is large enough to be split
     c_width = size(Clust.avg{rr}, 2);
     if (c_width >= 2 * min_width)
         idcs = [1:rr-1,rr+1:Clust.num];
@@ -103,7 +106,7 @@ while ~isempty(rr)
             num_new_comps = Clust.num_comps(rr);
             old_idcs = Clust.comps{rr};
             %these matrices list the indices of the neighbour components, their
-            %components, and their median L-R position of those components that
+            %components, and the median L-R position of those components that
             %list one of the split comoponents as a top, right,or bot. neighbour
             r_nbs = [];
             t_nbs = [];
@@ -177,6 +180,12 @@ while ~isempty(rr)
                     num_prev_comps = Clust.num_comps(mc);
                     Clust.num_comps(mc) = Clust.num_comps(mc) + num_new_comps;
                     Clust.comps{mc} = [Clust.comps{mc}; new_idcs];
+                    %note that the size of the matching averages may differ
+                    %slightly, so we resize the match if required
+                    if any(size(Clust.avg{mc}) ~= size(mres.avg{1}))
+                        mres.avg{1} = imresize(mres.avg{1}, ...
+                                      size(Clust.avg{mc}));
+                    end
                     Clust.avg{mc} = (num_prev_comps/Clust.num_comps(mc) .* ...
                                     Clust.avg{mc}) + ...
                                     (num_new_comps/Clust.num_comps(mc) .* ...
