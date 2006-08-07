@@ -12,11 +12,14 @@ function display_cluster_averages(Clust, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.3 2006-07-21 20:17:26 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.4 2006-08-07 21:19:11 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
-% Revision 1.3  2006-07-21 20:17:26  scottl
+% Revision 1.4  2006-08-07 21:19:11  scottl
+% remove dependence on imview
+%
+% Revision 1.3  2006/07/21 20:17:26  scottl
 % made textual character display more robust to small row/column widths.
 %
 % Revision 1.2  2006/07/05 01:05:34  scottl
@@ -106,7 +109,7 @@ for ii=sorted_clust_idx(1:num_clust)'
     end
 end
 M = write_nums(M, X, Y, Txt);
-imview(M);
+imshow(M);
 
 %save the image to disk if required.
 if save_averages

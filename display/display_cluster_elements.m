@@ -16,11 +16,14 @@ function display_cluster_elements(Clust, Comps, idx, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.2 2006-07-21 20:27:09 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.3 2006-08-07 21:19:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
-% Revision 1.2  2006-07-21 20:27:09  scottl
+% Revision 1.3  2006-08-07 21:19:23  scottl
+% remove dependence on imview
+%
+% Revision 1.2  2006/07/21 20:27:09  scottl
 % rewritten based on new Clust and Comps structures.
 %
 % Revision 1.1  2006/06/03 20:55:54  scottl
@@ -102,7 +105,7 @@ for ii=1:size(M,1)
     end
     row = row + max(size_vals(ii,:,1)) + row_pix_border - 1;
 end
-imview(MM);
+imshow(MM);
 
 %save the image to disk if required.
 if save_elements
