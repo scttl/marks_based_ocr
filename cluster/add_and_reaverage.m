@@ -1,7 +1,7 @@
-function [Clust, Comps] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
+function [Clust,Comps,newid1] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 %  ADD_AND_REAVERAGE  Merge the contents of one cluster with another.
 %
-%  [Clust, Comps] = add_and_reaverage(Clust, Comps, id1, id2 [mark_refined])
+%  [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,[mark_refined])
 %
 %  Clust should be a struct containing cluster information.  See cluster_comps
 %
@@ -15,18 +15,25 @@ function [Clust, Comps] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 %  mark_refined is an optional boolean that when set to true, will mark id1
 %  as refined.  By default, the Clust.refined field is left untouched.
 %
+%  newid1 will be the scalar index corresponding to the Cluster represented by
+%  id1 at the start of the call.
+%
 %  NOTE: since Cluster entries are removed, there are no guarantees that the
 %        index into Clusters is preserved upon the completion of this call.
+%        Thus newid1 can be used to get the new index to the original Cluster
 %
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.3 2006-07-06 17:50:32 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.4 2006-08-07 21:20:07 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
-% Revision 1.3  2006-07-06 17:50:32  scottl
+% Revision 1.4  2006-08-07 21:20:07  scottl
+% add ability to return the updated index of the first cluster.
+%
+% Revision 1.3  2006/07/06 17:50:32  scottl
 % added ability to mark the merged cluster as refined.
 %
 % Revision 1.2  2006/07/05 01:10:24  scottl
@@ -104,8 +111,13 @@ Clust.avg = Clust.avg(keep_list);
 Clust.norm_sq = Clust.norm_sq(keep_list);
 Clust.refined = Clust.refined(keep_list);
 Clust.offset = Clust.offset(keep_list);
+
 %we also must update the cluster id associated with the components 
 %since these may have been shifted around by removing clusters
 for ii = 1:Clust.num
     Comps.clust(Clust.comps{ii}) = ii;
 end
+
+%determine the new index of the original Cluster to which the other clusters
+%were merged.
+newid1 = id1 - sum(id2 < id1);
