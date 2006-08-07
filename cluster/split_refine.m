@@ -26,11 +26,14 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.5 2006-08-06 22:08:24 scottl Exp $
+% $Id: split_refine.m,v 1.6 2006-08-07 21:21:01 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.5  2006-08-06 22:08:24  scottl
+% Revision 1.6  2006-08-07 21:21:01  scottl
+% fixup small display bug, as well as a larger incorrect neighbour updating bug.
+%
+% Revision 1.5  2006/08/06 22:08:24  scottl
 % bugfix to handle split matches of different size when re-averaging.
 %
 % Revision 1.4  2006/07/22 04:12:58  scottl
@@ -58,7 +61,7 @@ non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
 
 %should we display matches onscreen (wastes resources)
-display_matches = false;
+display_matches = true;
 
 
 % CODE START %
@@ -128,12 +131,13 @@ while ~isempty(rr)
                 mc = mres.clust(1);
                 if isempty(mres.sep_pos)
                     %right-most matching piece.  Use refined existing components
-                    [Clust, Comps] = add_and_reaverage(Clust, Comps, ...
+                    [Clust, Comps, mc] = add_and_reaverage(Clust, Comps, ...
                                      mc, rr);
                 else
                     %not right-most piece.  Create new components for the 
                     %split part and update positions, neighbours etc. of the 
                     %right part.
+                        
                     new_idcs = Comps.max_comp + [1:num_new_comps]';
                     Comps.max_comp = Comps.max_comp + num_new_comps;
                     Comps.clust(new_idcs) = mc;
@@ -155,22 +159,22 @@ while ~isempty(rr)
 
                     %potentially update any components that list the old
                     %component as a top, right, or bottom neighbour.
-                    %neighbours listing the split component as a right neighbour
+                    %Neighbours listing the split component as a right neighbour
                     %should be updated to point at the left-most i.e first
                     %piece of the split component
                     if length(mres.clust) == num_matches
                         %left-most piece
-                        Comps.nb(r_nbs(:,2)) = new_idcs(r_nbs(:,1));
+                        Comps.nb(r_nbs(:,2),3) = new_idcs(r_nbs(:,1));
                     end
                     %update top and bottom neighbours whos median L-R position
                     %is to the left of the right position of the split
                     %component piece
                     top_idx = find(t_nbs(:,3)<=Comps.pos(new_idcs(t_nbs(:,1))));
                     Comps.nb(t_nbs(top_idx,2),2) = new_idcs(t_nbs(top_idx,1));
-                    %t_nbs = t_nbs(setdiff([1:size(t_nbs,1)]',top_idx));
+                    t_nbs = t_nbs(setdiff([1:size(t_nbs,1)]',top_idx),:);
                     bot_idx = find(b_nbs(:,3)<=Comps.pos(new_idcs(b_nbs(:,1))));
-                    Comps.nb(b_nbs(bot_idx,2),2) = new_idcs(b_nbs(bot_idx,1));
-                    %b_nbs = b_nbs(setdiff([1:size(b_nbs,1)]',bot_idx));
+                    Comps.nb(b_nbs(bot_idx,2),4) = new_idcs(b_nbs(bot_idx,1));
+                    b_nbs = b_nbs(setdiff([1:size(b_nbs,1)]',bot_idx),:);
 
                     Comps.offset(new_idcs) = Comps.offset(old_idcs) + ...
                            int16(Comps.pos(new_idcs,4)) - ...
