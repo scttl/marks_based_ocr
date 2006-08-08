@@ -21,11 +21,14 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.4 2006-07-05 01:00:04 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.5 2006-08-08 03:18:11 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.4  2006-07-05 01:00:04  scottl
+% Revision 1.5  2006-08-08 03:18:11  scottl
+% fixed a couple of bugs with number of parameters, and space refined count.
+%
+% Revision 1.4  2006/07/05 01:00:04  scottl
 % re-written after changing cluster and component structures.  Character counts,
 % and bigram model is now stored in Clust.
 %
@@ -61,7 +64,7 @@ Pos = {};
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 3 || nargin > 4
+if nargin < 2 || nargin > 4
     error('incorrect number of arguments passed');
 elseif nargin >= 3
     num_clusts = num;
@@ -124,6 +127,7 @@ if add_space
     Clust.avg{Clust.num} = bg_val + zeros(space_height, space_width);
     Clust.norm_sq(Clust.num) = 0;
     Clust.offset(Clust.num) = 0;
+    Clust.refined(Clust.num) = 0;
 end
 fprintf('%.2fs: finished counting chars and creating bitmaps\n', toc);
 
