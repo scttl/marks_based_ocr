@@ -19,8 +19,10 @@ function [Clust, Comps] = cluster_comps(Files)
 %           belong to that cluster
 %     norm_sq - a vector specifying the L2 norm squared of each avg (used to 
 %               speed up distance calculations)
-%     refined - a vector of booleans specifying whether each cluster needs to
-%               be refined.
+%     refined - a boolean vector used to determine whether a cluster must be
+%               further processed
+%     changed - a boolean vector used to determine whether a cluster has
+%               changed (gained or lost components) during a refinement pass.
 %     offset - this holds the most frequently occuring relative position of the
 %              bottom edge of the component from the baseline.  Positive values
 %              refer to the number of pixels below the baseline, the bottom of
@@ -66,11 +68,14 @@ function [Clust, Comps] = cluster_comps(Files)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.4 2006-07-05 01:14:30 scottl Exp $
+% $Id: cluster_comps.m,v 1.5 2006-08-14 01:40:53 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.4  2006-07-05 01:14:30  scottl
+% Revision 1.5  2006-08-14 01:40:53  scottl
+% added new Clust.changed field, finished implementing merges.
+%
+% Revision 1.4  2006/07/05 01:14:30  scottl
 % rewritten based on new Cluster and Component structures.
 %
 % Revision 1.3  2006/06/19 20:56:05  scottl
@@ -93,16 +98,21 @@ function [Clust, Comps] = cluster_comps(Files)
 num_dirs = 8;
 %num_dirs = 4;
 
-%this parameter controls the distance metric used during grouping.  Valid
+%these parameters control the distance metric used during grouping.  Valid
 %choices are: 'euc', 'conv', or 'hausdorff' for Euclidian, Convolutional
 %Euclidian, or Hausdorff (with underlying Euclidian) distance measurements
 %used.
-metric='euc';
+match_metric='hausdorff';
+%match_metric='euc';
+scale_metric='euc';
+split_metric='euc';
 
 %the following parameters control when things are grouped together.
-match_thresh = .009;
+straight_match_thresh = .009;
+match_thresh = 1.3;  %hausdorff euclidian distance thresh
+%match_thresh = .009;
 scale_thresh = .009;
-split_thresh = .013;
+split_thresh = .013;  %good euc thresh
 max_splits = 2;
 merge_thresh = 3;  %look for compoonents no more than 3 pixels apart
 merge_pct = .85;  %ensure at least 85% of the elements in each cluster match
@@ -159,7 +169,8 @@ Clust.num_comps = [];
 Clust.comps = {};
 Clust.avg = {};
 Clust.norm_sq = [];
-Clust.refined = [];
+Clust.refined = logical([]);
+Clust.changed = logical([]);
 Clust.offset = int16([]);
 Clust.found_offsets = false;
 Clust.num_trans = 0;
@@ -433,6 +444,7 @@ for pp=1:num_pgs
     Clust.avg(clust_idcs,1) = cell(num_new_comps,1);
     Clust.norm_sq(clust_idcs,1) = 0;
     Clust.refined(clust_idcs,1) = false;
+    Clust.changed(clust_idcs,1) = false;
     Clust.offset(clust_idcs,1) = 0;
 
     %update the avg and norm_sq fields
@@ -469,55 +481,55 @@ for pp=1:num_pgs
     while true
         num_clusts = Clust.num;
 
-        %First look for straight matches among the clusters.  Initially this
+        %First look for straight matches among the new clusters.  Initially this
         %should drastically reduce the number of clusters.  Just use simple
-        %euclidian distance (to keep run-time down).
+        %euclidian distance (to keep run-time low).
         if pp ~= num_pgs || pass == 1
             fprintf('\n\n%.2fs: Starting straight-match refine pass\n', toc);
-            [Clust, Comps] = match_refine(Clust, Comps, 'euc', match_thresh);
+            [Clust, Comps] = match_refine(Clust, Comps, 'euc', ...
+                             straight_match_thresh);
             if pp == num_pgs
                 pass = 2;
+                Clust.refined(:) = false;
+                Clust.changed(:) = false;
             end
         else
             %since all pages have been processed with straight matches
             %we now further refine using splits, merges, and matches using
-            %the appropriate distance metric
-            if pass > 2
-                fprintf('\n\n%.2fs: Starting %s match refine pass\n', toc, ...
-                        metric);
-                [Clust, Comps, new_list] = match_refine(Clust, Comps, ...
-                                           refine_list, metric, match_thresh);
-                if length(new_list) ~= 0
-                    refine_list = new_list;
-                end
+            %the appropriate distance metrics
+            if pass == 2
+                %first time through we want to attempt to match over all
+                %clusters
+                Clust.refined(:) = false;
             end
+            fprintf('\n\n%.2fs: Starting %s match refine pass\n', toc, ...
+                    match_metric);
+            [Clust, Comps] = match_refine(Clust, Comps, match_metric, ...
+                             match_thresh);
 
             if pass == 2
                 %first time through we want to attempt to merge over all
                 %clusters
-                refine_list = 1:Clust.num;
+                Clust.refined(:) = false;
             end
-%            fprintf('\n\n%.2fs: Starting merge refine pass\n', toc);
-%            [Clust, Comps, new_list] = merge_refine(Clust, Comps, ...
-%                refine_list, metric, merge_thresh, merge_pct, merge_min_comps);
+            fprintf('\n\n%.2fs: Starting merge refine pass\n', toc);
+            [Clust, Comps] = merge_refine(Clust, Comps,  merge_thresh, ...
+                             merge_pct, merge_min_comps);
 
             if pass == 2
                 %first time through we want to attempt to split over all
                 %clusters
-                refine_list = Clust.num:-1:1;
-            elseif pass > 2 && length(new_list) ~= 0
-                refine_list = new_list;
+                Clust.refined(:) = false;
             end
-%            fprintf('\n%.2fs: Starting horizontal split refine pass\n', toc);
-%            [Clust, Comps, new_list] = split_refine(Clust, Comps, ...
-%                refine_list, metric, max_splits, split_thresh);
+            fprintf('\n%.2fs: Starting horizontal split refine pass\n', toc);
+            [Clust, Comps] = split_refine(Clust, Comps, split_metric, ...
+                                       max_splits, split_thresh);
 
-            if pass == 2
-                refine_list = Clust.num:-1:1;
-            elseif pass > 2 && length(new_list) ~= 0
-                refine_list = new_list;
-            end
-
+            %to speed up subsequent refinements we only need to further process
+            %those Clusters that have changed during the last round of
+            %refinements
+            Clust.refined(Clust.changed == true) = false;
+            Clust.changed(:) = false;
             pass = pass + 1;
         end
 
@@ -531,7 +543,7 @@ end
 
 %perform a final scale refine over the remaining elements
 %fprintf('\n%.2fs: Starting scale refine pass\n', toc);
-%[Clust, new_list] = scale_refine(Clust, size(Clust,1):-1:1, scale_thresh);
+%[Clust, new_list] = scale_refine(Clust, Comps, scale_metric, scale_thresh);
 
 %finally, sort the clusters
 [Clust, Comps] = sort_clusters(Clust, Comps);
