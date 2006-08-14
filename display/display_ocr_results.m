@@ -1,7 +1,7 @@
 function display_ocr_results(indices, start_pos, bitmaps, base_offs, num)
 %  DISPLAY_OCR_RESULTS  Construct an image of the OCR'd indices passed
 %
-%   display_ocr_results(indices, bitmaps, base_offs, [num])
+%   display_ocr_results(indices, start_pos, bitmaps, base_offs, [num])
 %
 %   indices should either be a vector of index values into the bitmaps cell 
 %   array, or it should be a cell array of index vectors (one per row).  Each
@@ -25,11 +25,14 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.4 2006-08-05 17:35:29 scottl Exp $
+% $Id: display_ocr_results.m,v 1.5 2006-08-14 01:32:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.4  2006-08-05 17:35:29  scottl
+% Revision 1.5  2006-08-14 01:32:09  scottl
+% used column segments to space characters as per the OCR results.
+%
+% Revision 1.4  2006/08/05 17:35:29  scottl
 % added ability to display segment points, removed dependence on imview.
 %
 % Revision 1.3  2006/07/05 01:07:46  scottl
@@ -85,6 +88,9 @@ M = cell(num_rows,1);
 if ~ iscell(indices)
     indices = {indices};
 end
+if ~ iscell(start_pos)
+    start_pos = {start_pos};
+end
 
 
 
@@ -92,6 +98,7 @@ max_width = 0;
 for ii=1:num_rows
     mm = bitmaps(indices{ii});
     moffs = base_offs(indices{ii});
+    sp = start_pos{ii};
     max_height = 0;
     for jj=1:length(mm)
         max_height = max(max_height, size(mm{jj},1)-moffs(jj));
@@ -106,12 +113,12 @@ for ii=1:num_rows
     M{ii} = [];
     for jj=1:length(mm)
         w = size(M{ii},2);
-        extra_width = start_pos(jj) + size(mm{jj},2) - 1 - w;
+        extra_width = sp(jj) + size(mm{jj},2) - 1 - w;
         if extra_width > 0
             M{ii} = [M{ii}, zeros(max_height+max_base,extra_width)];
         end
-        M{ii}(:,start_pos(jj):start_pos(jj)+size(mm{jj},2)-1) = mm{jj} | ...
-              M{ii}(:,start_pos(jj):start_pos(jj)+size(mm{jj},2)-1);
+        M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1) = mm{jj} | ...
+              M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1);
     end
     max_width = max(max_width, size(M{ii},2));
 end
@@ -122,12 +129,12 @@ end
 for ii=1:num_rows
     [h w] = size(M{ii});
     M{ii} = [M{ii}, zeros(h, max_width - w)];
+    sp = start_pos{ii};
     if display_segments
         %add the segment line to the image (after converting to RGB)
         M{ii} = label2rgb(M{ii}, 'white', 'k');
-        for jj=1:length(start_pos)
-            M{ii}(:,start_pos(jj),:) = repmat(segment_col, ...
-                                       [max_height+max_base,1,1]);
+        for jj=1:length(sp)
+            M{ii}(:,sp(jj),:) = repmat(segment_col, [h,1,1]);
         end
     end
 end
