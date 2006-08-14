@@ -21,11 +21,14 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.2 2006-07-21 21:37:39 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.3 2006-08-14 01:38:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
-% Revision 1.2  2006-07-21 21:37:39  scottl
+% Revision 1.3  2006-08-14 01:38:06  scottl
+% fix bug dealing with completely blank images.
+%
+% Revision 1.2  2006/07/21 21:37:39  scottl
 % rewritten and vectorized (now compares multiple clusters at a time).  Also
 % implemented soft matching.
 %
@@ -66,6 +69,15 @@ end
 %binarize img1
 bin_img1 = img1 >= on_thresh;
 
+%ensure there are at least some 'on' pixels in img1, otherwise there will be
+%nothing to match!
+img1_sum = sum(bin_img1(:));
+if img1_sum == 0
+    warn('trying to calculate the distance from a blank image!\n');
+    d = inf(num,1);
+    return;
+end
+
 %first get the maximum row and col size
 max_row = max([S1(1); S2(:,1)]);
 max_col = max([S1(2); S2(:,2)]);
@@ -84,8 +96,7 @@ for ii = 1:num
 end
 
 %pass the first img over this matrix as a filter to get points of maximum
-%overlap.  These will provide the centers for overlaying img.
-img1_sum = sum(sum(bin_img1));
+%overlap.  These will provide the centers for overlaying the img.
 [row_scores, row_idx] = min(abs(filter2(img1, ...
                         other_mat(row_off:row_off+max_row-1,:))-img1_sum));
 [col_idx, col_idx] = min(reshape(row_scores, 2*S1(2)+max_col, num));
@@ -137,8 +148,13 @@ other_sums = accumarray(reshape(repmat(1:num,2*S1(2)+max_col,1), num * ...
 dist_vals = img1_dists(other_mat == 1);
 start_idx = 1;
 for ii=1:num
-    this_d = sort(dist_vals(start_idx:start_idx+other_sums(ii)-1));
-    other_to_img1_d(ii) = this_d(ceil(other_sums(ii) * percent));
+    if other_sums(ii) == 0
+        %there are no 'on' pixels in the image, assume an infinite distance
+        other_to_img1_d(ii) = inf;
+    else
+        this_d = sort(dist_vals(start_idx:start_idx+other_sums(ii)-1));
+        other_to_img1_d(ii) = this_d(ceil(other_sums(ii) * percent));
+    end
     start_idx = start_idx + other_sums(ii);
 end
 
