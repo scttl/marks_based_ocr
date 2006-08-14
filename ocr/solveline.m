@@ -38,11 +38,14 @@ function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: solveline.m,v 1.2 2006-08-05 17:33:08 scottl Exp $
+% $Id: solveline.m,v 1.3 2006-08-14 01:22:59 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: solveline.m,v $
-% Revision 1.2  2006-08-05 17:33:08  scottl
+% Revision 1.3  2006-08-14 01:22:59  scottl
+% suspended use of weighted penalties for now.
+%
+% Revision 1.2  2006/08/05 17:33:08  scottl
 % added comment header.  Weighted penalities by their distance to closest match
 % in the data.
 %
@@ -62,20 +65,33 @@ end
 [hh,N]=size(data);
 K=length(models);
 maxcharwidth=0;
+mincharwidth=inf;
 for kk=1:K
   maxcharwidth=max(maxcharwidth,size(models{kk},2));
+  mincharwidth=min(mincharwidth,size(models{kk},2));
   [logmp{kk},logmpbar{kk}]=logmprob(models{kk},delprob,insprob);
 end
 
-%initialize the costs for the image, ensuring that we end with the last model
-%in the last column.
-costs=NaN(K,N+maxcharwidth+Wmax); costs(:,(N+2):end)=Inf; costs(K,N+1)=0;
+if Wmin > mincharwidth + Wmax
+    error('Wmin is too large (or Wmax is too small) for the model sizes!');
+end
+
+%initialize the costs for the image, ensuring that we end in the last column.
+%This is accomplished by including a perfect score for a transition to the
+%first model in the next column beyond the edge of the image.
+costs=NaN(K,N+maxcharwidth+Wmax); costs(:,(N+2):end)=Inf; costs(1,N+1)=0;
 bestpaths=zeros(K,N);
 bestdeltas=zeros(K,N);
 
 data=[data,zeros(hh,maxcharwidth+Wmax)];
-insdist=bwdist(1-data);
-deldist=bwdist(data);
+%the lines below assign increasing distance to pixels further away from the
+%closest 'on' pixel (or 'off' pixel for insdist).  To prevent this behaviour
+%uncomment the two lines below
+insdist=data;
+deldist=(1-data);
+%insdist=bwdist(1-data);
+%deldist=bwdist(data);
+
 bgcost=-log(bigram);
 
 
