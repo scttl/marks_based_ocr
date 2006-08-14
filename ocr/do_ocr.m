@@ -29,11 +29,14 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.5 2006-08-14 01:21:40 scottl Exp $
+% $Id: do_ocr.m,v 1.6 2006-08-14 16:39:42 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.5  2006-08-14 01:21:40  scottl
+% Revision 1.6  2006-08-14 16:39:42  scottl
+% small fix to ensure matching datatypes are passed to imresize.
+%
+% Revision 1.5  2006/08/14 01:21:40  scottl
 % updated default parameter settings based on some test performed.
 %
 % Revision 1.4  2006/08/05 17:31:54  scottl
@@ -67,6 +70,9 @@ tic;
 if nargin ~= 4
     error('incorrect number of arguments specified!');
 end
+
+%imresize has problems when char_offsets are not doubles.
+char_offsets = double(char_offsets);
 
 num_chars = length(char_bitmaps);
 if any(size(lang_model) ~= [num_chars num_chars])
@@ -102,7 +108,8 @@ else
     end
 end
 
-fprintf('\n%.2fs: all lines completed\n');
+fprintf('\n%.2fs: all lines completed\n',toc);
+
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,5 +148,3 @@ for ii=1:num_chars
         aug_maps{ii}(t:b,l:r) = bitmaps{ii};
     end
 end
-
-
