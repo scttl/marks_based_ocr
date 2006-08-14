@@ -24,11 +24,14 @@ function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.3 2006-07-22 04:10:30 scottl Exp $
+% $Id: match_refine.m,v 1.4 2006-08-14 01:34:34 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.3  2006-07-22 04:10:30  scottl
+% Revision 1.4  2006-08-14 01:34:34  scottl
+% Updates based on new Clust.changed field, and changes to add_and_reaverage.
+%
+% Revision 1.3  2006/07/22 04:10:30  scottl
 % cleaned up comments, implemented alternate distance metrics, modified
 % add_and_reaverage
 %
@@ -96,7 +99,11 @@ while ~isempty(rr)
             pause(.5);
         end
         %merge the clusters together, note that this will re-order the clusters
-        [Clust, Comps] = add_and_reaverage(Clust, Comps, rr, match_idcs, true);
+        [Clust, Comps,idx] = add_and_reaverage(Clust, Comps, rr, match_idcs);
+        %mark the new cluster as changed, so it will be scanned on subsequent
+        %checks
+        Clust.changed(idx) = true;
+        Clust.refined(idx) = true;
     else
         Clust.refined(rr) = true;
         fprintf('no match\r');
