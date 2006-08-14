@@ -1,7 +1,7 @@
 function [Clust,Comps,newid1] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 %  ADD_AND_REAVERAGE  Merge the contents of one cluster with another.
 %
-%  [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,[mark_refined])
+%  [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2)
 %
 %  Clust should be a struct containing cluster information.  See cluster_comps
 %
@@ -9,11 +9,7 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 %
 %  id1 should be a scalar indexing the Clust array to which each index in id2
 %  will be added (with components updated to have id1 as their associated 
-%  cluster).  Each index in id2 will also be removed and the cluster
-%  corresponding to id1 will have its refined status set to true.
-%
-%  mark_refined is an optional boolean that when set to true, will mark id1
-%  as refined.  By default, the Clust.refined field is left untouched.
+%  cluster).  Each index in id2 will also be removed.
 %
 %  newid1 will be the scalar index corresponding to the Cluster represented by
 %  id1 at the start of the call.
@@ -26,11 +22,15 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.4 2006-08-07 21:20:07 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.5 2006-08-14 01:33:27 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
-% Revision 1.4  2006-08-07 21:20:07  scottl
+% Revision 1.5  2006-08-14 01:33:27  scottl
+% remove ability to mark the new cluster as refined.  Since we return the index
+% of this cluster, this can be done in the calling function.
+%
+% Revision 1.4  2006/08/07 21:20:07  scottl
 % add ability to return the updated index of the first cluster.
 %
 % Revision 1.3  2006/07/06 17:50:32  scottl
@@ -48,12 +48,11 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust, Comps, id1, id2, mk_rf)
 %%%%%%%%%%%%%%
 resize_method = 'nearest';
 clust_size = Clust.num;
-mark_id1_refined = false;
 
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin < 4 || nargin > 5
+if nargin ~= 4
     error('incorrect number of arguments passed');
 end
 if id1 < 1 || id1 > clust_size
@@ -61,16 +60,10 @@ if id1 < 1 || id1 > clust_size
 elseif any(id2 < 1) || any(id2 > clust_size)
     error('one of the 2nd indices passed is invalid');
 end
-if nargin == 5
-    mark_id1_refined = mk_rf;
-end
 
 %ensure we don't try and add a cluster to itself
 id2 = id2(id2 ~= id1);
 if length(id2) == 0
-    if mark_id1_refined
-        Clust.refined(id1) = true;
-    end
     return;
 end
 
@@ -97,11 +90,6 @@ end
 %update the squared norm based on this new average.
 Clust.norm_sq(id1) = sum(sum(Clust.avg{id1} .^2));
 
-%set the status of this cluster to refined if appropriate
-if mark_id1_refined
-    Clust.refined(id1) = true;
-end
-
 %remove the second list of clusters
 keep_list = setdiff(1:Clust.num, id2);
 Clust.num = length(keep_list);
@@ -110,7 +98,11 @@ Clust.comps = Clust.comps(keep_list);
 Clust.avg = Clust.avg(keep_list);
 Clust.norm_sq = Clust.norm_sq(keep_list);
 Clust.refined = Clust.refined(keep_list);
+Clust.changed = Clust.changed(keep_list);
 Clust.offset = Clust.offset(keep_list);
+if ~isempty(Clust.bigram)
+    Clust.bigram = Clust.bigram(keep_list, keep_list);
+end
 
 %we also must update the cluster id associated with the components 
 %since these may have been shifted around by removing clusters
