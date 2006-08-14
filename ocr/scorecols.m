@@ -25,11 +25,15 @@ function cost=scorecols(data,insdist,deldist,logmp,logmpbar,insprob)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: scorecols.m,v 1.2 2006-08-05 17:34:22 scottl Exp $
+% $Id: scorecols.m,v 1.3 2006-08-14 01:25:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: scorecols.m,v $
-% Revision 1.2  2006-08-05 17:34:22  scottl
+% Revision 1.3  2006-08-14 01:25:56  scottl
+% fixed bug in character placement code (wasn't calculating completion costs
+% correctly).
+%
+% Revision 1.2  2006/08/05 17:34:22  scottl
 % added comment header.  Weighted penalties, and took the cost of placing
 % the rest of the character down into account.
 %
@@ -58,6 +62,7 @@ elseif(wdata<wmodel)
     %called.  If we do reach here, this code doesn't currently take into account
     %additional 'on' pixels in the model that aren't present in the data due to
     %the difference in length.
+  warning('model larger than data!\n');
   cost=-sum(data.*logmp(:,1:wdata)+(1-data).*logmpbar(:,1:wdata),1);
 else
   falsepos_cost = (1-data).*deldist.*logmpbar;
@@ -70,6 +75,9 @@ cost=cumsum(cost);
 %those columns beyond those being considered.
 model_completion_cost=zeros(1,wdata);
 model_completion_cost(1:wmodel) = -sum(falsepos_cost,1);
+%note: since cumsum works left to right (and we require a right to left sum),
+%we end up having to flip columns twice.
 model_completion_cost=cumsum(model_completion_cost(wdata:-1:1));
+model_completion_cost=model_completion_cost(wdata:-1:1);
 
 cost = cost + model_completion_cost;
