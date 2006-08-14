@@ -26,11 +26,14 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.6 2006-08-07 21:21:01 scottl Exp $
+% $Id: split_refine.m,v 1.7 2006-08-14 01:35:14 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.6  2006-08-07 21:21:01  scottl
+% Revision 1.7  2006-08-14 01:35:14  scottl
+% Updates based on new Clust.changed field.
+%
+% Revision 1.6  2006/08/07 21:21:01  scottl
 % fixup small display bug, as well as a larger incorrect neighbour updating bug.
 %
 % Revision 1.5  2006/08/06 22:08:24  scottl
@@ -61,7 +64,7 @@ non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
 
 %should we display matches onscreen (wastes resources)
-display_matches = true;
+display_matches = false;
 
 
 % CODE START %
@@ -133,11 +136,11 @@ while ~isempty(rr)
                     %right-most matching piece.  Use refined existing components
                     [Clust, Comps, mc] = add_and_reaverage(Clust, Comps, ...
                                      mc, rr);
+                    Clust.changed(mc) = true;
                 else
                     %not right-most piece.  Create new components for the 
                     %split part and update positions, neighbours etc. of the 
                     %right part.
-                        
                     new_idcs = Comps.max_comp + [1:num_new_comps]';
                     Comps.max_comp = Comps.max_comp + num_new_comps;
                     Comps.clust(new_idcs) = mc;
@@ -195,6 +198,7 @@ while ~isempty(rr)
                                     (num_new_comps/Clust.num_comps(mc) .* ...
                                     mres.avg{1});
                     Clust.norm_sq(mc) = sum(sum(Clust.avg{mc}.^2));
+                    Clust.changed(mc) = true;
 
                     if length(mres.sep_pos) == 1
                         %slice off the now removed part of the average from the 
