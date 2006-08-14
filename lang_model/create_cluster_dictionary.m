@@ -21,11 +21,14 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.5 2006-08-08 03:18:11 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.6 2006-08-14 01:26:42 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.5  2006-08-08 03:18:11  scottl
+% Revision 1.6  2006-08-14 01:26:42  scottl
+% removed Dummy variable
+%
+% Revision 1.5  2006/08/08 03:18:11  scottl
 % fixed a couple of bugs with number of parameters, and space refined count.
 %
 % Revision 1.4  2006/07/05 01:00:04  scottl
@@ -111,7 +114,7 @@ if ~ Clust.found_offsets
         if length(off_vals) == 1
             Clust.offset(cc) = offs(1);
         elseif length(off_vals) > 1
-            [Dummy, mf_bin] = max(hist(offs,off_vals));
+            [mf_bin, mf_bin] = max(hist(offs,off_vals));
             Clust.offset(cc) = off_vals(mf_bin);
         end
     end
