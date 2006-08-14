@@ -17,11 +17,14 @@ function Pos = get_lines(Comps, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_lines.m,v 1.4 2006-07-05 00:51:40 scottl Exp $
+% $Id: get_lines.m,v 1.5 2006-08-14 01:15:48 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_lines.m,v $
-% Revision 1.4  2006-07-05 00:51:40  scottl
+% Revision 1.5  2006-08-14 01:15:48  scottl
+% remove dependence on imview
+%
+% Revision 1.4  2006/07/05 00:51:40  scottl
 % Re-written based on Component and Cluster structure refinements.
 %
 % Revision 1.3  2006/06/19 21:52:12  scottl
@@ -166,7 +169,7 @@ for pp=1:num_pages
             M(b,l:r,:) = repmat(out_col,1,r-l+1);
         end
         if display_images
-            imview(M);
+            imshow(M);
             fprintf('press any key to continue (to next page if it exists)\n');
             pause;
         end
