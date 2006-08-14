@@ -29,11 +29,14 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.4 2006-08-05 17:31:54 scottl Exp $
+% $Id: do_ocr.m,v 1.5 2006-08-14 01:21:40 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.4  2006-08-05 17:31:54  scottl
+% Revision 1.5  2006-08-14 01:21:40  scottl
+% updated default parameter settings based on some test performed.
+%
+% Revision 1.4  2006/08/05 17:31:54  scottl
 % changed default minimum width.
 %
 % Revision 1.3  2006/07/05 00:57:33  scottl
@@ -50,10 +53,10 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-ins_prob = .1;
-del_prob = .1;
+ins_prob = 1e-6;
+del_prob = 1e-6;
 min_window_width = 10;
-max_window_width = 4;
+max_window_width = 20;
 
 
 
@@ -67,7 +70,7 @@ end
 
 num_chars = length(char_bitmaps);
 if any(size(lang_model) ~= [num_chars num_chars])
-    error('char_bitmaps length does not match lang_model dimensions!');
+   error('char_bitmaps length does not match lang_model dimensions!');
 end
 if num_chars ~= length(char_offsets)
     error('char_bitmaps length does not match char_offsets length!');
