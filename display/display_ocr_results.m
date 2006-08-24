@@ -31,11 +31,15 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.6 2006-08-14 17:37:45 scottl Exp $
+% $Id: display_ocr_results.m,v 1.7 2006-08-24 21:13:17 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.6  2006-08-14 17:37:45  scottl
+% Revision 1.7  2006-08-24 21:13:17  scottl
+% fix bug in display routine.  Use of logical or meant display of any non-zero
+% pixel in the cluster average.
+%
+% Revision 1.6  2006/08/14 17:37:45  scottl
 % added ability to interleve original image amongst OCR results.
 %
 % Revision 1.5  2006/08/14 01:32:09  scottl
@@ -61,7 +65,7 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
-img_prefix = 'results/nips5_line1to50_ocr';
+img_prefix = 'results/ocr_res';
 img_format = 'png';
 
 display_segments = true;  %draw the segement lines in a different colour?
@@ -70,6 +74,7 @@ segment_col = reshape([255,0,0],1,1,3);  %this is red
 row_margin = 10;  %number of pixels between consecutive rows in the image
 display_original = false;  %interleave original image line between OCR lines
 
+on_thresh = 0.5;  %at what point are Cluster average intensities considered 'on'
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -134,7 +139,7 @@ for ii=1:num_rows
         for jj=1:length(mm)
             [h w] = size(mm{jj});
             mm{jj} = [zeros(max_height - (h-moffs(jj)), w); ...
-                     mm{jj}; ...
+                     mm{jj} > on_thresh; ...
                      zeros(max_base - moffs(jj), w)];
         end
         M{ii} = [];
