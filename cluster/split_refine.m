@@ -26,11 +26,15 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.7 2006-08-14 01:35:14 scottl Exp $
+% $Id: split_refine.m,v 1.8 2006-08-24 21:40:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.7  2006-08-14 01:35:14  scottl
+% Revision 1.8  2006-08-24 21:40:04  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.7  2006/08/14 01:35:14  scottl
 % Updates based on new Clust.changed field.
 %
 % Revision 1.6  2006/08/07 21:21:01  scottl
@@ -135,7 +139,7 @@ while ~isempty(rr)
                 if isempty(mres.sep_pos)
                     %right-most matching piece.  Use refined existing components
                     [Clust, Comps, mc] = add_and_reaverage(Clust, Comps, ...
-                                     mc, rr);
+                                         mc, rr);
                     Clust.changed(mc) = true;
                 else
                     %not right-most piece.  Create new components for the 
@@ -186,6 +190,7 @@ while ~isempty(rr)
                     %add these new components to the appropriate cluster
                     num_prev_comps = Clust.num_comps(mc);
                     Clust.num_comps(mc) = Clust.num_comps(mc) + num_new_comps;
+                    Clust.mode_num(mc) = Clust.mode_num(mc) + num_new_comps;
                     Clust.comps{mc} = [Clust.comps{mc}; new_idcs];
                     %note that the size of the matching averages may differ
                     %slightly, so we resize the match if required

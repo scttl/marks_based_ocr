@@ -28,11 +28,15 @@ function [Clust, Comps] = merge_refine(Clust,Comps,md,vp,mn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.4 2006-08-14 01:36:43 scottl Exp $
+% $Id: merge_refine.m,v 1.5 2006-08-24 21:40:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
-% Revision 1.4  2006-08-14 01:36:43  scottl
+% Revision 1.5  2006-08-24 21:40:04  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.4  2006/08/14 01:36:43  scottl
 % finished re-implementation based on new Clust and Comps structs.
 %
 % Revision 1.3  2006/07/05 01:21:23  scottl
@@ -204,6 +208,7 @@ while ~ isempty(rr)
                     Clust.bigram(:,Clust.num) = NaN;
                 end
                 %recalculate average for rr
+                Clust.mode_num(rr) = length(r_unmerged_comps);
                 Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps);
                 Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
                 Clust.offset(rr) = int16(mode(single(...
@@ -217,7 +222,8 @@ while ~ isempty(rr)
                 Clust.comps{mf_clust} = lnb_unmerged_comps;
                 Clust.refined(mf_clust) = false;
                 Clust.changed(mf_clust) = true;
-                %recalculate average for rr
+                %recalculate average for mf_clust
+                Clust.mode_num(mf_clust) = length(lnb_unmerged_comps);
                 Clust.avg{mf_clust} = recalc_avg(Comps, lnb_unmerged_comps);
                 Clust.norm_sq(mf_clust) = sum(sum(Clust.avg{mf_clust}.^2));
                 Clust.offset(mf_clust) = int16(mode(single(...
@@ -230,6 +236,7 @@ while ~ isempty(rr)
             %now update the merged cluster average and offsets based on the
             %components.  Unfortunately this is computationally expensive
             %if there are a lot of components
+            Clust.mode_num(merge_clust) = length(r_merge_comps);
             Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps);
             Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{merge_clust}.^2));
             Clust.offset(merge_clust) = int16(mode(single(...
@@ -357,6 +364,7 @@ while ~ isempty(rr)
                     Clust.bigram(:,Clust.num) = NaN;
                 end
                 %recalculate average for rr
+                Clust.mode_num(rr) = length(r_unmerged_comps);
                 Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps);
                 Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
                 Clust.offset(rr) = int16(mode(single(...
@@ -371,6 +379,7 @@ while ~ isempty(rr)
                 Clust.refined(mf_clust) = false;
                 Clust.changed(mf_clust) = true;
                 %recalculate average for mf_clust
+                Clust.mode_num(mf_clust) = length(tnb_unmerged_comps);
                 Clust.avg{mf_clust} = recalc_avg(Comps, tnb_unmerged_comps);
                 Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{mf_clust}.^2));
                 Clust.offset(merge_clust) = int16(mode(single(...
@@ -383,6 +392,7 @@ while ~ isempty(rr)
             %now update the Cluster average and offsets based on these
             %components.  Unfortunately this is computationally expensive
             %if there are a lot of components
+            Clust.mode_num(merge_clust) = length(r_merge_comps);
             Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps);
             Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{merge_clust}.^2));
             Clust.offset(merge_clust) = int16(mode(single(...
@@ -429,6 +439,7 @@ Comps.offset = Comps.offset(keep_comps);
 keep_clust = setdiff(1:Clust.num, del_clusts);
 Clust.num = Clust.num-length(del_clusts);
 Clust.num_comps = Clust.num_comps(keep_clust);
+Clust.mode_num = Clust.mode_num(keep_clust);
 Clust.comps = Clust.comps(keep_clust);
 Clust.avg = Clust.avg(keep_clust);
 Clust.norm_sq = Clust.norm_sq(keep_clust);

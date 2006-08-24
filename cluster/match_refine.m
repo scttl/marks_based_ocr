@@ -24,11 +24,15 @@ function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.4 2006-08-14 01:34:34 scottl Exp $
+% $Id: match_refine.m,v 1.5 2006-08-24 21:40:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.4  2006-08-14 01:34:34  scottl
+% Revision 1.5  2006-08-24 21:40:04  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.4  2006/08/14 01:34:34  scottl
 % Updates based on new Clust.changed field, and changes to add_and_reaverage.
 %
 % Revision 1.3  2006/07/22 04:10:30  scottl
@@ -81,6 +85,9 @@ while ~isempty(rr)
     end
     match_idcs = find(D <= distance_thresh);
     match_idcs = match_idcs(match_idcs ~= rr);
+    %sort matches in increasing distance order
+    [srt_idx,srt_idx] = sort(D(match_idcs));
+    match_idcs = match_idcs(srt_idx);
     num_match = length(match_idcs);
 
     if num_match > 0
@@ -99,7 +106,13 @@ while ~isempty(rr)
             pause(.5);
         end
         %merge the clusters together, note that this will re-order the clusters
-        [Clust, Comps,idx] = add_and_reaverage(Clust, Comps, rr, match_idcs);
+        if strcmp(dist_metric, 'hausdorff')
+            %take the mode instead of averaging pixel intensenties
+            [Clust, Comps,idx] = add_and_reaverage(Clust, Comps, rr, ...
+                                 match_idcs, true);
+        else
+            [Clust, Comps,idx] = add_and_reaverage(Clust,Comps,rr,match_idcs);
+        end
         %mark the new cluster as changed, so it will be scanned on subsequent
         %checks
         Clust.changed(idx) = true;

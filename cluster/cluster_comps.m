@@ -11,6 +11,9 @@ function [Clust, Comps] = cluster_comps(Files)
 %     num   - a scalar denoting the number of clusters in the struct.
 %     num_comps - a vector giving the number of components belonging to each
 %                 cluster.
+%     mode_num - a vector giving the value for the mode of the cluster.  Used
+%                in re-averaging where the most frequent cluster (based on this
+%                mode_num) is used instead of taking the mean of the clusters.
 %     comps - a cell array denoting for each cluster, which components belong
 %             to it (listed as a vector of component id's).  Each component id 
 %             is specified by its row number in the fields of the struct.
@@ -68,11 +71,15 @@ function [Clust, Comps] = cluster_comps(Files)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.5 2006-08-14 01:40:53 scottl Exp $
+% $Id: cluster_comps.m,v 1.6 2006-08-24 21:40:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.5  2006-08-14 01:40:53  scottl
+% Revision 1.6  2006-08-24 21:40:04  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.5  2006/08/14 01:40:53  scottl
 % added new Clust.changed field, finished implementing merges.
 %
 % Revision 1.4  2006/07/05 01:14:30  scottl
@@ -110,6 +117,7 @@ split_metric='euc';
 %the following parameters control when things are grouped together.
 straight_match_thresh = .009;
 match_thresh = 1.3;  %hausdorff euclidian distance thresh
+%match_thresh = .011;
 %match_thresh = .009;
 scale_thresh = .009;
 split_thresh = .013;  %good euc thresh
@@ -166,6 +174,7 @@ num_pgs = size(Files,1);
 %initialize the Comps and Clust structs
 Clust.num = uint16(0);
 Clust.num_comps = [];
+Clust.mode_num = [];
 Clust.comps = {};
 Clust.avg = {};
 Clust.norm_sq = [];
@@ -440,6 +449,7 @@ for pp=1:num_pgs
     %add each component as a new cluster
     Clust.num = Clust.num + num_new_comps;
     Clust.num_comps(clust_idcs,1) = 1;
+    Clust.mode_num(clust_idcs,1) = 1;
     Clust.comps(clust_idcs,1) = num2cell(comp_idcs');
     Clust.avg(clust_idcs,1) = cell(num_new_comps,1);
     Clust.norm_sq(clust_idcs,1) = 0;

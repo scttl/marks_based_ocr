@@ -21,11 +21,15 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.6 2006-08-14 01:26:42 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.7 2006-08-24 21:40:07 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.6  2006-08-14 01:26:42  scottl
+% Revision 1.7  2006-08-24 21:40:07  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.6  2006/08/14 01:26:42  scottl
 % removed Dummy variable
 %
 % Revision 1.5  2006/08/08 03:18:11  scottl
@@ -126,11 +130,13 @@ end
 if add_space
     Clust.num = Clust.num + 1;
     Clust.num_comps(Clust.num) = 0;
+    Clust.mode_num(Clust.num) = 0;
     Clust.comps{Clust.num} = [];
     Clust.avg{Clust.num} = bg_val + zeros(space_height, space_width);
     Clust.norm_sq(Clust.num) = 0;
     Clust.offset(Clust.num) = 0;
     Clust.refined(Clust.num) = 0;
+    Clust.changed(Clust.num) = 0;
 end
 fprintf('%.2fs: finished counting chars and creating bitmaps\n', toc);
 
@@ -143,6 +149,7 @@ if add_space
     blank_clust = Clust.num;
     blank_trans = floor(trans_dist / space_width);
     Clust.num_comps(Clust.num) = sum(blank_trans);
+    Clust.mode_num(Clust.num) = Clust.num_comps(Clust.num);
     blank_idx = find(blank_trans > 0);
     Trans = [Trans; blank_clust+zeros(length(blank_idx),1), Trans(blank_idx,2)];
     Trans(blank_idx,2) = blank_clust;

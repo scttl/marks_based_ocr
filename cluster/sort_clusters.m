@@ -18,11 +18,15 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.2 2006-07-05 01:17:37 scottl Exp $
+% $Id: sort_clusters.m,v 1.3 2006-08-24 21:40:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
-% Revision 1.2  2006-07-05 01:17:37  scottl
+% Revision 1.3  2006-08-24 21:40:04  scottl
+% added ability to use the mode instead of taking the average of cluster
+% intensities while refining.
+%
+% Revision 1.2  2006/07/05 01:17:37  scottl
 % rewritten based on new cluster and component structures.
 %
 % Revision 1.1  2006/06/03 20:55:48  scottl
@@ -43,6 +47,7 @@ end
 [Dummy, idx] = sort([Clust.num_comps],1,'descend');
 Clust.comps = Clust.comps(idx);
 Clust.num_comps = Clust.num_comps(idx);
+Clust.mode_num = Clust.mode_num(idx);
 Clust.avg = Clust.avg(idx);
 Clust.norm_sq = Clust.norm_sq(idx);
 Clust.refined = Clust.refined(idx);
