@@ -29,11 +29,14 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.6 2006-08-14 16:39:42 scottl Exp $
+% $Id: do_ocr.m,v 1.7 2006-08-24 21:36:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.6  2006-08-14 16:39:42  scottl
+% Revision 1.7  2006-08-24 21:36:09  scottl
+% fixed bug in descender matching (was off by 1 pixel).
+%
+% Revision 1.6  2006/08/14 16:39:42  scottl
 % small fix to ensure matching datatypes are passed to imresize.
 %
 % Revision 1.5  2006/08/14 01:21:40  scottl
@@ -58,8 +61,8 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model)
 %%%%%%%%%%%%%%
 ins_prob = 1e-6;
 del_prob = 1e-6;
-min_window_width = 10;
-max_window_width = 20;
+min_window_width = 1;
+max_window_width = 10;
 
 
 
@@ -125,7 +128,11 @@ for ii=1:num_chars
     [char_h, char_w] = size(bitmaps{ii});
     l=1;
     r=char_w;
-    b=baseline+bitmap_offs(ii);
+    if bitmap_offs(ii) == 0
+        b=baseline+bitmap_offs(ii);
+    else
+        b=baseline+bitmap_offs(ii)+1;
+    end
     t=b-char_h+1;
 
     if t < 1  || b > line_height %bitmap at its offset is taller than the line
