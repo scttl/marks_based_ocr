@@ -14,11 +14,14 @@ function display_offset_bitmaps(bitmaps, base_offs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_offset_bitmaps.m,v 1.1 2006-06-19 20:59:38 scottl Exp $
+% $Id: display_offset_bitmaps.m,v 1.2 2006-08-24 21:44:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_offset_bitmaps.m,v $
-% Revision 1.1  2006-06-19 20:59:38  scottl
+% Revision 1.2  2006-08-24 21:44:06  scottl
+% remove dependence on imview
+%
+% Revision 1.1  2006/06/19 20:59:38  scottl
 % Initial check-in.
 %
 
@@ -77,7 +80,7 @@ if display_baseline
 end
 
 %now view the image
-imview(M);
+imshow(M);
 
 %save the image to disk if required.
 if save_bitmaps
