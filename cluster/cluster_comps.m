@@ -71,11 +71,15 @@ function [Clust, Comps] = cluster_comps(Files)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.6 2006-08-24 21:40:04 scottl Exp $
+% $Id: cluster_comps.m,v 1.7 2006-08-30 17:41:08 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.6  2006-08-24 21:40:04  scottl
+% Revision 1.7  2006-08-30 17:41:08  scottl
+% small fix to not attempt to process files which don't have a corresponding jtag
+% file.
+%
+% Revision 1.6  2006/08/24 21:40:04  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -115,9 +119,9 @@ scale_metric='euc';
 split_metric='euc';
 
 %the following parameters control when things are grouped together.
-straight_match_thresh = .009;
+%straight_match_thresh = .009;  %good for NIPS papers
+straight_match_thresh = .013;  %infinity book setting
 match_thresh = 1.3;  %hausdorff euclidian distance thresh
-%match_thresh = .011;
 %match_thresh = .009;
 scale_thresh = .009;
 split_thresh = .013;  %good euc thresh
@@ -186,7 +190,7 @@ Clust.num_trans = 0;
 Clust.bigram = [];
 
 Comps.max_comp = 0;
-if num_pgs == 1
+if ~iscell(Files)
     Comps.files = {Files};
 else
     Comps.files = Files;
@@ -226,9 +230,11 @@ for pp=1:num_pgs
             warning('file has no extension, unable to parse regions');
         else
             jtag_file = [Comps.files{pp}(1:dot_pos(end)), 'jtag'];
-            pos = jtag_region_finder(jtag_file, rem_region_list);
-            for i=1:size(pos,1)
-                Lbl_img(pos(i,2):pos(i,4), pos(i,1):pos(i,3)) = bg_val;
+            if exist(jtag_file, 'file');
+                pos = jtag_region_finder(jtag_file, rem_region_list);
+                for i=1:size(pos,1)
+                    Lbl_img(pos(i,2):pos(i,4), pos(i,1):pos(i,3)) = bg_val;
+                end
             end
         end
         fprintf('%.2fs: done cropping unwanted regions from this page\n', ...
