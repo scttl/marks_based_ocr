@@ -24,11 +24,15 @@ function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.5 2006-08-24 21:40:04 scottl Exp $
+% $Id: match_refine.m,v 1.6 2006-08-30 17:38:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.5  2006-08-24 21:40:04  scottl
+% Revision 1.6  2006-08-30 17:38:23  scottl
+% implement batches for Hausdorff matching to prevent memory issues for large
+% cluster sizes.
+%
+% Revision 1.5  2006/08/24 21:40:04  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -50,6 +54,9 @@ function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
 %%%%%%%%%%%%%%
 dist_metric = 'euc';              %default distance metric
 distance_thresh = 0.009;          %default distance threshold
+
+%process at most this many clusters at a time to prevent memory issues
+haus_batchsize = 2500; 
 
 display_images = false;  %set this to true to display matches as they are found
 
@@ -74,7 +81,14 @@ while ~isempty(rr)
     if strcmp(dist_metric, 'euc')
         D = euc_dist(Clust.avg{rr},Clust.avg,Clust.norm_sq(rr),Clust.norm_sq);
     elseif strcmp(dist_metric, 'hausdorff')
-        D = hausdorff_dist(Clust.avg{rr}, Clust.avg);
+        recs_rem = Clust.num;
+        D = [];
+        while recs_rem > haus_batchsize
+            D = [hausdorff_dist(Clust.avg{rr}, ...
+                 Clust.avg(recs_rem-haus_batchsize+1:recs_rem)); D];
+            recs_rem = recs_rem - haus_batchsize;
+        end
+        D = [hausdorff_dist(Clust.avg{rr}, Clust.avg(1:recs_rem)); D];
     elseif strcmp(dist_metric, 'ham')
         D = ham_dist(Clust.avg{rr}, Clust.avg);
     elseif strcmp(dist_metric, 'conv_euc')
