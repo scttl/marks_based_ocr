@@ -14,11 +14,14 @@ function display_offset_bitmaps(bitmaps, base_offs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_offset_bitmaps.m,v 1.2 2006-08-24 21:44:06 scottl Exp $
+% $Id: display_offset_bitmaps.m,v 1.3 2006-08-30 17:35:26 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_offset_bitmaps.m,v $
-% Revision 1.2  2006-08-24 21:44:06  scottl
+% Revision 1.3  2006-08-30 17:35:26  scottl
+% fix bug in label2rgb call (requires uint matrix as first parameter).
+%
+% Revision 1.2  2006/08/24 21:44:06  scottl
 % remove dependence on imview
 %
 % Revision 1.1  2006/06/19 20:59:38  scottl
@@ -58,7 +61,7 @@ end
 
 max_height = 0;
 max_base = max(base_offs);
-M = [];
+M = uint8([]);
 
 for i=1:num_bitmaps
     max_height = max(max_height, size(bitmaps{i},1)-base_offs(i));
