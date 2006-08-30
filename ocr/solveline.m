@@ -1,9 +1,9 @@
 function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
-                            Wmin,Wmax)
+Wmin,Wmax, ev)
 % SOLVELINE  Determine best sequence of character models to explain a line image
 %
 %  [bestpath,bestseg] = SOLVELINE(data, models, bigram, delprob, insprob, Wmin,
-%                       Wmax)
+%                       Wmax, [end_val])
 %
 %  data should be an image array representing a line of text to be analyzed.
 %
@@ -31,6 +31,10 @@ function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
 %  maximum (beyond the width of the character) distance (in pixels) between 
 %  the placement of successive model characters.
 %
+%  end_val is optional and if specified should give the model index the data
+%  will transition at the column just past the end of the line.  If not passed,
+%  it defaults to the first model.
+%
 %  bestpath should be a vector of character model indices, and bestseg should
 %  be a vector of the same length, giving the columns in data at which to start
 %  placing the corresponding model character from bestpath.
@@ -38,11 +42,14 @@ function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: solveline.m,v 1.3 2006-08-14 01:22:59 scottl Exp $
+% $Id: solveline.m,v 1.4 2006-08-30 17:36:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: solveline.m,v $
-% Revision 1.3  2006-08-14 01:22:59  scottl
+% Revision 1.4  2006-08-30 17:36:33  scottl
+% implemented ability to pass the post-line transition character as a parameter.
+%
+% Revision 1.3  2006/08/14 01:22:59  scottl
 % suspended use of weighted penalties for now.
 %
 % Revision 1.2  2006/08/05 17:33:08  scottl
@@ -53,11 +60,14 @@ function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
+end_val = 1;  %default model to transition to after completing the data.
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin ~= 7
+if nargin < 7 || nargin > 8
     error('incorrect number of arguments specified');
+elseif nargin == 8
+    end_val = ev;
 end
 
 %determine the log insertion and deletion probabilities for each model as well
@@ -78,8 +88,8 @@ end
 
 %initialize the costs for the image, ensuring that we end in the last column.
 %This is accomplished by including a perfect score for a transition to the
-%first model in the next column beyond the edge of the image.
-costs=NaN(K,N+maxcharwidth+Wmax); costs(:,(N+2):end)=Inf; costs(1,N+1)=0;
+%end_val model in the next column beyond the edge of the image.
+costs=NaN(K,N+maxcharwidth+Wmax); costs(:,(N+2):end)=Inf; costs(end_val,N+1)=0;
 bestpaths=zeros(K,N);
 bestdeltas=zeros(K,N);
 
