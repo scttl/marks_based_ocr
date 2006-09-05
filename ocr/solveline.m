@@ -1,9 +1,9 @@
 function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
-Wmin,Wmax, ev)
+                                      Wmin,Wmax, sl)
 % SOLVELINE  Determine best sequence of character models to explain a line image
 %
 %  [bestpath,bestseg] = SOLVELINE(data, models, bigram, delprob, insprob, Wmin,
-%                       Wmax, [end_val])
+%                       Wmax, [short_list])
 %
 %  data should be an image array representing a line of text to be analyzed.
 %
@@ -12,7 +12,7 @@ Wmin,Wmax, ev)
 %  data.
 %
 %  bigram should be a square matrix whose entries represent the transition
-%  probabilities between characters, based on an undelying language model (like
+%  probabilities between characters, based on an underlying language model (like
 %  English).  The number of characters must match the length of the models cell
 %  array.
 %
@@ -31,9 +31,15 @@ Wmin,Wmax, ev)
 %  maximum (beyond the width of the character) distance (in pixels) between 
 %  the placement of successive model characters.
 %
-%  end_val is optional and if specified should give the model index the data
-%  will transition at the column just past the end of the line.  If not passed,
-%  it defaults to the first model.
+%  short_list is optional and if specified should be a cell array containing
+%  column vectors (one such vector for every column of data passed) which lists
+%  the indices of the models which are valid for that particular column.  If
+%  not passed, all models will be considered for all columns.  Note that
+%  specifying a small subset of valid models for each column vastly improves
+%  the speed of this algorithm and is recommended.  Also note that any empty
+%  vectors will indicate that no models match this column (for instance if we
+%  are in a column between words).  Single valued vectors (scalars) will ensure
+%  that only that particular model matches, thus constraining the solver.
 %
 %  bestpath should be a vector of character model indices, and bestseg should
 %  be a vector of the same length, giving the columns in data at which to start
@@ -42,11 +48,14 @@ Wmin,Wmax, ev)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: solveline.m,v 1.4 2006-08-30 17:36:33 scottl Exp $
+% $Id: solveline.m,v 1.5 2006-09-05 15:53:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: solveline.m,v $
-% Revision 1.4  2006-08-30 17:36:33  scottl
+% Revision 1.5  2006-09-05 15:53:56  scottl
+% implemented short-lists to constrain line solver.
+%
+% Revision 1.4  2006/08/30 17:36:33  scottl
 % implemented ability to pass the post-line transition character as a parameter.
 %
 % Revision 1.3  2006/08/14 01:22:59  scottl
@@ -67,13 +76,20 @@ end_val = 1;  %default model to transition to after completing the data.
 if nargin < 7 || nargin > 8
     error('incorrect number of arguments specified');
 elseif nargin == 8
-    end_val = ev;
+    short_list = sl;
 end
 
-%determine the log insertion and deletion probabilities for each model as well
-%as the maximum character width.
 [hh,N]=size(data);
 K=length(models);
+if nargin ~= 8
+    %construct a short list containing all models over each column of data
+    short_list = mat2cell(repmat((1:K)', 1, N), K, ones(1,N));
+end
+if N ~= length(short_list)
+    error('short_list length doesnt match number of columns of data!');
+end
+%determine the log insertion and deletion probabilities for each model as well
+%as the maximum character width.
 maxcharwidth=0;
 mincharwidth=inf;
 for kk=1:K
@@ -89,7 +105,7 @@ end
 %initialize the costs for the image, ensuring that we end in the last column.
 %This is accomplished by including a perfect score for a transition to the
 %end_val model in the next column beyond the edge of the image.
-costs=NaN(K,N+maxcharwidth+Wmax); costs(:,(N+2):end)=Inf; costs(end_val,N+1)=0;
+costs=Inf(K,N+maxcharwidth+Wmax); costs(end_val,N+1)=0;
 bestpaths=zeros(K,N);
 bestdeltas=zeros(K,N);
 
@@ -109,8 +125,8 @@ bgcost=-log(bigram);
 thispos=N;
 while(thispos>=1)
   fprintf('Computing costs for column %d          \r',thispos);
-  newcost=zeros(K,1);
-  for cc=1:K
+  newcost=Inf(K,1);
+  for cc=short_list{thispos}'
     thisww=size(logmp{cc},2);
     %determine cost of placing character cc at this column
     sc=scorecols(data(:,thispos:(thispos+thisww+Wmax-1)),...
