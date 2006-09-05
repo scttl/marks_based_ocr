@@ -31,11 +31,14 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.7 2006-08-24 21:13:17 scottl Exp $
+% $Id: display_ocr_results.m,v 1.8 2006-09-05 15:50:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.7  2006-08-24 21:13:17  scottl
+% Revision 1.8  2006-09-05 15:50:45  scottl
+% made use of MOCR_PATH variable for saving in the results directory.
+%
+% Revision 1.7  2006/08/24 21:13:17  scottl
 % fix bug in display routine.  Use of logical or meant display of any non-zero
 % pixel in the cluster average.
 %
@@ -65,7 +68,8 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
-img_prefix = 'results/ocr_res';
+global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
+img_prefix = [MOCR_PATH, '/results/ocr_res'];
 img_format = 'png';
 
 display_segments = true;  %draw the segement lines in a different colour?

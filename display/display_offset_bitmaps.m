@@ -14,11 +14,14 @@ function display_offset_bitmaps(bitmaps, base_offs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_offset_bitmaps.m,v 1.3 2006-08-30 17:35:26 scottl Exp $
+% $Id: display_offset_bitmaps.m,v 1.4 2006-09-05 15:50:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_offset_bitmaps.m,v $
-% Revision 1.3  2006-08-30 17:35:26  scottl
+% Revision 1.4  2006-09-05 15:50:45  scottl
+% made use of MOCR_PATH variable for saving in the results directory.
+%
+% Revision 1.3  2006/08/30 17:35:26  scottl
 % fix bug in label2rgb call (requires uint matrix as first parameter).
 %
 % Revision 1.2  2006/08/24 21:44:06  scottl
@@ -35,7 +38,8 @@ function display_offset_bitmaps(bitmaps, base_offs)
 %set save_bitmaps to true to write the bitmap image to disk based on the params
 %below it
 save_bitmaps = false;
-img_prefix = 'results/nips5_bitmaps';
+global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
+img_prefix = [MOCR_PATH, '/results/offset_bitmaps'];
 img_format = 'png';
 
 img_spacing = 5;  %number of pixels between bitmaps

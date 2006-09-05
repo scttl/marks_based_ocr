@@ -12,11 +12,14 @@ function display_cluster_averages(Clust, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.4 2006-08-07 21:19:11 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.5 2006-09-05 15:50:44 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
-% Revision 1.4  2006-08-07 21:19:11  scottl
+% Revision 1.5  2006-09-05 15:50:44  scottl
+% made use of MOCR_PATH variable for saving in the results directory.
+%
+% Revision 1.4  2006/08/07 21:19:11  scottl
 % remove dependence on imview
 %
 % Revision 1.3  2006/07/21 20:17:26  scottl
@@ -40,7 +43,8 @@ cl_w = 0;
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
-img_prefix = 'results/cluster_averages';
+global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
+img_prefix = [MOCR_PATH, '/results/cluster_averages'];
 img_format = 'png';
 
 % CODE START %

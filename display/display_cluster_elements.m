@@ -24,11 +24,14 @@ function display_cluster_elements(Clust, Comps, idx, num, comp_idx)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.4 2006-08-24 21:37:37 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.5 2006-09-05 15:50:44 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
-% Revision 1.4  2006-08-24 21:37:37  scottl
+% Revision 1.5  2006-09-05 15:50:44  scottl
+% made use of MOCR_PATH variable for saving in the results directory.
+%
+% Revision 1.4  2006/08/24 21:37:37  scottl
 % added ability to specify particular component indices to be displayed.
 %
 % Revision 1.3  2006/08/07 21:19:23  scottl
@@ -51,7 +54,8 @@ use_random = true;  %by default use a random sample of elements from the cluster
 %set save_elements to true to write the elements image to disk based on the 
 %params below it
 save_elements = false;
-img_prefix = 'results/cluster_elements';
+global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
+img_prefix = [MOCR_PATH, '/results/cluster_elements'];
 img_format = 'png';
 
 
