@@ -1,9 +1,9 @@
-function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
-                                      Wmin,Wmax, sl)
+function [bestpath,bestseg,bestscore]=solveline(data,models,bigram,delprob,...
+                                      insprob,Wmin,Wmax,sl)
 % SOLVELINE  Determine best sequence of character models to explain a line image
 %
-%  [bestpath,bestseg] = SOLVELINE(data, models, bigram, delprob, insprob, Wmin,
-%                       Wmax, [short_list])
+%  [bestpath,bestseg,bestscore] = SOLVELINE(data, models, bigram, delprob, 
+%                                 insprob, Wmin, Wmax, [short_list])
 %
 %  data should be an image array representing a line of text to be analyzed.
 %
@@ -43,16 +43,23 @@ function [bestpath,bestseg]=solveline(data,models,bigram,delprob,insprob,...
 %
 %  bestpath should be a vector of character model indices, and bestseg should
 %  be a vector of the same length, giving the columns in data at which to start
-%  placing the corresponding model character from bestpath.
+%  placing the corresponding model character from bestpath.  bestscore
+%  similarly will be score of placing each character in bestpath at the
+%  bestpath columns
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: solveline.m,v 1.5 2006-09-05 15:53:56 scottl Exp $
+% $Id: solveline.m,v 1.6 2006-09-16 22:31:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: solveline.m,v $
-% Revision 1.5  2006-09-05 15:53:56  scottl
+% Revision 1.6  2006-09-16 22:31:46  scottl
+% implemented return of scores corresponding to the selected characters (based on
+% their mismatch with the underlying data).  Useful for generating heatmap result
+% display.
+%
+% Revision 1.5  2006/09/05 15:53:56  scottl
 % implemented short-lists to constrain line solver.
 %
 % Revision 1.4  2006/08/30 17:36:33  scottl
@@ -108,6 +115,7 @@ end
 costs=Inf(K,N+maxcharwidth+Wmax); costs(end_val,N+1)=0;
 bestpaths=zeros(K,N);
 bestdeltas=zeros(K,N);
+bestscores=zeros(K,N);
 
 data=[data,zeros(hh,maxcharwidth+Wmax)];
 %the lines below assign increasing distance to pixels further away from the
@@ -148,6 +156,7 @@ while(thispos>=1)
                                                   % ARBITRARILY TAKE FIRST!
     bestpaths(cc,thispos)=bestkk;
     bestdeltas(cc,thispos)=bestrr+Wmin-1;
+    bestscores(cc,thispos)=sc(bestrr+Wmin-1);
   end
   costs(:,thispos)=newcost;
   thispos=thispos-1;
@@ -155,9 +164,11 @@ end
 
 %Use the calculated costs to determine the best path and segmentation points in
 %the data, starting by placing the first character in the first column.
-[tmpcost,bestpath]=min(costs(:,1));
+[bestpath,bestpath]=min(costs(:,1));
 bestseg=1;
+bestscore=[];
 while(bestseg(end)<N)
+  bestscore=[bestscore,bestscores(bestpath(end),bestseg(end))];
   nextdelta=bestdeltas(bestpath(end),bestseg(end));
   nextcolumn=bestseg(end)+nextdelta;
   bestseg=[bestseg,nextcolumn];
