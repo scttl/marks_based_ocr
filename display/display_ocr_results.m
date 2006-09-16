@@ -1,7 +1,8 @@
-function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
+function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, ...
+         scores, imgs)
 %  DISPLAY_OCR_RESULTS  Construct an image of the OCR'd indices passed
 %
-%   display_ocr_results(indices, start_pos, bitmaps, base_offs, [num, imgs])
+%   display_ocr_results(indices,start_pos,bitmaps,base_offs,[num,scores,imgs])
 %
 %   indices should either be a vector of index values into the bitmaps cell 
 %   array, or it should be a cell array of index vectors (one per row).  Each
@@ -23,6 +24,10 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 %   num is optional and if specified, determines the number of OCR'd
 %   lines to display.  If not specified, all indices are drawn.
 %
+%   scores is optional and if specified (and the same length as indices) will
+%   be used to create a "heat map" which will be used to colour the characters
+%   based on their score.
+%
 %   imgs is optional and if specified, will draw the original image line
 %   directly above the OCR'd result line for comparison purposes.  If not
 %   present, this will be left out.  There should be at least as many images
@@ -31,11 +36,14 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, imgs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.8 2006-09-05 15:50:45 scottl Exp $
+% $Id: display_ocr_results.m,v 1.9 2006-09-16 22:30:32 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.8  2006-09-05 15:50:45  scottl
+% Revision 1.9  2006-09-16 22:30:32  scottl
+% implemented heat maps based on passed scores.
+%
+% Revision 1.8  2006/09/05 15:50:45  scottl
 % made use of MOCR_PATH variable for saving in the results directory.
 %
 % Revision 1.7  2006/08/24 21:13:17  scottl
@@ -76,25 +84,39 @@ display_segments = true;  %draw the segement lines in a different colour?
 segment_col = reshape([255,0,0],1,1,3);  %this is red
 
 row_margin = 10;  %number of pixels between consecutive rows in the image
-display_original = false;  %interleave original image line between OCR lines
+
+%interleave original image line between OCR lines?  requires images to be
+%passed as a parameter
+display_original = false;
+
+%use heat map based on passed scores to colour characters? requires scores to
+%be passed as a paramter
+map_scores = false; 
+map_colormap = cool(64);  %type: help colormapeditor for other choices
+map_stddev = 0.5;  %number of standard devs of data to map.  Set to 0 to map all
+map_length = size(map_colormap,1);
 
 on_thresh = 0.5;  %at what point are Cluster average intensities considered 'on'
+
 
 % CODE START %
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 4 || nargin > 6
+if nargin < 4 || nargin > 7
     error('incorrect number of arguments specified!');
 elseif nargin >= 5
     num_rows = num;
     if num_rows > size(indices,1)
         num_rows = size(indices,1);
     end
-    if nargin == 6
-        display_original = true;
-        if ~ iscell(imgs)
-            imgs = {imgs};
+    if nargin >= 6
+        map_scores = true;
+        if nargin == 7
+            display_original = true;
+            if ~ iscell(imgs)
+                imgs = {imgs};
+            end
         end
     end
 else
@@ -119,8 +141,29 @@ end
 if ~ iscell(start_pos)
     start_pos = {start_pos};
 end
-
-
+if map_scores 
+    if ~ iscell(scores)
+        scores = {scores};
+    end
+    if any(size(indices) ~= size(scores))
+        error('scores passed must be the same dimensions as the indices');
+    else
+        for ii=1:length(indices)
+            if length(indices{ii}) ~= length(scores{ii})
+                error('num of scores for row %d mismatches num of indices', ii);
+            end
+        end
+    end
+    all_scores = cell2mat(scores');
+    max_score = max(all_scores);
+    min_score = min(all_scores);
+    if map_stddev ~= 0
+        avg_score = mean(all_scores);
+        std_score = std(all_scores);
+        min_score = max(min_score, (avg_score - map_stddev*std_score));
+        max_score = min(max_score, (avg_score + map_stddev*std_score));
+    end
+end
 
 max_width = 0;
 for ii=1:num_rows
@@ -135,6 +178,9 @@ for ii=1:num_rows
         mm = bitmaps(indices{val});
         moffs = base_offs(indices{val});
         sp = start_pos{val};
+        if map_scores
+            ss = scores{val};
+        end
         max_height = 0;
         for jj=1:length(mm)
             max_height = max(max_height, size(mm{jj},1)-moffs(jj));
@@ -145,6 +191,16 @@ for ii=1:num_rows
             mm{jj} = [zeros(max_height - (h-moffs(jj)), w); ...
                      mm{jj} > on_thresh; ...
                      zeros(max_base - moffs(jj), w)];
+            if map_scores
+                if ss(jj) >= max_score
+                    mm{jj} = map_length * mm{jj};
+                elseif ss(jj) <= min_score
+                    mm{jj} = 1 * mm{jj};
+                else
+                    mm{jj} = ceil((ss(jj)-min_score)/(max_score-min_score) ...
+                                  * map_length) * mm{jj};
+                end
+            end
         end
         M{ii} = [];
         for jj=1:length(mm)
@@ -153,8 +209,19 @@ for ii=1:num_rows
             if extra_width > 0
                 M{ii} = [M{ii}, zeros(max_height+max_base,extra_width)];
             end
-            M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1) = mm{jj} | ...
-                  M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1);
+            if map_scores
+                %since larger scores get larger label values, we can take the
+                %max when displaying overlapping mismatches i.e. display the
+                %'hotter' or more mismatched for overlapping pixels
+                M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1) = max(mm{jj}, ...
+                      M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1));
+            else
+                %just take the logical or, since all we care about is having
+                %the pixel on or off (regardless of it overlapping with
+                %multiple bitmaps)
+                M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1) = mm{jj} | ...
+                      M{ii}(:,sp(jj):sp(jj)+size(mm{jj},2)-1);
+            end
         end
     end
     max_width = max(max_width, size(M{ii},2));
@@ -165,8 +232,20 @@ end
 %the segment line.
 for ii=1:num_rows
     [h w] = size(M{ii});
+    %zero pad missing columns from this row
     M{ii} = double([M{ii}, zeros(h, max_width - w)]);
+
+    %convert the row to RGB (if neccessary)
+    if display_segments || map_scores
+        if map_scores && ((display_original && rem(ii,2) == 0) || ...
+                          ~display_original)
+            M{ii} = label2rgb(M{ii}, map_colormap, 'k');
+        else
+            M{ii} = label2rgb(M{ii}, 'white', 'k');
+        end
+    end
     if display_segments
+        %add the segment line to the image
         if display_original && rem(ii,2) == 0
             sp = start_pos{ii/2};
         elseif ~ display_original
@@ -174,8 +253,6 @@ for ii=1:num_rows
         else
             sp = [];
         end
-        %add the segment line to the image (after converting to RGB)
-        M{ii} = label2rgb(M{ii}, 'white', 'k');
         for jj=1:length(sp)
             M{ii}(:,sp(jj),:) = repmat(segment_col, [h,1,1]);
         end
