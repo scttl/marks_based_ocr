@@ -1,5 +1,5 @@
-function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model, ...
-                        use_sl, pmt)
+function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
+                                lang_model, use_sl, pmt)
 % DO_OCR   Run language-model based OCR on the line images of data passed
 %
 %   [vals, segs] = DO_OCR(data, char_bitmaps, char_offsets, lang_model,
@@ -37,14 +37,22 @@ function [vals, segs] = do_ocr(data, char_bitmaps, char_offsets, lang_model, ...
 %   segs will either be a vector, or a cell array of vectors each entry 
 %   specifying a cut point used to match characters
 %
+%   scores will either be a vector, or a cell array of vectors each entry
+%   specifying the score of the corresponding recognized character found in
+%   each image.
+%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.9 2006-09-05 15:53:56 scottl Exp $
+% $Id: do_ocr.m,v 1.10 2006-09-16 22:32:39 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.9  2006-09-05 15:53:56  scottl
+% Revision 1.10  2006-09-16 22:32:39  scottl
+% implemented variable length short-lists (based on a threshold parameter).
+% Updated code to take advantage of score values returned from solveline.
+%
+% Revision 1.9  2006/09/05 15:53:56  scottl
 % implemented short-lists to constrain line solver.
 %
 % Revision 1.8  2006/08/30 17:37:32  scottl
@@ -85,9 +93,18 @@ max_window_width = 15;
 %scan the lines for bitmap matches to constrain the line solver?
 use_prematch = false;  
 prematch_thresh = -1;  %by default don't constrain the solver
+
+%if prematches are used determine if fixed length, or variable length
+%short-lists will be used.
+use_var_length_lists = true; 
+var_length_thresh = 0.03;  %cutoff distance for adding cols to var. length list
 max_sl_size = 5;  %max. number of short-list candidates to return.
 
+%if prematches are used, report avg. candidate list length? (slows things down)
+calc_avg_cand_list_len = false;
+
 return_cell = true; %return a cell structure unless there is only one input line
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -131,7 +148,9 @@ end
 num_cases = length(data);
 vals = cell(0);
 segs = cell(0);
+scores = cell(0);
 prematch_count = 0;
+cand_lens = [];
 for ii=1:num_cases
     fprintf('%.2fs: augmenting character bitmaps for line %d\n', toc, ii);
     aug_char_bitmaps = augment_bitmaps(char_bitmaps, char_offsets, ...
@@ -141,29 +160,45 @@ for ii=1:num_cases
         fprintf('%.2fs: attempting to pre-match bitmaps against line %d\n', ...
                 toc, ii);
         norms = zeros(length(aug_char_bitmaps),1);
-        [candidates,nm] = prematch_line(data{ii}, aug_char_bitmaps, ...
-                                        max_sl_size, prematch_thresh);
+        if use_var_length_lists
+            [candidates,nm] = var_prematch_line(data{ii}, aug_char_bitmaps, ...
+                              var_length_thresh, prematch_thresh);
+        else
+            [candidates,nm] = prematch_line(data{ii}, aug_char_bitmaps, ...
+                              max_sl_size, prematch_thresh);
+        end
         prematch_count = prematch_count + nm;
+        if calc_avg_cand_list_len
+            for jj=1:length(candidates)
+                cand_lens = [cand_lens, length(candidates{jj})];
+            end
+        end
         fprintf('%.2fs: found %d matches for this line\n', toc, nm);
         fprintf('%.2fs: attempting to solve line %d\n', toc, ii);
-        [vals{ii,1},segs{ii,1}] = solveline(data{ii}, aug_char_bitmaps, ...
-                                  lang_model, ins_prob, del_prob, ...
-                                  min_window_width, max_window_width, ...
-                                  candidates);
+        [vals{ii,1}, segs{ii,1}, scores{ii,1}] = solveline(data{ii}, ...
+                                  aug_char_bitmaps, lang_model, ins_prob, ...
+                                  del_prob, min_window_width, ...
+                                  max_window_width, candidates);
     else
         fprintf('%.2fs: attempting to solve line %d\n', toc, ii);
-        [vals{ii,1},segs{ii,1}] = solveline(data{ii}, aug_char_bitmaps, ...
-        lang_model, ins_prob, del_prob, min_window_width, max_window_width);
+        [vals{ii,1}, segs{ii,1}, scores{ii,1}] = solveline(data{ii}, ...
+                                  aug_char_bitmaps, lang_model, ins_prob, ...
+                                  del_prob, min_window_width, ...
+                                  max_window_width);
     end
 end
 
 if ~ return_cell
     vals = vals{1};
     segs = segs{1};
+    scores = scores{1};
 end
 
 if use_prematch
     fprintf('%.2fs: found %d prematches\n', toc, prematch_count);
+end
+if calc_avg_cand_list_len
+    fprintf('avg candidate length: %.2f\n', mean(cand_lens));
 end
 fprintf('\n%.2fs: all lines completed\n',toc);
 
@@ -212,10 +247,11 @@ end
 
 %prematch_line - this function takes an image line and augmented character
 %bitmaps and returns a cell array containing vectors for each column of the
-%image as well as a scalar giving the number of pre-matches.  Each vector 
-%gives a list of possible candidate indices and may be a single candidate if it 
-%is below or equal to the threshold passed.
-function [candidates,nm] = prematch_line(line, bitmaps, max_models, threshold)
+%image as well as a scalar giving the number of pre-matches.  Each vector in 
+%the cell array gives a list of possible candidate indices and may be a 
+%single candidate if it is below or equal to the threshold passed.  The 3rd
+%paramter, specifies the maximum length of each columns short-list
+function [candidates, nm] = prematch_line(line, bitmaps, max_models, threshold)
 
 pct = .75;  %percentage of perfect pixel match for the model to the data
 
@@ -296,4 +332,82 @@ while length(chk_cols) > 0 && row <= max_models
     end
     chk_cols = setdiff(chk_cols, match_idcs);
     row = row+1;
+end
+
+
+%prematch_line - this function takes an image line and augmented character
+%bitmaps and returns a cell array containing vectors for each column of the
+%image as well as a scalar giving the number of pre-matches.  Each vector in 
+%the cell array gives a list of possible candidate indices and may be a 
+%single candidate if it is below or equal to the threshold passed.  The 3rd
+%parameter specifies the threshold for including candidates in the short-list.
+%NOTE: 
+%using too small of a threshold will leave too many blank candidates, which may
+%prevent the solveline code from finding a valid path through the candidates
+%and no checking is done to prevent this (except for the first column).
+function [candidates, nm] = var_prematch_line(line, bitmaps, dist_thresh, ...
+                            match_thresh)
+
+pct = .75;  %percentage of perfect pixel match for the model to the data
+
+num_cols = size(line,2);
+candidates = cell(1, num_cols);
+best_cand_scores = Inf(2, num_cols);
+
+for ii=1:length(bitmaps)
+    bm_sum = sum(bitmaps{ii}(:));
+    bm_width = size(bitmaps{ii},2);
+    %perform a convolutional sweep across the data to find columns of large
+    %overlap with this bitmap.  Since this returns the overlap about the center
+    %of the bitmap we must shift the results to align over the left-most column.
+    %Since the sweep doesn't give values for the last few columns, set their
+    %score to a maximum to ensure Euclidean distance calculations are carried
+    %out for those columns.
+    scores = max(filter2(bitmaps{ii}, line));
+    scores = [scores(ceil(bm_width/2):end), Inf(1,ceil(bm_width/2)-1)];
+    %perform Euclidean distance calculations at the columns that have at least
+    %pct of their total pixels matching
+    if bm_sum == 0
+        %this happens if we pass in a completely blank model
+        chk_cols = 1:num_cols;
+    else
+        chk_cols = find(scores/bm_sum >= pct);
+    end
+    num_chk = length(chk_cols);
+    sq_norms = zeros(num_chk,1);
+    data_segs = cell(num_chk,1);
+    for jj=1:num_chk
+        start = chk_cols(jj);
+        finish = start + bm_width -1;
+        if finish > num_cols
+            finish = num_cols;
+        end
+        data_segs{jj} = line(:,start:finish);
+        sq_norms(jj) = sum(data_segs{jj}(:));  %no need to square since logical
+    end
+    dists = euc_dist(bitmaps{ii}, data_segs, sum(bitmaps{ii}(:).^2), sq_norms);
+    idcs = find(dists <= dist_thresh);
+    for jj=idcs'
+        col = chk_cols(jj);
+        candidates{col} = [candidates{col}; ii];
+        if dists(jj) < best_cand_scores(1,col)
+            best_cand_scores(1,col) = dists(jj);
+            best_cand_scores(2,col) = ii;
+        end
+    end
+end
+
+%prune the candidate list for perfect matches (those within the match threshold)
+match_idcs = find(best_cand_scores(1,:) <= match_thresh);
+for ii=match_idcs
+    candidates{ii} = best_cand_scores(2,ii);
+end
+nm = length(match_idcs);
+
+%since the solveline code requires the first character to be placed in the
+%first column, ensure that this is not empty
+if isempty(candidates{1})
+    candidates{1} = [1:length(bitmaps)]';
+    warning('no cand. for first column, adding all models (may slow things)');
+
 end
