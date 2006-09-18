@@ -36,11 +36,14 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.9 2006-09-16 22:30:32 scottl Exp $
+% $Id: display_ocr_results.m,v 1.10 2006-09-18 21:01:28 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
-% Revision 1.9  2006-09-16 22:30:32  scottl
+% Revision 1.10  2006-09-18 21:01:28  scottl
+% no change.
+%
+% Revision 1.9  2006/09/16 22:30:32  scottl
 % implemented heat maps based on passed scores.
 %
 % Revision 1.8  2006/09/05 15:50:45  scottl
