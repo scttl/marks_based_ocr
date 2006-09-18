@@ -12,11 +12,14 @@ function display_cluster_averages(Clust, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.5 2006-09-05 15:50:44 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.6 2006-09-18 21:01:47 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
-% Revision 1.5  2006-09-05 15:50:44  scottl
+% Revision 1.6  2006-09-18 21:01:47  scottl
+% no change
+%
+% Revision 1.5  2006/09/05 15:50:44  scottl
 % made use of MOCR_PATH variable for saving in the results directory.
 %
 % Revision 1.4  2006/08/07 21:19:11  scottl
