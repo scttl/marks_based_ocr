@@ -2,8 +2,8 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
                                 lang_model, use_sl, pmt)
 % DO_OCR   Run language-model based OCR on the line images of data passed
 %
-%   [vals, segs] = DO_OCR(data, char_bitmaps, char_offsets, lang_model,
-%                  [use_shortlist, prematch_thresh])
+%   [vals, segs, scores] = DO_OCR(data, char_bitmaps, char_offsets, lang_model,
+%                          [use_shortlist, prematch_thresh])
 %   data should either be a logical array, or a cell array of logical arrays
 %   (one per row) each of which is an image representation of a sentence/line
 %   upon which we will perform OCR.
@@ -44,11 +44,14 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.10 2006-09-16 22:32:39 scottl Exp $
+% $Id: do_ocr.m,v 1.11 2006-09-18 21:00:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
-% Revision 1.10  2006-09-16 22:32:39  scottl
+% Revision 1.11  2006-09-18 21:00:06  scottl
+% updated comments, reverted to using fixed length lists by default.
+%
+% Revision 1.10  2006/09/16 22:32:39  scottl
 % implemented variable length short-lists (based on a threshold parameter).
 % Updated code to take advantage of score values returned from solveline.
 %
@@ -96,7 +99,7 @@ prematch_thresh = -1;  %by default don't constrain the solver
 
 %if prematches are used determine if fixed length, or variable length
 %short-lists will be used.
-use_var_length_lists = true; 
+use_var_length_lists = false; 
 var_length_thresh = 0.03;  %cutoff distance for adding cols to var. length list
 max_sl_size = 5;  %max. number of short-list candidates to return.
 
