@@ -9,7 +9,7 @@
 %%       to point at the path where this file resides, then executre this
 %%       file.
 %% CVS:
-%% $Id: marks_ocr_init.m,v 1.3 2006-07-05 04:36:35 scottl Exp $
+%% $Id: marks_ocr_init.m,v 1.4 2006-09-22 18:02:11 scottl Exp $
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('Initializing Marks-Based OCR\n');
@@ -28,6 +28,8 @@ if isempty(MOCR_PATH)
     error('Must set global MOCR_PATH to the install directory.  See README');
 end
 addpath([MOCR_PATH, '/cluster']);
+addpath([MOCR_PATH, '/component']);
+addpath([MOCR_PATH, '/line']);
 addpath([MOCR_PATH, '/util']);
 addpath([MOCR_PATH, '/display']);
 addpath([MOCR_PATH, '/ocr']);
