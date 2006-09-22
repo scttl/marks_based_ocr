@@ -21,11 +21,14 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.7 2006-08-24 21:40:07 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.8 2006-09-22 18:01:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
-% Revision 1.7  2006-08-24 21:40:07  scottl
+% Revision 1.8  2006-09-22 18:01:41  scottl
+% added MSGID to warning message
+%
+% Revision 1.7  2006/08/24 21:40:07  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -173,7 +176,7 @@ if any(Z == 0)
     %normally take care of this, but to prevent dividing by 0, we augment
     %the sum
     zero_rows = find(Z == 0);
-    warning('No transitions seen from cluster %d\n', zero_rows);
+    warning('MBOCR:noTrans', 'No transitions seen from cluster %d\n',zero_rows);
     Z(zero_rows) = 1;
 end
 Clust.bigram = Clust.bigram ./ repmat(Z,1,Clust.num);

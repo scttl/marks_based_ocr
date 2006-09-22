@@ -12,10 +12,13 @@ function display_cluster_averages(Clust, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.6 2006-09-18 21:01:47 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.7 2006-09-22 18:02:52 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
+% Revision 1.7  2006-09-22 18:02:52  scottl
+% added MSGID to warning message
+%
 % Revision 1.6  2006-09-18 21:01:47  scottl
 % no change
 %
@@ -274,7 +277,8 @@ for ii=1:length(X)
         case '0'
             img = [img, zero];
         otherwise
-            warning('this method only displays digits 0-9, character ignored');
+            warning('MBOCR:charIgnored', ...
+                    'this method only displays digits 0-9, character ignored');
         end
     end
 
