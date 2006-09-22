@@ -44,10 +44,13 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.11 2006-09-18 21:00:06 scottl Exp $
+% $Id: do_ocr.m,v 1.12 2006-09-22 18:01:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
+% Revision 1.12  2006-09-22 18:01:09  scottl
+% added MSGID to warning messgae.
+%
 % Revision 1.11  2006-09-18 21:00:06  scottl
 % updated comments, reverted to using fixed length lists by default.
 %
@@ -411,6 +414,7 @@ nm = length(match_idcs);
 %first column, ensure that this is not empty
 if isempty(candidates{1})
     candidates{1} = [1:length(bitmaps)]';
-    warning('no cand. for first column, adding all models (may slow things)');
+    warning('MBOCR:noFirstColCand', ...
+            'no cand. for first column, adding all models (may slow things)');
 
 end
