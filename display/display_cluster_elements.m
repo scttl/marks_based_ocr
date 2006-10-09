@@ -1,7 +1,7 @@
-function display_cluster_elements(Clust, Comps, idx, num, comp_idx)
+function display_cluster_elements(Clust, Comps, idx, varargin)
 % DISPLAY_CLUSTER_ELEMENTS   Display the elements of clusters
 %
-%   DISPLAY_CLUSTER_ELEMENTS(Clust, Comps, idx, [num, comp_idx])
+%   DISPLAY_CLUSTER_ELEMENTS(Clust, Comps, idx, [VAR1, VAL1]...)
 %
 %   Clust and Comps should be as defined in cluster_comps.m
 %
@@ -9,26 +9,26 @@ function display_cluster_elements(Clust, Comps, idx, num, comp_idx)
 %
 %   idx should be the list of Cluster indices whose elements should be drawn.
 %
-%   num is optional and if specified determines the (maximum) number of elements
-%   that should be drawn for each cluster.  If not specified it defaults to 50.
-%   The elements are randomly sampled from each cluster (containing > 50 
-%   elements, unless comp_idx is passed)
+%   Additional variables specified in LOCAL VARS below, can be overridden by
+%   passing the name of the variable to override as a string, followed by its
+%   new value (and repeating for each such variable to override).  This can be
+%   used to change the default number of elements to draw for each component, 
+%   and to specify exactly what components are drawn (instead of a random 
+%   subset).
 %
-%   comp_idx is optional and if specified gives an explicit ordering of the
-%   components to display.  If not passed, some random subsample of components
-%   is used.  It should be passed as a column vector with elements belonging to
-%   the same Cluster, listed in the order they would like to be drawn.  Note
-%   that when passed, even though num is required, it will be ignored, and the
-%   number of components to draw is calculated based on the list passed.
-%
+
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.5 2006-09-05 15:50:44 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.6 2006-10-09 16:33:55 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
-% Revision 1.5  2006-09-05 15:50:44  scottl
+% Revision 1.6  2006-10-09 16:33:55  scottl
+% changed parameter processing, allowed one to display thinned elements,
+% and draw the averages as well.
+%
+% Revision 1.5  2006/09/05 15:50:44  scottl
 % made use of MOCR_PATH variable for saving in the results directory.
 %
 % Revision 1.4  2006/08/24 21:37:37  scottl
@@ -49,7 +49,17 @@ function display_cluster_elements(Clust, Comps, idx, num, comp_idx)
 num_to_draw = 50;
 row_pix_border = 10;
 col_pix_border = 3;
-use_random = true;  %by default use a random sample of elements from the cluster
+
+%by default use a random sample of elements from the cluster.  This can be
+%overridden by specifying an explicit listing of components belonging to each of
+%the clustters to be drawn.
+comp_list = [];
+
+%should we thin the elements before drawing them?
+thin_elements = false;
+
+%should we display the cluster average next to its elements?
+display_avg = false;
 
 %set save_elements to true to write the elements image to disk based on the 
 %params below it
@@ -62,19 +72,15 @@ img_format = 'png';
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin < 3 || nargin > 5
+if nargin < 3
     error('incorrect number of arguments specified!');
-elseif nargin >= 4
-    num_to_draw = num;
-    if nargin == 5
-        use_random = false;
-    end
+elseif nargin > 3
+    process_optional_args(varargin{:});
 end
 
 num_clusts = length(idx);
-if use_random
+if isempty(comp_list)
     %collect the random Component indices of each cluster
-    comp_list = [];
     lrg_idx = find(Clust.num_comps(idx) > num_to_draw);
     lrg_idx = idx(lrg_idx);
     sm_idx = setdiff(idx, lrg_idx);
@@ -84,17 +90,38 @@ if use_random
         comp_list = [comp_list; this_comps];
     end
     comp_list = [comp_list; cell2mat(Clust.comps(sm_idx))];
+    pgs_to_check = unique(Comps.pg(comp_list));
 else
     %use the component indices passed
-    comp_list = comp_idx;
-    [num_to_draw,num_to_draw] = mode(Comps.clust(comp_idx));
+    if size(comp_list,2) > 1
+        comp_list = comp_list';
+    end
+    pgs_to_check = unique(Comps.pg(comp_list));
+    num_to_draw = -Inf;
+    for pp = pgs_to_check'
+        num_to_draw = max(num_to_draw, sum(Comps.pg(comp_list) == pp));
+    end
+end
+
+if display_avg
+    num_to_draw = num_to_draw + 2;  %1 for the avg, and 1 for blankspace
 end
 
 %create a cell arrray to hold the component images
 M = cell(num_clusts,num_to_draw);
 num_added = zeros(num_clusts,1);
 size_vals = zeros(num_clusts,num_to_draw,2);
-pgs_to_check = unique(Comps.pg(comp_list));
+
+%add the cluster average images if required (along with some blankspace)
+if display_avg
+    for ii=1:num_clusts
+        M{ii, 1} = Clust.avg{idx(ii)};
+        M{ii, 2} = zeros(1,col_pix_border);
+        num_added(ii) = 2;
+        size_vals(ii,1,:) = reshape(size(M{ii, 1}),1,1,2);
+        size_vals(ii,2,:) = reshape(size(M{ii, 2}),1,1,2);
+    end
+end
 
 %create a mapping for cluster indices into rows of M
 map = zeros(Clust.num,1);
