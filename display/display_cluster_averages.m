@@ -1,21 +1,28 @@
-function display_cluster_averages(Clust, num)
+function display_cluster_averages(Clust, varargin)
 %  DISPLAY_CLUSTER_AVERAGES  Display clusters and their # of items as an image
 %
-%   display_cluster_averages(Clust, [num])
+%   display_cluster_averages(Clust, [VAR1, VAL1]...)
 %
 %   Clust should be a struct containing a cell array field labelled average, 
 %   each of which is assumed to contain a matrix giving the average pixel 
 %   intensity corresponding to the elements of that cluster.
 %
-%   num is optional and if specified, determines the number of cluster
-%   averages to display.  If not specified, all clusters averages are shown.
+%   LOCAL VARS parameters specified below can have their defaults overriden by
+%   specifiyng name and value pairs.  VAR1 should be a string specifying the
+%   name of the variable to override.  VAL1 should be the new value for that
+%   variable.
+%
+
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.7 2006-09-22 18:02:52 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.8 2006-10-09 16:32:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
+% Revision 1.8  2006-10-09 16:32:37  scottl
+% change to allow optional parameter processing and variable overriding.
+%
 % Revision 1.7  2006-09-22 18:02:52  scottl
 % added MSGID to warning message
 %
@@ -46,6 +53,9 @@ col_pix_border = 5;
 cl_h = 0;
 cl_w = 0;
 
+%how many clusters to display?  Inf = display all
+num_clust = Inf;
+
 %set save_averages to true to write the averages to disk based on the params
 %below it
 save_averages = false;
@@ -57,11 +67,13 @@ img_format = 'png';
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 1 || nargin > 2
+if nargin < 1
     error('incorrect number of arguments specified!');
-elseif nargin == 2
-    num_clust = num;
-else
+elseif nargin > 1
+    process_optional_args(varargin{:});
+end
+
+if num_clust == Inf
     num_clust = Clust.num;
 end
 
