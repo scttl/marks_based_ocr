@@ -1,20 +1,19 @@
-function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,use_mode)
+function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,varargin)
 %  ADD_AND_REAVERAGE  Merge the contents of one cluster with another.
 %
-%  [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2, use_mode)
+%  [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2, [VA1, VL1]...)
 %
 %  Clust should be a struct containing cluster information.  See cluster_comps
 %
-%  Comps should be a struct containing component information.  See cluster_comps
+%  Comps should be a struct containing component information.  See get_comps
 %
 %  id1 should be a scalar indexing the Clust array to which each index in id2
 %  will be added (with components updated to have id1 as their associated 
 %  cluster).  Each index in id2 will also be removed.
 %
-%  use_mode is an optional boolean that defaults to false if not specified.  If
-%  set to true, then the resulting average intensity image will be set to the
-%  cluster that has the most components (no averaging amongst all the clusters
-%  being merged will be done).
+%  One can override the default values for any of the LOCAL VARS defined below
+%  by passing in name and value pairs.  VA1 should be a string representing the
+%  name of the variable to override, and VL1 should be its new value.
 %
 %  newid1 will be the scalar index corresponding to the Cluster represented by
 %  id1 at the start of the call.
@@ -27,11 +26,14 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,use_mode)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.6 2006-08-24 21:40:04 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.7 2006-10-09 16:35:40 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
-% Revision 1.6  2006-08-24 21:40:04  scottl
+% Revision 1.7  2006-10-09 16:35:40  scottl
+% changes to argument processing and variable overriding.
+%
+% Revision 1.6  2006/08/24 21:40:04  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -55,18 +57,29 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,use_mode)
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
+
+%when merging different sized clusters, how should we resize?  see imresize()
 resize_method = 'nearest';
-clust_size = Clust.num;
+
+%use_avg, when set to true will take the average over all the merged cluster
+%average intensity images to create the new average intensity image.  If false,
+%then the resulting average intensity image will be set to the cluster that 
+%has the most components (no averaging amongst all the clusters being merged 
+%will be done).  i.e. the mode will be taken.
 use_avg = true;
+
+clust_size = Clust.num;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin < 4 || nargin > 5
+if nargin < 4
     error('incorrect number of arguments passed');
-elseif nargin == 5 && use_mode == true
-    use_avg = false;
+elseif nargin > 4
+    process_optional_args(varargin{:});
 end
+
 if id1 < 1 || id1 > clust_size
     error('first index passed is invalid: %d, clust size: %d', id1, clust_size);
 elseif any(id2 < 1) || any(id2 > clust_size)
@@ -108,7 +121,7 @@ else
     Clust.mode_num(id1) = md_val;
 end
 %update the squared norm based on this new average.
-Clust.norm_sq(id1) = sum(sum(Clust.avg{id1} .^2));
+Clust.norm_sq(id1) = sum(Clust.avg{id1}(:) .^2);
 
 %remove the second list of clusters
 keep_list = setdiff(1:Clust.num, id2);
