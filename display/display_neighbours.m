@@ -12,11 +12,14 @@ function  display_neighbours(Comps, comp)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_neighbours.m,v 1.3 2006-07-05 01:06:49 scottl Exp $
+% $Id: display_neighbours.m,v 1.4 2006-10-09 16:31:40 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_neighbours.m,v $
-% Revision 1.3  2006-07-05 01:06:49  scottl
+% Revision 1.4  2006-10-09 16:31:40  scottl
+% small bugfix to ensure dimensions selected are correct.
+%
+% Revision 1.3  2006/07/05 01:06:49  scottl
 % rewritten based on new cluster and component structures.
 %
 % Revision 1.2  2006/06/19 20:59:04  scottl
@@ -53,25 +56,25 @@ while length(comp) > 0
     l = x(1); t = x(2); r = x(3); b = x(4);
     if nb(1) ~= 0
         %left neighbour exists
-        l = Comps.pos(nb(1),1);
+        l = min(l, Comps.pos(nb(1),1));
         t = min(t, Comps.pos(nb(1),2));
         b = max(b, Comps.pos(nb(1),4));
     end
     if nb(2) ~= 0
         %top neighbour exists
-        t = Comps.pos(nb(2),2);
+        t = min(t, Comps.pos(nb(2),2));
         l = min(l, Comps.pos(nb(2),1));
         r = max(r, Comps.pos(nb(2),3));
     end
     if nb(3) ~= 0
         %right neighbour exists
-        r = Comps.pos(nb(3),3);
+        r = max(r, Comps.pos(nb(3),3));
         t = min(t, Comps.pos(nb(3),2));
         b = max(b, Comps.pos(nb(3),4));
     end
     if nb(4) ~= 0
         %bottom neighbour exists
-        b = Comps.pos(nb(4),4);
+        b = max(b, Comps.pos(nb(4),4));
         l = min(l, Comps.pos(nb(4),1));
         r = max(r, Comps.pos(nb(4),3));
     end
