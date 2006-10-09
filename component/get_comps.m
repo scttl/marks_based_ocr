@@ -37,6 +37,14 @@ function Comps = get_comps(Files, varargin)
 %                   calculated with a call to get_lines() though.
 %     line - a vector listing the index into the Line struct to which this
 %            component belongs
+%     modal_height - a scalar value listing the most commonly found height (as
+%                    measured from the baseline to the x-height) of the
+%                    components
+%     scale_factor - a vector listing how much the component must be scaled up
+%                    or down so that its height matches the modal height.  A
+%                    value > 1 means the component must be increased in size to
+%                    match.  A value = 1 means no change, and a value < 1 
+%                    requires a decrease in size.
 %     descender_off - this vector will hold the relative position of the 
 %                     bottom edge of the component as the number of pixels 
 %                     below (if positive) or above (if negative) from the 
@@ -46,14 +54,23 @@ function Comps = get_comps(Files, varargin)
 %                    as the number of pixels above (if positive) or below
 %                    (if negative) from the x-height of the line to which it
 %                    was found.
+%     found_true_labels - this is a boolean that will be set to true if the
+%                         ground truth labels for each component have been
+%                         caluculated.  This can be done with a call to
+%                         ground_truth_label()
+%     truth_label - this vector will hold decimal ASCII character values for
+%                   each character (or partial character) that has been asigned.
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.1 2006-09-22 18:04:51 scottl Exp $
+% $Id: get_comps.m,v 1.2 2006-10-09 16:30:39 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.2  2006-10-09 16:30:39  scottl
+% added parameters for modal height, scale factor, and groundtruth label.
+%
 % Revision 1.1  2006-09-22 18:04:51  scottl
 % initial check-in.
 %
@@ -69,7 +86,7 @@ num_dirs = 8;
 %the maximum allowable aspect ratio (difference between width and height).
 max_ar_diff = 10.0;
 
-%@@?the minimum size (in number of pixels) of an element for it to be considered
+%the minimum size (in number of pixels) of an element for it to be considered
 %for reference: dot's on i's are about 3x3 on NIPS papers
 min_elem_width = 4;
 min_elem_height = 4;
@@ -186,17 +203,15 @@ for pp=1:num_pgs
 
 
     %prune any components that don't meet the size requirements
-    %@@@ separate function
     start_comp = prev_max_comp + 1;
     comp_idcs = start_comp:Comps.max_comp;
     V_diff = Comps.pos(comp_idcs,4) - Comps.pos(comp_idcs,2) + 1;
     H_diff = Comps.pos(comp_idcs,3) - Comps.pos(comp_idcs,1) + 1;
     VH_ratio = double(H_diff) ./ double(V_diff);
-    reject_list = prev_max_comp + find(VH_ratio < 1/max_ar_diff | ...
-                                       VH_ratio > max_ar_diff);
-%   @@@ reject_list = prev_max_comp + find(V_diff < min_elem_height | ...
-%                   H_diff < min_elem_width | V_diff > max_elem_height | ...
-%                   H_diff > max_elem_width);
+    reject_list = prev_max_comp + find(V_diff < min_elem_height | ...
+                   H_diff < min_elem_width | V_diff > max_elem_height | ...
+                   H_diff > max_elem_width | VH_ratio < 1/max_ar_diff | ...
+                   VH_ratio > max_ar_diff);
     for ii=1:length(reject_list)
         %also remove them from the component image
         pos = Comps.pos(reject_list(ii),:);
@@ -391,5 +406,9 @@ Comps.nb = [];
 Comps.nb_dist = uint16([]);
 Comps.found_lines = false;
 Comps.line = uint64([]);   %uint32([]);
+Comps.modal_height = NaN;
+Comps.scale_factor = [];
 Comps.descender_off = int16([]);
 Comps.ascender_off = int16([]);
+Comps.found_true_labels = false;
+Comps.truth_label = uint8([]);
