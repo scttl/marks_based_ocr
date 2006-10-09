@@ -29,10 +29,14 @@ function [baselines, xheights] = get_line_props(imgs, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_line_props.m,v 1.3 2006-09-22 17:57:41 scottl Exp $
+% $Id: get_line_props.m,v 1.4 2006-10-09 16:28:57 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_line_props.m,v $
+% Revision 1.4  2006-10-09 16:28:57  scottl
+% removed dependence on x-height threshold.  Just take the modal height from
+% the basline.
+%
 % Revision 1.3  2006-09-22 17:57:41  scottl
 % renamed from get_baselines, and moved to line directory.  Rewritten to
 % include calculation of x-height of each line too.
@@ -52,13 +56,6 @@ function [baselines, xheights] = get_line_props(imgs, varargin)
 %considered a baseline.  The last such row found, is returned as a baseline for
 %the image.
 base_thresh = .20;
-
-%similarly, this parameter controls what portion of the pixels must be 'on' in
-%a row to be considered the x-height line.  The first such row found, is
-%returned, with its value calculated as the number of pixels away from the
-%baseline it resides (always positive)
-xheight_thresh = .20;
-
 
 
 % CODE START %
@@ -90,8 +87,20 @@ for ii=1:num_imgs
     if idx
         baselines(ii) = idx - 1;
     end
-    idx = find((row_sums ./ sz(2)) >= xheight_thresh, 1, 'first');
-    if idx
-        xheights(ii) = idx - 1;
+
+    %for the x-height find the modal top value for each column
+    x_vals = NaN(1,sz(2));
+    for jj=baselines(ii)+1:-1:1
+        x_vals(imgs{ii}(jj,:) == 1) = jj-1;
+    end
+    xheights(ii) = mode(x_vals(x_vals ~= NaN));
+
+    %prevent the xheight from matching the baseline
+    if baselines(ii) == xheights(ii)
+        if baselines(ii) == 0
+            baselines(ii) = sz(1) - 1;
+        else
+            xheights(ii) = 0;
+        end
     end
 end
