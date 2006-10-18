@@ -1,38 +1,31 @@
-function [Clust, Comps] = merge_refine(Clust,Comps,md,vp,mn)
+function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 % MERGE_REFINE  Merge together inappropriately separated clusters
 %
-%   [Clust, Comps] = merge_refine(Clust, Comps, [max_dist, valid_pct, min_num]) 
-%   Clust should be a struct containing cluster information.  See cluster_comps
+%   [CLUST, COMPS] = merge_refine(CLUST, COMPS, [VAR1, VAL1]...) 
+%   CLUST should be a struct containing cluster information.  See cluster_comps
 %   for details on the format of each field.
 %
-%   Comps should be a struct containing information for each component.  See 
-%   cluster_comps for details.
+%   COMPS should be a struct containing information for each component.  See 
+%   get_comps for details.
 %
-%   max_dist is optional and if specified, determines the amount of tolerance 
-%   (maximum number of pixels separating the closest parts of 2 components to
-%   be merged).  If not specified, it defaults to 3 pixels and is calculated in
-%   1 dimension only (ie. only horizontally or vertically depending on the type
-%   of match).
+%   Default values for variables defined in LOCAL VARS can be overriden by 
+%   specifying the variable name as a string in VAR1 and its new value in 
+%   VAL1 (and repeating these pairs for any other variables whose values are 
+%   to be overridden).
 %
-%   valid_pct is optional and if speecified gives the percentage of neighbouring
-%   components that must belong to the same cluster for the merge to be 
-%   considered valid.  Note that this percentage must hold for both clusters, 
-%   and is based on the total number of components in that cluster.  If not 
-%   specified, it defaults to .85
-%
-%   min_num is optional and if specified determines the minimum number of
-%   matching components that must be present to be considered for a merging. 
-%   This alleviates merging clusters with single components that would otherwise
-%   get matched.  If not specified, the defulat value is 3
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.5 2006-08-24 21:40:04 scottl Exp $
+% $Id: merge_refine.m,v 1.6 2006-10-18 15:47:17 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
-% Revision 1.5  2006-08-24 21:40:04  scottl
+% Revision 1.6  2006-10-18 15:47:17  scottl
+% changes to introduce scale invariant matches, better parameter
+% processing
+%
+% Revision 1.5  2006/08/24 21:40:04  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -59,6 +52,13 @@ min_match_comp = 3;
 %should we display matches onscreen (wastes resources)
 display_matches = false;
 
+%should we thin merged clusters when created?
+use_thinned_imgs = true;
+
+%should we resize merged clusters when created?
+resize_imgs = false;
+resize_method = 'nearest';
+
 %these will contain the list of extraneous components and clusters to be
 %deleted at the end of processing
 del_comps = [];
@@ -68,16 +68,10 @@ del_clusts = [];
 % CODE START %
 %%%%%%%%%%%%%%
 
-if nargin < 2 || nargin > 5
+if nargin < 2
     error('incorrect number of arguments specified!');
-elseif nargin >= 3
-    max_dist = md;
-    if nargin >= 4
-        valid_pct = vp;
-        if nargin == 5
-            min_match_comp = mn;
-        end
-    end
+elseif nargin > 2
+    process_optional_args(varargin{:});
 end
 
 %initially put all elements in the refine list if not passed
@@ -184,9 +178,21 @@ while ~ isempty(rr)
             valid = Comps.nb ~= 0;
             Comps.nb(valid) = idx(Comps.nb(valid));
 
-            %offsets (just take the furthest down the line of the two)
-            Comps.offset(r_merge_comps) = max(Comps.offset(r_merge_comps), ...
-                                              Comps.offset(lnb_merge_comps));
+            %offsets
+            if Comps.found_lines
+                Comps.descender_off(r_merge_comps) = max(...
+                                        Comps.descender_off(r_merge_comps), ...
+                                        Comps.descender_off(lnb_merge_comps));
+                Comps.ascender_off(r_merge_comps) = min(...
+                                        Comps.ascender_off(r_merge_comps), ...
+                                        Comps.ascender_off(lnb_merge_comps));
+                %scale factor
+                Comps.scale_factor(r_merge_comps) = Comps.modal_height ./ ...
+                                   double(Comps.pos(r_merge_comps,4) - ...
+                                   Comps.pos(r_merge_comps,2) + 1);
+            end
+
+            %ground truth assignment (doesn't change)
 
             %clusters (we'll require a new cluster for the merged components
             %if at least one of the components from the original right half 
@@ -209,10 +215,13 @@ while ~ isempty(rr)
                 end
                 %recalculate average for rr
                 Clust.mode_num(rr) = length(r_unmerged_comps);
-                Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps);
-                Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
-                Clust.offset(rr) = int16(mode(single(...
-                                   Comps.offset(r_unmerged_comps))));
+                Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps, ...
+                                use_thinned_imgs, resize_imgs, resize_method);
+                Clust.norm_sq(rr) = sum(Clust.avg{rr}(:).^2);
+                if Comps.found_lines
+                    Clust.offset(rr) = int16(mode(single(...
+                                   Comps.descender_off(r_unmerged_comps))));
+                end
             end
             if length(lnb_merge_comps) ~= Clust.num_comps(mf_clust)
                 %some unmerged left-halfs remain
@@ -224,10 +233,13 @@ while ~ isempty(rr)
                 Clust.changed(mf_clust) = true;
                 %recalculate average for mf_clust
                 Clust.mode_num(mf_clust) = length(lnb_unmerged_comps);
-                Clust.avg{mf_clust} = recalc_avg(Comps, lnb_unmerged_comps);
-                Clust.norm_sq(mf_clust) = sum(sum(Clust.avg{mf_clust}.^2));
-                Clust.offset(mf_clust) = int16(mode(single(...
-                                         Comps.offset(lnb_unmerged_comps))));
+                Clust.avg{mf_clust} = recalc_avg(Comps, lnb_unmerged_comps, ...
+                                 use_thinned_imgs, resize_imgs, resize_method);
+                Clust.norm_sq(mf_clust) = sum(Clust.avg{mf_clust}(:).^2);
+                if Comps.found_lines
+                    Clust.offset(mf_clust) = int16(mode(single(...
+                                     Comps.descender_off(lnb_unmerged_comps))));
+                end
             else
                 %flag the left-half cluster for removal
                 Clust.refined(mf_clust) = true;
@@ -237,10 +249,13 @@ while ~ isempty(rr)
             %components.  Unfortunately this is computationally expensive
             %if there are a lot of components
             Clust.mode_num(merge_clust) = length(r_merge_comps);
-            Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps);
-            Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{merge_clust}.^2));
-            Clust.offset(merge_clust) = int16(mode(single(...
-                                        Comps.offset(r_merge_comps))));
+            Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps, ...
+                                 use_thinned_imgs, resize_imgs, resize_method);
+            Clust.norm_sq(merge_clust) = sum(Clust.avg{merge_clust}(:).^2);
+            if Comps.found_lines
+                Clust.offset(merge_clust) = int16(mode(single(...
+                                        Comps.descender_off(r_merge_comps))));
+            end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
 
@@ -342,7 +357,14 @@ while ~ isempty(rr)
             valid = Comps.nb ~= 0;
             Comps.nb(valid) = idx(Comps.nb(valid));
 
-            %offsets don't change since we'll just use the bottom components
+            %offsets don't change since we'll just use the bottom components,
+            %but scale factors do change
+            if Comps.found_lines
+                %scale factor
+                Comps.scale_factor(r_merge_comps) = Comps.modal_height ./ ...
+                                   double(Comps.pos(r_merge_comps,4) - ...
+                                   Comps.pos(r_merge_comps,2) + 1);
+            end
 
             %clusters (we'll require a new cluster for the merged components
             %if at least one of the components from the original bottom half 
@@ -365,10 +387,13 @@ while ~ isempty(rr)
                 end
                 %recalculate average for rr
                 Clust.mode_num(rr) = length(r_unmerged_comps);
-                Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps);
-                Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
-                Clust.offset(rr) = int16(mode(single(...
-                                   Comps.offset(r_unmerged_comps))));
+                Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps, ...
+                                use_thinned_imgs, resize_imgs, resize_method);
+                Clust.norm_sq(rr) = sum(Clust.avg{rr}(:).^2);
+                if Comps.found_lines
+                    Clust.offset(rr) = int16(mode(single(...
+                                   Comps.descender_off(r_unmerged_comps))));
+                end
             end
             if length(tnb_merge_comps) ~= Clust.num_comps(mf_clust)
                 %some unmerged top-halfs remain
@@ -380,10 +405,13 @@ while ~ isempty(rr)
                 Clust.changed(mf_clust) = true;
                 %recalculate average for mf_clust
                 Clust.mode_num(mf_clust) = length(tnb_unmerged_comps);
-                Clust.avg{mf_clust} = recalc_avg(Comps, tnb_unmerged_comps);
-                Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{mf_clust}.^2));
-                Clust.offset(merge_clust) = int16(mode(single(...
-                                            Comps.offset(tnb_unmerged_comps))));
+                Clust.avg{mf_clust} = recalc_avg(Comps, tnb_unmerged_comps, ...
+                                use_thinned_imgs, resize_imgs, resize_method);
+                Clust.norm_sq(merge_clust) = sum(Clust.avg{mf_clust}(:).^2);
+                if Comps.found_lines
+                    Clust.offset(merge_clust) = int16(mode(single(...
+                                    Comps.descender_off(tnb_unmerged_comps))));
+                end
             else
                 %flag the top-half cluster for removal
                 Clust.refined(mf_clust) = true;
@@ -393,10 +421,13 @@ while ~ isempty(rr)
             %components.  Unfortunately this is computationally expensive
             %if there are a lot of components
             Clust.mode_num(merge_clust) = length(r_merge_comps);
-            Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps);
-            Clust.norm_sq(merge_clust) = sum(sum(Clust.avg{merge_clust}.^2));
-            Clust.offset(merge_clust) = int16(mode(single(...
-                                        Comps.offset(r_merge_comps))));
+            Clust.avg{merge_clust} = recalc_avg(Comps, r_merge_comps, ...
+                                use_thinned_imgs, resize_imgs, resize_method);
+            Clust.norm_sq(merge_clust) = sum(Clust.avg{merge_clust}(:).^2);
+            if Comps.found_lines
+                Clust.offset(merge_clust) = int16(mode(single(...
+                                        Comps.descender_off(r_merge_comps))));
+            end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
 
@@ -432,7 +463,15 @@ Comps.pos = Comps.pos(keep_comps,:);
 Comps.pg = Comps.pg(keep_comps);
 Comps.nb = Comps.nb(keep_comps,:);
 Comps.nb_dist = Comps.nb_dist(keep_comps,:);
-Comps.offset = Comps.offset(keep_comps);
+if Comps.found_lines
+    Comps.descender_off = Comps.descender_off(keep_comps);
+    Comps.ascender_off = Comps.ascender_off(keep_comps);
+    Comps.scale_factor = Comps.scale_factor(keep_comps);
+    Comps.line = Comps.line(keep_comps);
+end
+if Comps.found_true_labels
+    Comps.truth_label = Comps.truth_label(keep_comps);
+end
 
 %now remove the unnessary clusters, updating component cluster references based
 %on the deleted clusters
@@ -445,7 +484,9 @@ Clust.avg = Clust.avg(keep_clust);
 Clust.norm_sq = Clust.norm_sq(keep_clust);
 Clust.refined = Clust.refined(keep_clust);
 Clust.changed = Clust.changed(keep_clust);
-Clust.offset = Clust.offset(keep_clust);
+if Comps.found_lines
+    Clust.offset = Clust.offset(keep_clust);
+end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_clust,keep_clust);
 end
@@ -459,28 +500,34 @@ end
 
 %recalculate average: Use the listing of components passed to determine the
 %average intensity image of them.
-function new_avg = recalc_avg(Comps, idcs)
-    new_avg = [];
-    new_tot = 0;
-    [pgs,idx] = sort(Comps.pg(idcs));
-    pos = Comps.pos(idcs,:);
-    for pp=unique(pgs)'
-        M=imread(Comps.files{pp});
-        for ii=idx(pgs == pp)'
-            l = pos(ii,1); t = pos(ii,2); r = pos(ii,3); b = pos(ii,4);
-            ht = b - t + 1;
-            wd = r - l + 1;
-            if new_tot == 0
-                new_avg = double(~M(t:b,l:r));
-            elseif all(size(new_avg) == [ht,wd])
-                new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
-                          (1/(new_tot+1) .* ~M(t:b,l:r));
-            else
-                new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
-                          (1/(new_tot+1) .* imresize(~M(t:b,l:r), ...  
-                          size(new_avg)));
-            end
-            new_tot = new_tot + 1;
+function new_avg = recalc_avg(Comps, idcs, use_thin, use_resize, rsz_method)
+    imgs = get_comp_imgs(Comps, idcs);
+    if use_resize && Comps.found_lines
+        %normalize the images
+        for ii=1:length(imgs)
+            imgs{ii} = imresize(imgs{ii}, Comps.scale_factor(idcs(ii)), ...
+                       rsz_method);
         end
+    elseif use_resize
+        warning('MBOCR:NoScaleFactor', ...
+                'unable to renormalize images because scale_factor not set');
     end
 
+    new_avg = imgs{1};
+    new_tot = 1;
+    for ii=2:length(imgs)
+        [ht,wd] = size(imgs{ii});
+        if all(size(new_avg) == [ht,wd])
+            new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
+                      (1/(new_tot+1) .* imgs{ii});
+        else
+            new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
+                      (1/(new_tot+1) .* imresize(imgs{ii}, size(new_avg)));
+        end
+        new_tot = new_tot + 1;
+    end
+
+    if use_thin
+        %thin the new image too
+        new_avg = double(bwmorph(new_avg, 'thin', Inf));
+    end
