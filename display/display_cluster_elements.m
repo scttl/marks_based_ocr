@@ -20,10 +20,13 @@ function display_cluster_elements(Clust, Comps, idx, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.6 2006-10-09 16:33:55 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.7 2006-10-18 15:59:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
+% Revision 1.7  2006-10-18 15:59:41  scottl
+% small change to make use of existing component grabbing functionality
+%
 % Revision 1.6  2006-10-09 16:33:55  scottl
 % changed parameter processing, allowed one to display thinned elements,
 % and draw the averages as well.
@@ -129,18 +132,13 @@ map(idx) = 1:num_clusts;
 
 %extract the required components from each page and add them to M in the
 %appropriate position
-for pp = pgs_to_check'
-    Img = imread(Comps.files{pp});
-    this_comps = find(Comps.pg(comp_list) == pp);
-    this_comps = comp_list(this_comps);
-    for ii = this_comps'
-        row = map(Comps.clust(ii));
-        num_added(row) = num_added(row) + 1;
-        pos = Comps.pos(ii,:);
-        M{row, num_added(row)} = ~Img(pos(2):pos(4), pos(1):pos(3));
-        size_vals(row,num_added(row),:) = ...
-                 reshape(size(M{row, num_added(row)}),1,1,2);
-    end
+imgs = get_comp_imgs(Comps, comp_list);
+for ii=1:length(comp_list)
+    row = map(Comps.clust(comp_list(ii)));
+    num_added(row) = num_added(row) + 1;
+    M{row, num_added(row)} = imgs{ii};
+    size_vals(row,num_added(row),:) = reshape(size(M{row, num_added(row)}), ...
+                                      1,1,2);
 end
 
 %convert M to an appropriately spaced image
