@@ -21,11 +21,15 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.3 2006-08-14 01:38:06 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.4 2006-10-18 15:42:05 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
-% Revision 1.3  2006-08-14 01:38:06  scottl
+% Revision 1.4  2006-10-18 15:42:05  scottl
+% implement ability to specify whether averaging between the two images will
+% be used (or the maximal distance will be used)
+%
+% Revision 1.3  2006/08/14 01:38:06  scottl
 % fix bug dealing with completely blank images.
 %
 % Revision 1.2  2006/07/21 21:37:39  scottl
@@ -41,6 +45,8 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 on_thresh = 0.5;  %when is a fractional pixel considered on?
 percent = 1; %what portion of the closest pixel distances should be considered?
 
+%should we average the "distances" between the images, or take the maximum?
+use_avg = true;
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -73,7 +79,8 @@ bin_img1 = img1 >= on_thresh;
 %nothing to match!
 img1_sum = sum(bin_img1(:));
 if img1_sum == 0
-    warn('trying to calculate the distance from a blank image!\n');
+    warning('MBOCR:blankImg', ...
+            'trying to calculate the distance from a blank image!\n');
     d = inf(num,1);
     return;
 end
@@ -158,5 +165,9 @@ for ii=1:num
     start_idx = start_idx + other_sums(ii);
 end
 
-%now take the average of the two distances to get the overall distance.
-d = mean([img1_to_other_d; other_to_img1_d])';
+%now take the mean/maximum of the two distances to get the overall distance.
+if use_avg
+    d = mean([img1_to_other_d; other_to_img1_d])';
+else
+    d = max([img1_to_other_d; other_to_img1_d])';
+end
