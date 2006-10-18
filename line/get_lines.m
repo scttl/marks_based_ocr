@@ -37,10 +37,14 @@ function [Lines, Comps] = get_lines(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_lines.m,v 1.6 2006-10-09 16:27:52 scottl Exp $
+% $Id: get_lines.m,v 1.7 2006-10-18 16:01:20 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_lines.m,v $
+% Revision 1.7  2006-10-18 16:01:20  scottl
+% by default use the full height (instead of x-height) as scale factor
+% since this improves results.
+%
 % Revision 1.6  2006-10-09 16:27:52  scottl
 % rewritten, introducing a Lines struct, etc.
 %
@@ -314,8 +318,10 @@ Comps.descender_off(:) = Comps.pos(:,4) - (line_tops + line_bases);
 Comps.ascender_off(:) = (line_tops + line_xheights) - Comps.pos(:,2);
 
 fprintf('%.2fs: calculating Component scale factors\n', toc);
-comp_heights = double(line_bases - line_xheights);
+%comp_heights = double(line_bases - line_xheights + 1);
+comp_heights = double(Comps.pos(:,4) - Comps.pos(:,2) + 1);
 Comps.modal_height = mode(comp_heights);
+%Comps.modal_height = max(comp_heights);
 Comps.scale_factor = Comps.modal_height ./ comp_heights;
 
 %if warnings have been turned off, turn them back on
