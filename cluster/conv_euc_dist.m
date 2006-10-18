@@ -17,11 +17,14 @@ function d = conv_euc_dist(img1, other_imgs, norm_sq1, other_norms)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: conv_euc_dist.m,v 1.2 2006-07-22 04:09:38 scottl Exp $
+% $Id: conv_euc_dist.m,v 1.3 2006-10-18 15:45:38 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: conv_euc_dist.m,v $
-% Revision 1.2  2006-07-22 04:09:38  scottl
+% Revision 1.3  2006-10-18 15:45:38  scottl
+% small efficiency fix.
+%
+% Revision 1.2  2006/07/22 04:09:38  scottl
 % rewritten based on new Clust and Comps structures.
 %
 % Revision 1.1  2006/06/03 20:55:47  scottl
@@ -80,7 +83,7 @@ if num_neq > 0
     
     %pass the first img over this matrix as a filter to get points of maximum
     %overlap.  These will provide the centers for overlaying img.
-    img1_sum = sum(sum(img1));
+    img1_sum = sum(img1(:));
     [row_scores, row_idx] = min(abs(filter2(img1, ...
                             other_mat(row_off:row_off+max_row-1,:))-img1_sum));
     [col_idx, col_idx] = min(reshape(row_scores, 2*S1(2)+max_col, num_neq));
