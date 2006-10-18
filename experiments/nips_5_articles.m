@@ -3,15 +3,19 @@
 %determine the lines of the page, and create training data out of each of them
 %(both the lines, and the cluster counts for the "language model")
 
-%diary('../results/nips5_articles.diary');
+global MOCR_PATH;  %used to determine where to save results
+%diary([MOCR_PATH, '/results/nips_5_articles.diary']);
 %diary on;
 
+run_comps=true;
+run_lines=true;
 run_cluster=true;
 run_training_data=true;
 run_dictionary=true;
 run_ocr=true;
 
-Files = ls('/p/learning/scottl/research/TRAINING_DATA/nips_2001/AA0[1-7]*.tif');
+Files = ls('~scottl/research/TRAINING_DATA/nips_2001/AA0[1-7]*.tif');
+
 
 %must convert Files from a single long newline delimited string into a cell 
 %array
@@ -25,39 +29,67 @@ for ii=1:length(idx)
 end
 Files = strtrim(mat2cell(Files, 1, len)');
 
-%now cluster the components
+%get the components
 tic;
-if run_cluster
-    [Clust, Comps] = cluster_comps(Files);
-    fprintf('clustering complete: %f\n', toc);
-    save('../results/nips5_articles.mat', 'Clust', 'Comps');
+if run_comps
+    Comps = get_comps(Files);
+    fprintf('components complete: %f\n', toc);
+    save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Comps');
 end
 
-load('../results/nips5_articles.mat');
+load([MOCR_PATH, '/results/nips_5_articles.mat']);
+
+%determine line boundaries
+if run_lines
+    [Lines, Comps] = get_lines(Comps);
+    fprintf('lines complete: %f\n', toc);
+    save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Comps', 'Lines');
+end
+
+load([MOCR_PATH, '/results/nips_5_articles.mat']);
+
+%now cluster the components
+if run_cluster
+    if run_lines
+        [Clust, Comps] = cluster_comps(Comps, 'Lines', Lines);
+        save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Clust', 'Comps', ...
+             'Lines');
+    else
+        [Clust, Comps] = cluster_comps(Comps);
+        save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Clust', 'Comps');
+    end
+    fprintf('clustering complete: %f\n', toc);
+end
+
+load([MOCR_PATH, '/results/nips_5_articles.mat']);
 
 %now build up a set of training cases (50)
 if run_training_data
     imgs = create_cluster_training_data(Comps, 50);
     fprintf('training data images complete: %f\n', toc);
-    save('../results/nips5_articles.mat', 'Clust', 'Comps', 'imgs');
+    save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Clust', 'Comps', 'imgs');
 end
 
-load('../results/nips5_articles.mat');
+load([MOCR_PATH, '/results/nips_5_articles.mat']);
 
 %now create a language model from the same dataset
 if run_dictionary
     [Clust, Comps] = create_cluster_dictionary(Clust, Comps);
 
     fprintf('dictionary complete: %f\n', toc);
-    save('../results/nips5_articles.mat', 'Clust', 'Comps', 'imgs');
+    save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Clust', 'Comps', 'imgs');
 end
 
-load('../results/nips5_articles.mat');
+load([MOCR_PATH, '/results/nips_5_articles.mat']);
+
 if run_ocr
     %try solving the training image lines on the top 50 clusters (characters)
     [Clust, Comps] = sort_clusters(Clust, Comps);
-    [vals, segs] = do_ocr(imgs, Clust.avg(1:50), double(Clust.offset(1:50)), ...
-                   Clust.bigram(1:50,1:50));
+    [vals, segs, scores] = do_ocr(imgs, Clust.avg(1:50), ...
+                           double(Clust.offset(1:50)), ...
+                           Clust.bigram(1:50,1:50));
+    save([MOCR_PATH, '/results/nips_5_articles.mat'], 'Clust', 'Comps', ...
+         'imgs', 'vals', 'segs', 'scores');
 end
 
-diary off;
+%diary off;
