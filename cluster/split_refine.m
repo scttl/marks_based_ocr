@@ -1,36 +1,29 @@
-function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
+function [Clust, Comps] = split_refine(Clust, Comps, varargin)
 % SPLIT_REFINE   Regroup inappropriately mergred clusters as separate clusters
 %
-%   [Clust, Comps] = split_refine(Clust, Comps, dist_metric, max_splits, thresh)
+%   [CLUST, COMPS] = split_refine(CLUST, COMPS, [VAR1, VAL1]...)
 %
-%   Clust should be struct containing several fields of a particular format.  
+%   CLUST should be struct containing several fields of a particular format.  
 %   See cluster_comps for details.
 %
-%   Comps should be a struct containing component information.  Again see 
-%   cluster_comps for details.
+%   COMPS should be a struct containing component information.  Again see 
+%   get_comps for details.
 %
-%   dist_metric is optional and if specified determines the type of distance
-%   metric used for matching.  Valid options for this parameter are 'euc'
-%   (straight Euclidian distance -- the default), 'conv_euc' (Euclidian distance
-%   after convolving the matrices to find maximal overlapping point),
-%   'hausdorff' to use Hausdorff distance, or 'ham' to use Hamming distance.
+%   default values for parameters defined in LOCAL VARS below can be overridden
+%   by specifying the name as a string in VAR1, and the new value in VAL1.
 %
-%   max_splits is optional and if specified determines the maximum number of
-%   splits to perform on each cluster to check for max_splits + 1 piece matches.
-%   This number should be low to reduce running-time, and defaults to 2 if not 
-%   specified.
-%
-%   thresh is optional and if specified, determines the normalized maximal
-%   Euclidian distance allowable for two cluster averages to be considered 
-%   matching.  If not specified it defaults to a value of .01
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.8 2006-08-24 21:40:04 scottl Exp $
+% $Id: split_refine.m,v 1.9 2006-10-18 15:49:32 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.8  2006-08-24 21:40:04  scottl
+% Revision 1.9  2006-10-18 15:49:32  scottl
+% changes to allow scale-invariant splits, better processing of optional
+% arguments, some efficiency improvements.
+%
+% Revision 1.8  2006/08/24 21:40:04  scottl
 % added ability to use the mode instead of taking the average of cluster
 % intensities while refining.
 %
@@ -60,12 +53,24 @@ function [Clust, Comps] = split_refine(Clust,Comps, dm, ms, thr)
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 dist_metric = 'euc';
-dist_thresh = .01;
-max_splits  = 2;
+dist_thresh = .013;
+max_splits  = 2; %refers to the number of cuts --> max_splits + 1 pieces
 
 bg_val = 0;  %the background pixel value in Comps
-non_nb_val = 0;  %the value to use in Clust if a neighbour doesn't exist
 min_width = inf;
+
+%should we use the average or the mode when combining clusters?
+use_avg = true;
+
+%by default we don't rescale components, unless the boolean below is set to
+%true.  This also requires that Comps.scale_factor exists (and thus that
+%get_lines() has been run)
+resize_imgs = false;
+%which method should be used to resize components (see imresize() for choices)
+resize_method = 'nearest';  
+
+%by default we don't work with thinned representations of the images
+use_thinned_imgs = false;
 
 %should we display matches onscreen (wastes resources)
 display_matches = false;
@@ -73,21 +78,20 @@ display_matches = false;
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 2 || nargin > 5
+if nargin < 2
     error('incorrect number of arguments specified!');
-elseif nargin >= 3
-    dist_metric = dm;
-    if nargin >= 4
-        max_splits = ms;
-        if nargin == 5
-            dist_thresh = thr;
-        end
-    end
+elseif nargin > 2
+    process_optional_args(varargin{:});
 end
 
 %start by determining the pixel width of the smallest element in all the
 %clusters (only split if the cluster width is at least twice this).
-min_width = min(Comps.pos(:,3) - Comps.pos(:,1));
+min_width = min(Comps.pos(:,3) - Comps.pos(:,1) + 1);
+
+modal_height = NaN;
+if resize_imgs && Comps.found_lines
+    modal_height = Comps.modal_height;
+end
 
 rr = find(Clust.refined == false, 1, 'first');
 while ~isempty(rr)
@@ -99,10 +103,16 @@ while ~isempty(rr)
 
     %first ensure that it is large enough to be split
     c_width = size(Clust.avg{rr}, 2);
+    if resize_imgs && Comps.found_lines
+        %since averages have been rescaled, look at typical component width
+        idx = Clust.comps{rr};
+        c_width = mode(double(Comps.pos(idx,3) - Comps.pos(idx,1) + 1));
+    end
     if (c_width >= 2 * min_width)
         idcs = [1:rr-1,rr+1:Clust.num];
         mres = find_match(max_splits, Clust.avg{rr}, Clust, idcs, min_width, ...
-                          dist_metric, dist_thresh);
+                          dist_metric, dist_thresh, modal_height, ...
+                          resize_method, use_thinned_imgs);
         if ~isempty(mres)
             %appropriate match found, reaverage items as appropriate
             fprintf('match found!\r');
@@ -139,13 +149,13 @@ while ~isempty(rr)
                 if isempty(mres.sep_pos)
                     %right-most matching piece.  Use refined existing components
                     [Clust, Comps, mc] = add_and_reaverage(Clust, Comps, ...
-                                         mc, rr);
+                                         mc, rr, 'use_avg', use_avg);
                     Clust.changed(mc) = true;
                 else
                     %not right-most piece.  Create new components for the 
                     %split part and update positions, neighbours etc. of the 
                     %right part.
-                    new_idcs = Comps.max_comp + [1:num_new_comps]';
+                    new_idcs = Comps.max_comp + (1:num_new_comps)';
                     Comps.max_comp = Comps.max_comp + num_new_comps;
                     Comps.clust(new_idcs) = mc;
                     Comps.pos(new_idcs,:) = Comps.pos(old_idcs,:);
@@ -178,31 +188,56 @@ while ~isempty(rr)
                     %component piece
                     top_idx = find(t_nbs(:,3)<=Comps.pos(new_idcs(t_nbs(:,1))));
                     Comps.nb(t_nbs(top_idx,2),2) = new_idcs(t_nbs(top_idx,1));
-                    t_nbs = t_nbs(setdiff([1:size(t_nbs,1)]',top_idx),:);
+                    t_nbs = t_nbs(setdiff((1:size(t_nbs,1))',top_idx),:);
                     bot_idx = find(b_nbs(:,3)<=Comps.pos(new_idcs(b_nbs(:,1))));
                     Comps.nb(b_nbs(bot_idx,2),4) = new_idcs(b_nbs(bot_idx,1));
-                    b_nbs = b_nbs(setdiff([1:size(b_nbs,1)]',bot_idx),:);
+                    b_nbs = b_nbs(setdiff((1:size(b_nbs,1))',bot_idx),:);
 
-                    Comps.offset(new_idcs) = Comps.offset(old_idcs) + ...
-                           int16(Comps.pos(new_idcs,4)) - ...
-                           int16(Comps.pos(old_idcs,4));
+                    if Comps.found_lines
+                        Comps.line(new_idcs) = Comps.line(old_idcs);
+                        Comps.descender_off(new_idcs) =  ...
+                               Comps.descender_off(old_idcs) + ...
+                               int16(Comps.pos(new_idcs,4)) - ...
+                               int16(Comps.pos(old_idcs,4));
+                        Comps.ascender_off(new_idcs) =  ...
+                               Comps.ascender_off(old_idcs) + ...
+                               int16(Comps.pos(new_idcs,2)) - ...
+                               int16(Comps.pos(old_idcs,2));
+                        Comps.scale_factor(new_idcs) = ...
+                               Comps.scale_factor(old_idcs);
+                    end
+
+                    if Comps.found_true_labels
+                        Comps.truth_label(new_idcs) = ...
+                               Comps.truth_label(old_idcs);
+                    end
 
                     %add these new components to the appropriate cluster
                     num_prev_comps = Clust.num_comps(mc);
                     Clust.num_comps(mc) = Clust.num_comps(mc) + num_new_comps;
-                    Clust.mode_num(mc) = Clust.mode_num(mc) + num_new_comps;
                     Clust.comps{mc} = [Clust.comps{mc}; new_idcs];
-                    %note that the size of the matching averages may differ
-                    %slightly, so we resize the match if required
-                    if any(size(Clust.avg{mc}) ~= size(mres.avg{1}))
-                        mres.avg{1} = imresize(mres.avg{1}, ...
-                                      size(Clust.avg{mc}));
+
+                    if use_avg
+                        Clust.mode_num(mc) = Clust.mode_num(mc) + num_new_comps;
+                        %note that the size of the matching averages may differ
+                        %slightly, so we resize the match if required
+                        if any(size(Clust.avg{mc}) ~= size(mres.avg{1}))
+                            mres.avg{1} = imresize(mres.avg{1}, ...
+                                          size(Clust.avg{mc}));
+                        end
+                        Clust.avg{mc} = (num_prev_comps/Clust.num_comps(mc) ...
+                                        .* Clust.avg{mc}) + ...
+                                        (num_new_comps/Clust.num_comps(mc) ...
+                                        .* mres.avg{1});
+                    else
+                        %take the mode
+                        idcs = [mc; rr];
+                        [md_val,md_idx] = max(Clust.mode_num(idcs));
+                        Clust.avg{mc} = Clust.avg{idcs(md_idx)};
+                        Clust.mode_num(mc) = md_val;
                     end
-                    Clust.avg{mc} = (num_prev_comps/Clust.num_comps(mc) .* ...
-                                    Clust.avg{mc}) + ...
-                                    (num_new_comps/Clust.num_comps(mc) .* ...
-                                    mres.avg{1});
-                    Clust.norm_sq(mc) = sum(sum(Clust.avg{mc}.^2));
+
+                    Clust.norm_sq(mc) = sum(Clust.avg{mc}(:).^2);
                     Clust.changed(mc) = true;
 
                     if length(mres.sep_pos) == 1
@@ -213,7 +248,7 @@ while ~isempty(rr)
                         row = sort(row); col = sort(col);
                         Clust.avg{rr} = Clust.avg{rr}(row(1):row(end),...
                                                       col(1):col(end));
-                        Clust.norm_sq(rr) = sum(sum(Clust.avg{rr}.^2));
+                        Clust.norm_sq(rr) = sum(Clust.avg{rr}(:).^2);
                     end
                 end
 
@@ -254,7 +289,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function match = find_match(num_splits, C, Clust, idcs, min_width, ...
-                 dist_metric, thresh)
+                 dist_metric, thresh, modal_height, resize_method, thin_img)
 %this function attempts to recursively match halves using at most num_splits
 %splits.  Match will be empty if no successful match could be found otherwise, 
 %it will be a struct with fields: match.clust, match.sep_pos, and match.avg
@@ -268,13 +303,13 @@ bg_val = 0;  %value used for background pixels
 
 %attempt first to find a single valid match of all of C in Clust
 if strcmp(dist_metric, 'euc')
-    D = euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+    D = euc_dist(C, Clust.avg(idcs), sum(C(:).^2), Clust.norm_sq(idcs));
 elseif strcmp(dist_metric, 'hausdorff')
     D = hausdorff_dist(C, Clust.avg(idcs));
 elseif strcmp(dist_metric, 'ham')
     D = ham_dist(C, Clust.avg(idcs));
 elseif strcmp(dist_metric, 'conv_euc')
-    D = conv_euc_dist(C, Clust.avg(idcs), sum(sum(C.^2)), Clust.norm_sq(idcs));
+    D = conv_euc_dist(C, Clust.avg(idcs), sum(C(:).^2), Clust.norm_sq(idcs));
 else
     error('incorrect distance metric specified!');
 end
@@ -300,11 +335,35 @@ if num_splits >= 1
 
         %first trim any blank space from L to create a tight bounding box
         [lrow, lcol] = find(L ~= bg_val);
+        if isempty(lrow) && isempty(lcol)
+            %left side is completely empty, just move on to next cut position
+            warning('MBOCR:LeftEmpty', 'left side completely empty');
+            cut_pos = cut_pos + 1;
+            continue;
+        end
         lrow = sort(lrow);
         lcol = sort(lcol);
         L = L(lrow(1):lrow(end),lcol(1):lcol(end));
 
-        D = euc_dist(L, Clust.avg(idcs), sum(sum(L.^2)), Clust.norm_sq(idcs));
+        if modal_height ~= NaN
+            L = imresize(L, modal_height ./ size(L,1), resize_method);
+        end
+        if thin_img
+            L = double(bwmorph(L, 'thin', Inf));
+        end
+
+        if strcmp(dist_metric, 'euc')
+            D = euc_dist(L, Clust.avg(idcs), sum(L(:).^2), Clust.norm_sq(idcs));
+        elseif strcmp(dist_metric, 'hausdorff')
+            D = hausdorff_dist(L, Clust.avg(idcs));
+        elseif strcmp(dist_metric, 'ham')
+            D = ham_dist(L, Clust.avg(idcs));
+        elseif strcmp(dist_metric, 'conv_euc')
+            D = conv_euc_dist(L, Clust.avg(idcs), sum(L(:).^2), ...
+                Clust.norm_sq(idcs));
+        else
+            error('incorrect distance metric specified!');
+        end
         [val, idx] = min(D);
         if val <= thresh
             %ensure we can find a right half match in up to one fewer splits
@@ -314,7 +373,7 @@ if num_splits >= 1
             col = sort(col);
             R = R(row(1):row(end), col(1):col(end));
             mres = find_match(num_splits-1, R, Clust, idcs, min_width, ...
-                              dist_metric, thresh);
+                   dist_metric, thresh, modal_height, resize_method, thin_img);
             if ~isempty(mres)
                 %right match found!
                 match.clust = [idcs(idx), mres.clust];
