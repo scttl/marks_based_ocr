@@ -64,10 +64,13 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.2 2006-10-09 16:30:39 scottl Exp $
+% $Id: get_comps.m,v 1.3 2006-10-18 15:52:10 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.3  2006-10-18 15:52:10  scottl
+% small fix for optional argument passing.
+%
 % Revision 1.2  2006-10-09 16:30:39  scottl
 % added parameters for modal height, scale factor, and groundtruth label.
 %
@@ -137,7 +140,7 @@ tic;
 if nargin < 1
     error('must specify at least one file to process!');
 elseif nargin > 1
-    process_optional_args(varargin);
+    process_optional_args(varargin{:});
 end
 
 
