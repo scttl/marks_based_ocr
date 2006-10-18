@@ -1,34 +1,30 @@
-function [Clust, Comps] = match_refine(Clust, Comps, dm, thr)
+function [Clust, Comps] = match_refine(Clust, Comps, varargin)
 % match_refine  Attempt to match near-identical Clusters
 %
-%   [Clust, Comps, chg_list] = match_refine(Clust, Comps, [dist_metric, thresh])
+%   [Clust, Comps, chg_list] = match_refine(Clust, Comps, [VAR1, VAL1]...)
 %
 %   Clust should be a struct containing several fields specifying which 
 %   components belong to each cluster, and their averages etc.  See 
 %   cluster_comps for details.
 %
 %   Comps should be a struct containing component information.  See 
-%   cluster_comps for details.
+%   get_comps for details.
 %
-%   dist_metric is optional and if specified determines the type of distance
-%   metric used for matching.  Valid options for this parameter are 'euc'
-%   (straight Euclidian distance -- the default), 'conv_euc' (Euclidian distance
-%   after convolving the matrices to find maximal overlapping point), 
-%   'hausdorff' to use Hausdorff distance, or 'ham' for Hamming distance
-%
-%   thresh is optional and if specified, determines the maximal 
-%   distance allowable for two cluster averages to be considered 
-%   matching.  If not specified, it defaults to .009 (suitable for use with
-%   'euc' as a distance metric).
+%   optional parameters defined in LOCAL VARS below can be overridden by
+%   passing in a string representation of the variable name in VAR1, and its
+%   new value in VAL1.
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.6 2006-08-30 17:38:23 scottl Exp $
+% $Id: match_refine.m,v 1.7 2006-10-18 15:39:22 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.6  2006-08-30 17:38:23  scottl
+% Revision 1.7  2006-10-18 15:39:22  scottl
+% optional argument reorganization.
+%
+% Revision 1.6  2006/08/30 17:38:23  scottl
 % implement batches for Hausdorff matching to prevent memory issues for large
 % cluster sizes.
 %
@@ -56,20 +52,21 @@ dist_metric = 'euc';              %default distance metric
 distance_thresh = 0.009;          %default distance threshold
 
 %process at most this many clusters at a time to prevent memory issues
-haus_batchsize = 2500; 
+haus_batchsize = 2000; 
+
+%by default take the average when combining clusters (instead of the mode).
+use_avg = true;
+
 
 display_images = false;  %set this to true to display matches as they are found
 
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 2 || nargin > 4
+if nargin < 2
     error('incorrect number of arguments specified!');
-elseif nargin >= 3
-    dist_metric = dm;
-    if nargin >= 4
-        distance_thresh = thr;
-    end
+elseif nargin > 2
+    process_optional_args(varargin{:});
 end
 
 %go through each unrefined cluster and attempt to group it with other clusters
@@ -120,13 +117,8 @@ while ~isempty(rr)
             pause(.5);
         end
         %merge the clusters together, note that this will re-order the clusters
-        if strcmp(dist_metric, 'hausdorff')
-            %take the mode instead of averaging pixel intensenties
-            [Clust, Comps,idx] = add_and_reaverage(Clust, Comps, rr, ...
-                                 match_idcs, true);
-        else
-            [Clust, Comps,idx] = add_and_reaverage(Clust,Comps,rr,match_idcs);
-        end
+        [Clust, Comps,idx] = add_and_reaverage(Clust, Comps, rr, ...
+                             match_idcs, 'use_avg', use_avg);
         %mark the new cluster as changed, so it will be scanned on subsequent
         %checks
         Clust.changed(idx) = true;
