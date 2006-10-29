@@ -36,10 +36,13 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_ocr_results.m,v 1.10 2006-09-18 21:01:28 scottl Exp $
+% $Id: display_ocr_results.m,v 1.11 2006-10-29 17:20:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_ocr_results.m,v $
+% Revision 1.11  2006-10-29 17:20:54  scottl
+% small change in parameter name.
+%
 % Revision 1.10  2006-09-18 21:01:28  scottl
 % no change.
 %
@@ -76,9 +79,9 @@ function display_ocr_results(indices, start_pos, bitmaps, base_offs, num, ...
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 
-%set save_averages to true to write the averages to disk based on the params
+%set save_averages to true to write the results to disk based on the params
 %below it
-save_averages = false;
+save_results = false;
 global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
 img_prefix = [MOCR_PATH, '/results/ocr_res'];
 img_format = 'png';
@@ -267,7 +270,7 @@ M = cell2mat(M);
 imshow(M);
 
 %save the image to disk if required.
-if save_averages
+if save_results
     fprintf('writing ocr image to disk\n');
     imwrite(M, [img_prefix, '.', img_format], img_format);
 end
