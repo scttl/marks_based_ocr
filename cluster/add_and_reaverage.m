@@ -26,10 +26,14 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.7 2006-10-09 16:35:40 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.8 2006-10-29 17:24:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
+% Revision 1.8  2006-10-29 17:24:54  scottl
+% change to cluster struct, to use descender and ascender offsets, instead
+% of a single offset field.
+%
 % Revision 1.7  2006-10-09 16:35:40  scottl
 % changes to argument processing and variable overriding.
 %
@@ -133,7 +137,10 @@ Clust.avg = Clust.avg(keep_list);
 Clust.norm_sq = Clust.norm_sq(keep_list);
 Clust.refined = Clust.refined(keep_list);
 Clust.changed = Clust.changed(keep_list);
-Clust.offset = Clust.offset(keep_list);
+if Clust.found_offsets
+    Clust.descender_off = Clust.descender_off(keep_list);
+    Clust.ascender_off = Clust.ascender_off(keep_list);
+end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_list, keep_list);
 end

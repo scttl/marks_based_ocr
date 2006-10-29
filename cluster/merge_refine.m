@@ -17,11 +17,15 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.6 2006-10-18 15:47:17 scottl Exp $
+% $Id: merge_refine.m,v 1.7 2006-10-29 17:24:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
-% Revision 1.6  2006-10-18 15:47:17  scottl
+% Revision 1.7  2006-10-29 17:24:54  scottl
+% change to cluster struct, to use descender and ascender offsets, instead
+% of a single offset field.
+%
+% Revision 1.6  2006/10/18 15:47:17  scottl
 % changes to introduce scale invariant matches, better parameter
 % processing
 %
@@ -219,8 +223,10 @@ while ~ isempty(rr)
                                 use_thinned_imgs, resize_imgs, resize_method);
                 Clust.norm_sq(rr) = sum(Clust.avg{rr}(:).^2);
                 if Comps.found_lines
-                    Clust.offset(rr) = int16(mode(single(...
+                    Clust.descender_off(rr) = int16(mode(single(...
                                    Comps.descender_off(r_unmerged_comps))));
+                    Clust.ascender_off(rr) = int16(mode(single(...
+                                   Comps.ascender_off(r_unmerged_comps))));
                 end
             end
             if length(lnb_merge_comps) ~= Clust.num_comps(mf_clust)
@@ -237,8 +243,10 @@ while ~ isempty(rr)
                                  use_thinned_imgs, resize_imgs, resize_method);
                 Clust.norm_sq(mf_clust) = sum(Clust.avg{mf_clust}(:).^2);
                 if Comps.found_lines
-                    Clust.offset(mf_clust) = int16(mode(single(...
+                    Clust.descender_off(mf_clust) = int16(mode(single(...
                                      Comps.descender_off(lnb_unmerged_comps))));
+                    Clust.ascender_off(mf_clust) = int16(mode(single(...
+                                     Comps.ascender_off(lnb_unmerged_comps))));
                 end
             else
                 %flag the left-half cluster for removal
@@ -253,8 +261,10 @@ while ~ isempty(rr)
                                  use_thinned_imgs, resize_imgs, resize_method);
             Clust.norm_sq(merge_clust) = sum(Clust.avg{merge_clust}(:).^2);
             if Comps.found_lines
-                Clust.offset(merge_clust) = int16(mode(single(...
+                Clust.descender_off(merge_clust) = int16(mode(single(...
                                         Comps.descender_off(r_merge_comps))));
+                Clust.ascender_off(merge_clust) = int16(mode(single(...
+                                        Comps.ascender_off(r_merge_comps))));
             end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
@@ -391,8 +401,10 @@ while ~ isempty(rr)
                                 use_thinned_imgs, resize_imgs, resize_method);
                 Clust.norm_sq(rr) = sum(Clust.avg{rr}(:).^2);
                 if Comps.found_lines
-                    Clust.offset(rr) = int16(mode(single(...
+                    Clust.descender_off(rr) = int16(mode(single(...
                                    Comps.descender_off(r_unmerged_comps))));
+                    Clust.ascender_off(rr) = int16(mode(single(...
+                                   Comps.ascender_off(r_unmerged_comps))));
                 end
             end
             if length(tnb_merge_comps) ~= Clust.num_comps(mf_clust)
@@ -409,8 +421,10 @@ while ~ isempty(rr)
                                 use_thinned_imgs, resize_imgs, resize_method);
                 Clust.norm_sq(merge_clust) = sum(Clust.avg{mf_clust}(:).^2);
                 if Comps.found_lines
-                    Clust.offset(merge_clust) = int16(mode(single(...
+                    Clust.descender_off(merge_clust) = int16(mode(single(...
                                     Comps.descender_off(tnb_unmerged_comps))));
+                    Clust.ascender_off(merge_clust) = int16(mode(single(...
+                                    Comps.ascender_off(tnb_unmerged_comps))));
                 end
             else
                 %flag the top-half cluster for removal
@@ -425,8 +439,10 @@ while ~ isempty(rr)
                                 use_thinned_imgs, resize_imgs, resize_method);
             Clust.norm_sq(merge_clust) = sum(Clust.avg{merge_clust}(:).^2);
             if Comps.found_lines
-                Clust.offset(merge_clust) = int16(mode(single(...
+                Clust.descender_off(merge_clust) = int16(mode(single(...
                                         Comps.descender_off(r_merge_comps))));
+                Clust.ascender_off(merge_clust) = int16(mode(single(...
+                                        Comps.ascender_off(r_merge_comps))));
             end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
@@ -484,8 +500,9 @@ Clust.avg = Clust.avg(keep_clust);
 Clust.norm_sq = Clust.norm_sq(keep_clust);
 Clust.refined = Clust.refined(keep_clust);
 Clust.changed = Clust.changed(keep_clust);
-if Comps.found_lines
-    Clust.offset = Clust.offset(keep_clust);
+if Clust.found_offsets
+    Clust.descender_off = Clust.descender_off(keep_clust);
+    Clust.ascender_off = Clust.ascender_off(keep_clust);
 end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_clust,keep_clust);

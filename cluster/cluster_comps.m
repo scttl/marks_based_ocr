@@ -30,15 +30,19 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %               further processed
 %     changed - a boolean vector used to determine whether a cluster has
 %               changed (gained or lost components) during a refinement pass.
-%     offset - this holds the most frequently occuring relative position of the
-%              bottom edge of the component from the baseline.  Positive values
-%              refer to the number of pixels below the baseline, the bottom of
-%              the image lies, and negative refers to pixels above the baseline.
-%              Note that this is not calculated in this function (thus 
-%              found_offsets is false -- see below).
 %     found_offsets - this is a boolean that will be set to true if offset 
 %                     values for each cluster have been calculated and false
 %                     otherwise.
+%     descender_off - this holds the most frequently occuring relative position 
+%                     of the bottom edge of the components from the baseline.  
+%                     Positive values refer to the number of pixels below the 
+%                     baseline, the bottom of the image lies, and negative 
+%                     refers to pixels above the baseline.
+%     ascender_off - this holds the most frequently occuring relative position 
+%                    of the top edge of the components from the x-height.  
+%                     Positive values refer to the number of pixels below the 
+%                     x-height, the top of the image lies, and negative 
+%                     refers to pixels above the x-height.
 %     num_trans - a scalar that determines the number of left-right component
 %                 transitions found.  Note that this is not calculated here
 %     bigram - a num x num matrix that denotes (smoothed) transition 
@@ -48,11 +52,15 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.8 2006-10-18 15:51:16 scottl Exp $
+% $Id: cluster_comps.m,v 1.9 2006-10-29 17:24:53 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
-% Revision 1.8  2006-10-18 15:51:16  scottl
+% Revision 1.9  2006-10-29 17:24:53  scottl
+% change to cluster struct, to use descender and ascender offsets, instead
+% of a single offset field.
+%
+% Revision 1.8  2006/10/18 15:51:16  scottl
 % Excised Component related work, and moved to a different block of code.
 % Updates to better process optional arguments.
 %
@@ -172,7 +180,11 @@ for pp=1:length(Comps.files)
     Clust.norm_sq(clust_idcs,1) = 0;
     Clust.refined(clust_idcs,1) = false;
     Clust.changed(clust_idcs,1) = false;
-    Clust.offset(clust_idcs,1) = 0;  %@@
+    if Comps.found_lines
+        Clust.found_offsets = true;
+        Clust.descender_off(clust_idcs,1) = Comps.descender_off(comp_idcs);
+        Clust.ascender_off(clust_idcs,1) = Comps.ascender_off(comp_idcs);
+    end
 
     %update the avg and norm_sq fields
     [Clust.avg(clust_idcs), Clust.norm_sq(clust_idcs)] = get_comp_imgs(...
@@ -299,7 +311,8 @@ Clust.avg = {};
 Clust.norm_sq = [];
 Clust.refined = logical([]);
 Clust.changed = logical([]);
-Clust.offset = int16([]);
 Clust.found_offsets = false;
+Clust.descender_off = int16([]);
+Clust.ascender_off = int16([]);
 Clust.num_trans = 0;
 Clust.bigram = [];
