@@ -1,128 +1,98 @@
-function [bitmaps, offsets, charnames]=dofont(fontname, cn)
-% DOFONT  Create bitmaps of characters using the pk font passed
+function bitmaps = generate_templates(fontname, cn, varargin)
+% GENERATE_TEMPLATES  Create bitmaps of characters using the fontname passed
 %
-%   [bitmaps, offsets, charnames]=dofont(fontname, [character_list])
-%   This procedure takes the list of ASCII characters passed in via 
-%   character_list, or uses upper and lower case, letters, period and space if
-%   not given, to create bitmap images (logical arrays) of each character using
-%   the fontfile passed in fontname (should include the path as well)
+%   bitmaps = generate_templates(fontname, charnames, [var1, val1]...)
+%   This procedure makes use of ImageMagick's convert utility to generate
+%   bitmap images of a particular font in a given size.
 %
-%   fontname should give the full path and name of a .pk (packed font file).
-%   If the font doesn't exist, an error is returned
+%   fontname should be the name of a font that ImageMagick knows about.
+%   If ImageMagick isn't present, or doesn't know about the fontname, an error
+%   is returned.
 %
-%   character_list is optional and if specified should be a character array
-%   listing the individal ASCII characters to generate bitmaps of.  If not 
-%   given, we generate bitmaps of: A-Z, a-z, ' ', '.'
-%
-%   See Also: pk2bm UNIX utility
+%   charnames should be a list of characters to generate bitmaps of.
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_templates.m,v 1.3 2006-07-28 22:19:03 scottl Exp $
+% $Id: generate_templates.m,v 1.4 2006-10-29 17:05:49 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_templates.m,v $
-% Revision 1.3  2006-07-28 22:19:03  scottl
-% create tight bounding boxes, and calculate vertical offsets instead of
-% resizing.
+% Revision 1.4  2006-10-29 17:05:49  scottl
+% moved and renamed dofont.m to generate_templates.m.  Rewritten to make
+% use of imageMagick's convert utility.
 %
-% Revision 1.2  2006/07/05 01:01:54  scottl
-% small spelling fixups.
-%
-% Revision 1.1  2006/06/10 21:01:36  scottl
-% Initial revision.
-%
+
 
 % LOCAL VARIABLES %
 %%%%%%%%%%%%%%%%%%%
-charnames=char([32,46,65:90,97:122]);
+ptsize = 32; %default pointsize
 
-pat = ['.* height : (\d+)\n', ... %get the value of the height
-       '.* width : (\d+)\n', ... %the value of the width
-       '.* xoff : (\d+|-\d+)\n', ... %x offset (can be +ve or -ve)
-       '.* yoff : (\d+|-\d+)\n\n', ... %y offset (again +ve or -ve)
-       '(.*)'];   %this will initially hold the character bitmap
+%where should the temporary image be generated (will be deleted)
+tmp_img = '/tmp/tmp_template.png';
+
+%should we remove the dots above lowercase i, and j characters?
+strip_dots = true;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 1 || nargin > 2
+if nargin < 2
     error('incorrect number of arguments specified!');
-elseif nargin == 2
-    charnames = cn;
+elseif nargin > 2
+    process_optional_args(varargin{:});
 end
 
-[fid, msg] = fopen(fontname);
-if fid == -1
-    error('unable to find/open the font file: %s.\nReason: %s', fontname, msg);
-end
-fclose(fid);
-
-numchars=length(charnames);
+numchars=length(cn);
 
 for ii=1:numchars
-    thischar=charnames(ii);
-    fprintf(1,'Char %c (%d/%d)\n',thischar,ii,numchars);
+    fprintf(1,'Char %c (%d/%d)\n',cn(ii),ii,numchars);
 
-    [s,w] = unix(['pk2bm -b -c''', thischar, ''' ', fontname]);
-    if s ~= 0
-        error('problem running pk2bm: %s', w);
+    if strcmp(cn(ii), ' ')
+        %space character.  Can't render a bitmap of this using imagemagick
+        %so we'll just create one by hand, using ptsize as a loose guide
+        dims = floor(ptsize/2);
+        bitmaps{ii,:} = zeros(dims,dims);
+        continue;
+    elseif strcmp(cn(ii), '''')
+        %since the character is a single quote, we must escape it differently
+        %for the shell
+        cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
+                     num2str(ptsize), ' label:"\''" ', tmp_img];
+    elseif strcmp(cn(ii), '"')
+        cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
+                     num2str(ptsize), ' label:''\"'' ', tmp_img];
+    elseif strcmp(cn(ii), '@')
+        cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
+                     num2str(ptsize), ' label:''\', cn(ii), ''' ', tmp_img];
+    else
+        cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
+                     num2str(ptsize), ' label:''', cn(ii), ''' ', tmp_img];
     end
-    % if run successfully, pk2bm output is something like the following:
-    %    
-    %character : 97 (a)
-    %   height : 18
-    %    width : 18
-    %     xoff : -2
-    %     yoff : 17
-    %
-    %  ...*******........
-    %  ..**.....***......
-    %  .****.....***.....
-    %  .****......***....
-    %  ..**.......***....
-    %  ...........***....
-    %  ...........***....
-    %  .......*******....
-    %  ....****...***....
-    %  ..***......***....
-    %  .***.......***....
-    %  .**........***....
-    %  ***........***...*
-    %  ***........***...*
-    %  ***........***...*
-    %  .**.......****...*
-    %  ..**.....*..***.*.
-    %  ...******....***..
+    [s,w] = unix(cmd);
 
-    res = regexp(w, pat, 'tokens');
+    if s ~= 0
+        unix(['rm -f ' tmp_img]);
+        error('problem running ImageMagick: %s', w);
+    end
 
-    vals(ii,1) = str2num(res{1}{3});
-    vals(ii,2) = str2num(res{1}{4});
-    
-    vals(ii,3) = str2num(res{1}{1});
-    vals(ii,4) = str2num(res{1}{2});
+    bitmaps{ii,:} = ~im2bw(imread(tmp_img),0.5);  %convert to binary
 
-    bitmaps{ii} = zeros(vals(ii,3), vals(ii,4));
+    unix(['rm -f ' tmp_img]);
 
-    %we convert the string into a matrix, then trim the 2 leading spaces, and
-    %trailing single newline character from the matrix, then convert this to
-    %a numeric array
-    on_idx = find(strtrim(reshape(res{1}{5}, vals(ii,4)+3, ...
-             vals(ii,3))') == '*');
-    bitmaps{ii}(on_idx) = 1;
-
-end
-
-%the baseline offsets are calculated as the difference between the height of
-%the character and its corresponding yoff.  Note that we must subtract 1 from
-%this value because of the way the offsets are done in metafont. 
-offsets = vals(:,3) - vals(:,2) - 1;
-
-%must manually fixup the space character (if it appears) since it isn't
-%completely blank
-space_idx = find(charnames == ' ');
-if space_idx
-    bitmaps{space_idx} = logical(zeros(size(bitmaps{space_idx})));
-    offsets(space_idx) = 0;
+    if strip_dots && (strcmp(cn(ii), 'i') || strcmp(cn(ii), 'j'))
+        %strip the dots from these lowercase letters to match what we do during
+        %connected components finding
+        [lbl_img, count] = bwlabel(bitmaps{ii,:});
+        if count == 2
+            min_label = 1;
+            min_count = sum(lbl_img == 1);
+            if sum(lbl_img == 2) <= min_count
+                min_label = 2;
+            end
+            bitmaps{ii}(lbl_img == min_label) = 0;
+        elseif count > 2
+            warning('MBOCR:TooManyComp', 'More than 2 comps found!\n');
+        end
+    end
 end
