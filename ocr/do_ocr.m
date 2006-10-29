@@ -1,12 +1,15 @@
-function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
-                                lang_model, use_sl, pmt)
+function [vals, segs, scores] = do_ocr(data, data_baselines, char_bitmaps, ...
+                                char_offsets, lang_model, varargin)
 % DO_OCR   Run language-model based OCR on the line images of data passed
 %
-%   [vals, segs, scores] = DO_OCR(data, char_bitmaps, char_offsets, lang_model,
-%                          [use_shortlist, prematch_thresh])
+%   [vals, segs, scores] = DO_OCR(data, data_baselines, char_bitmaps, 
+%                          char_offsets, lang_model, [var1, val1]...)
 %   data should either be a logical array, or a cell array of logical arrays
 %   (one per row) each of which is an image representation of a sentence/line
 %   upon which we will perform OCR.
+%
+%   data_baselines are the number of pixels offset from the bottom edge of the
+%   corresponding data image, that most characters begin at (except descenders)
 %
 %   char_bitmaps should be a cell array of logical arrays representing the 
 %   individual characters in our alphabet (1 per cell entry).
@@ -22,15 +25,6 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
 %   same number of rows as columns, and both dimensions should be the same
 %   size as the char_bitmaps cell array.
 %
-%   use_shortlist is an optional boolean that when set to true, will limit the
-%   number of character models considered for each column.  It defaults to
-%   false.
-%
-%   prematch_thresh is optional and if passed it will be used as a threhsold 
-%   to pre-scan the line images, and attempt to do a straight Euclidean distance
-%   match with char_bitmaps that fit within the threshold.  This constrains the
-%   line solver, and should hopefully speed things up.
-%
 %   vals will either be an ASCII character array, or a cell array of char arrays
 %   containing the sequence of recognized characters found in each image.
 %
@@ -41,13 +35,31 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
 %   specifying the score of the corresponding recognized character found in
 %   each image.
 %
+%   the following parameters are optional and can have their values overridden
+%   by specifying the parameter name as a string, then its new value at the end
+%   of the parameter list.
+%
+%   use_shortlist is an optional boolean that when set to true, will limit the
+%   number of character models considered for each column.  It defaults to
+%   false.
+%
+%   prematch_thresh is optional and if passed it will be used as a threhsold 
+%   to pre-scan the line images, and attempt to do a straight Euclidean distance
+%   match with char_bitmaps that fit within the threshold.  This constrains the
+%   line solver, and should hopefully speed things up.
+%
+
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: do_ocr.m,v 1.12 2006-09-22 18:01:09 scottl Exp $
+% $Id: do_ocr.m,v 1.13 2006-10-29 17:10:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: do_ocr.m,v $
+% Revision 1.13  2006-10-29 17:10:45  scottl
+% implemented new argument processing facilities, cleaned up a couple of
+% comments.
+%
 % Revision 1.12  2006-09-22 18:01:09  scottl
 % added MSGID to warning messgae.
 %
@@ -91,8 +103,8 @@ function [vals, segs, scores] = do_ocr(data, char_bitmaps, char_offsets, ...
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-ins_prob = 1e-6;
-del_prob = 1e-6;
+ins_prob = .4; %1e-6;
+del_prob = .4; %1e-6;
 min_window_width = 1;
 max_window_width = 15;
 
@@ -116,22 +128,15 @@ return_cell = true; %return a cell structure unless there is only one input line
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 4 || nargin > 6
+if nargin < 5
     error('incorrect number of arguments specified!');
-elseif nargin >= 5
-    if use_sl
-        use_prematch = true;
-    else
-        max_sl_size = length(char_bitmaps);
-    end
-    if nargin == 6
-        use_prematch = true;
-        prematch_thresh = pmt;
-    end
+elseif nargin > 5
+    process_optional_args(varargin{:});
 end
 
 %imresize has problems when char_offsets are not doubles.
 char_offsets = double(char_offsets);
+data_baselines = double(data_baselines);
 
 num_chars = length(char_bitmaps);
 if any(size(lang_model) ~= [num_chars num_chars])
@@ -141,10 +146,6 @@ if num_chars ~= length(char_offsets)
     error('char_bitmaps length does not match char_offsets length!');
 end
 
-%first get the baseline offsets of each training case (to realign and resize
-%the char bitmaps)
-fprintf('%.2fs: acquiring training data image baselines\n', toc);
-data_offsets = get_baselines(data);
 
 if ~ iscell(data)
     return_cell = false;
@@ -160,7 +161,7 @@ cand_lens = [];
 for ii=1:num_cases
     fprintf('%.2fs: augmenting character bitmaps for line %d\n', toc, ii);
     aug_char_bitmaps = augment_bitmaps(char_bitmaps, char_offsets, ...
-                       size(data{ii},1), data_offsets(ii));
+                       size(data{ii},1), data_baselines(ii));
 
     if use_prematch
         fprintf('%.2fs: attempting to pre-match bitmaps against line %d\n', ...
@@ -256,7 +257,7 @@ end
 %image as well as a scalar giving the number of pre-matches.  Each vector in 
 %the cell array gives a list of possible candidate indices and may be a 
 %single candidate if it is below or equal to the threshold passed.  The 3rd
-%paramter, specifies the maximum length of each columns short-list
+%parameter specifies the maximum length of each columns short-list
 function [candidates, nm] = prematch_line(line, bitmaps, max_models, threshold)
 
 pct = .75;  %percentage of perfect pixel match for the model to the data
