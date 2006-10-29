@@ -14,11 +14,14 @@ function display_offset_bitmaps(bitmaps, base_offs)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_offset_bitmaps.m,v 1.4 2006-09-05 15:50:45 scottl Exp $
+% $Id: display_offset_bitmaps.m,v 1.5 2006-10-29 17:21:38 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_offset_bitmaps.m,v $
-% Revision 1.4  2006-09-05 15:50:45  scottl
+% Revision 1.5  2006-10-29 17:21:38  scottl
+% no change.
+%
+% Revision 1.4  2006/09/05 15:50:45  scottl
 % made use of MOCR_PATH variable for saving in the results directory.
 %
 % Revision 1.3  2006/08/30 17:35:26  scottl
