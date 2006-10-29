@@ -9,7 +9,7 @@
 %%       to point at the path where this file resides, then executre this
 %%       file.
 %% CVS:
-%% $Id: marks_ocr_init.m,v 1.4 2006-09-22 18:02:11 scottl Exp $
+%% $Id: marks_ocr_init.m,v 1.5 2006-10-29 17:01:02 scottl Exp $
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('Initializing Marks-Based OCR\n');
@@ -34,3 +34,4 @@ addpath([MOCR_PATH, '/util']);
 addpath([MOCR_PATH, '/display']);
 addpath([MOCR_PATH, '/ocr']);
 addpath([MOCR_PATH, '/lang_model']);
+addpath([MOCR_PATH, '/symbol']);
