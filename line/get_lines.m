@@ -37,11 +37,14 @@ function [Lines, Comps] = get_lines(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_lines.m,v 1.7 2006-10-18 16:01:20 scottl Exp $
+% $Id: get_lines.m,v 1.8 2006-10-29 17:11:27 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_lines.m,v $
-% Revision 1.7  2006-10-18 16:01:20  scottl
+% Revision 1.8  2006-10-29 17:11:27  scottl
+% bugfix to ensure negative offsets are correctly calculated and stored.
+%
+% Revision 1.7  2006/10/18 16:01:20  scottl
 % by default use the full height (instead of x-height) as scale factor
 % since this improves results.
 %
@@ -314,8 +317,8 @@ fprintf('%.2fs: calculating Component ascender and descender offsets\n', toc);
 line_tops = Lines.pos(Comps.line, 2);
 line_bases = Lines.baseline(Comps.line);
 line_xheights = Lines.xheight(Comps.line);
-Comps.descender_off(:) = Comps.pos(:,4) - (line_tops + line_bases);
-Comps.ascender_off(:) = (line_tops + line_xheights) - Comps.pos(:,2);
+Comps.descender_off(:) = int16(Comps.pos(:,4)) - int16(line_tops+line_bases);
+Comps.ascender_off(:) = int16(line_tops+line_xheights) - int16(Comps.pos(:,2));
 
 fprintf('%.2fs: calculating Component scale factors\n', toc);
 %comp_heights = double(line_bases - line_xheights + 1);
