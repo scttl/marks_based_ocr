@@ -21,11 +21,14 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.4 2006-10-18 15:42:05 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.5 2006-10-29 17:23:17 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
-% Revision 1.4  2006-10-18 15:42:05  scottl
+% Revision 1.5  2006-10-29 17:23:17  scottl
+% fix for handling blank images.
+%
+% Revision 1.4  2006/10/18 15:42:05  scottl
 % implement ability to specify whether averaging between the two images will
 % be used (or the maximal distance will be used)
 %
@@ -82,6 +85,11 @@ if img1_sum == 0
     warning('MBOCR:blankImg', ...
             'trying to calculate the distance from a blank image!\n');
     d = inf(num,1);
+    for ii=1:num
+        if sum(other_imgs{ii}(:)) == 0
+            d(ii) = 0;
+        end
+    end
     return;
 end
 
