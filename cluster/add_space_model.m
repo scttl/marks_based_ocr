@@ -14,10 +14,15 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.1 2006-10-29 17:26:23 scottl Exp $
+% $Id: add_space_model.m,v 1.2 2006-11-07 02:51:05 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.2  2006-11-07 02:51:05  scottl
+% estimate space width as where the 2nd mode start to rise (instead of the
+% peak).  This gives better estimates in practice.  Also add the truth
+% label if required.
+%
 % Revision 1.1  2006-10-29 17:26:23  scottl
 % initial check-in.
 %
@@ -55,22 +60,26 @@ trans_dist = double(Comps.nb_dist(idx,3));
     
 if isempty(space_width)
     %calculate space_width manually.  First peak should be interchar spacing but
-    %second should be interword
+    %second should be interword (approximately)
     space_counts = hist(trans_dist, 1:max_wordspace);
     peaks_found = 0;
     increasing = false;
     for ii=2:max_wordspace
-        if space_counts(ii) >= space_counts(ii-1)
-            increasing = true;
+        if space_counts(ii) > space_counts(ii-1)
+            if ~increasing
+                increasing = true;
+                start_pt = ii;
+            end
         elseif increasing
             increasing = false;
             peaks_found = peaks_found + 1;
         end
         if peaks_found == 2
-            space_width = ii-1;
+            space_width = ii-1 - ceil((ii-1 - start_pt)/1);
             break;
         end
     end
+    fprintf('%.2fs: estimated space width at %d pixels\n', toc, space_width);
 end
 
 if isempty(space_height)
@@ -177,6 +186,10 @@ if Clust.found_offsets
     Clust.descender_off(Clust.num) = 0;
     Clust.ascender_off(Clust.num) = 0;
 end
+if isfield(Clust, 'truth_label')
+    Clust.truth_label(Clust.num) = ' ';
+end
+
 
 Comps.model_spaces = true;
 Clust.model_spaces = true;
