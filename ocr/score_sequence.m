@@ -17,19 +17,23 @@ function score = score_sequence(seq, lg_start, lg_bg, varargin)
 %
 %   SCORE returned is a corresponding vector (or scalar if only 1 sequence
 %   passed) giving the total score (log prob.) of seeing the entire sequence
-%   based on bigram and start probabilities.
+%   based on bigram and start probabilities.  If any of the sequence is
+%   missing, an upper-bound on the partial sequence is computed.
 %
-%   NOTE: once can get the perplexity (instead of log prob), by overridding the
+%   NOTE: one can get the perplexity (instead of log prob), by overridding the
 %   calc_perplexity variable below
 %
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: score_sequence.m,v 1.1 2006-10-29 17:27:37 scottl Exp $
+% $Id: score_sequence.m,v 1.2 2006-11-07 02:53:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: score_sequence.m,v $
+% Revision 1.2  2006-11-07 02:53:37  scottl
+% calculate upper bounds for partial mappings.
+%
 % Revision 1.1  2006-10-29 17:27:37  scottl
 % initial revision.
 %
@@ -44,7 +48,6 @@ calc_perplexity = false;
 
 % CODE START %
 %%%%%%%%%%%%%%
-tic;
 if nargin < 3
     error('incorrect number of arguments specified!');
 elseif nargin > 3
@@ -64,7 +67,8 @@ if ~iscell(seq)
 end
 
 num_seq = length(seq);
-score = -Inf(num_seq,1);
+score = zeros(num_seq,1);
+max_char = length(lg_start);
 for ii=1:length(seq)
 
     if isempty(seq{ii})
@@ -72,21 +76,88 @@ for ii=1:length(seq)
         score(ii) = 0;
         continue;
     end
+    unknown_idx = find(~(1 <= seq{ii} & seq{ii} <= max_char));
+
+    %for the unknowns we calculate the best possible mapping based on its known
+    %neighbours.
+    rem_idx = [];
+    for jj=1:length(unknown_idx)
+        prev = unknown_idx(jj)-1;
+        next = unknown_idx(jj)+1;
+        if prev >= 1 && all(unknown_idx ~= prev) && ...
+           next <= length(seq{ii}) && all(unknown_idx ~= next)
+           %unknown sandwiched between 2 known values
+           max_score = -Inf;
+           max_idx = 0;
+           for kk=1:max_char
+               curr_score = lg_bg(seq{ii}(prev),kk) + lg_bg(kk,seq{ii}(next));
+               if curr_score > max_score
+                   max_score = curr_score;
+                   max_idx = kk;
+               end
+           end
+           seq{ii}(unknown_idx(jj)) = max_idx;
+        elseif prev >= 1 && all(unknown_idx ~= prev)
+            %transition *to* an unknown from a known
+            [max_idx, max_idx] = max(lg_bg(seq{ii}(prev),:));
+            seq{ii}(unknown_idx(jj)) = max_idx;
+        elseif next <= length(seq{ii}) && all(unknown_idx ~= next)
+            %transition *from* an unknown to a known
+            [max_idx, max_idx] = max(lg_bg(:,seq{ii}(next)));
+            seq{ii}(unknown_idx(jj)) = max_idx;
+        else
+            %consecutive blank transition, remove this index
+            rem_idx = [rem_idx; unknown_idx(jj)];
+        end
+    end
 
     %since we assume log domain, probability of sequence is the *sum* of the
     %individual log probabilities
-    score(ii) = lg_start(seq{ii}(1));
-    if calc_perplexity
-        score(ii) = 1 /exp(score(ii));
+    keep_idx = setdiff(1:length(seq{ii}), rem_idx);
+    if length(keep_idx) > 0 && keep_idx(1) == 1
+        score(ii) = lg_start(seq{ii}(1));
+        if calc_perplexity
+            score(ii) = 1 /exp(score(ii));
+        end
     end
 
-    if length(seq{ii}) > 1
-        from_idcs = seq{ii}(1:end-1);
-        to_idcs = seq{ii}(2:end);
+    if length(keep_idx) > 1
+        from_idcs = keep_idx;
+        if from_idcs(end) == length(seq{ii})
+            from_idcs = from_idcs(1:end-1);
+        end
+        to_idcs = keep_idx;
+        if to_idcs(1) == 1
+            to_idcs = to_idcs(2:end);
+        end
+        if ~isempty(rem_idx)
+            %prune transition over gaps caused by the remaining unknowns
+            from_idcs = setdiff(from_idcs, rem_idx-1);
+            to_idcs = setdiff(to_idcs, rem_idx+1);
+        end
+        %also prune transitions between consecutive kept original unknowns
+        %consider 1 -> a -> b -> 4  (a and b are originally unknown)
+        %we estimate a as the best possible score transitioning from 1, and
+        %b is estimated as the best possible score transition to 4.  But the
+        %overall best transition may not include the optimal values a and b
+        %when we factor in the cost of the transition between them.
+        curr_pos = 1;
+        while curr_pos <= length(from_idcs)
+            if any(unknown_idx == from_idcs(curr_pos)) && ...
+               any(unknown_idx == to_idcs(curr_pos))
+               from_idcs = from_idcs([1:curr_pos-1, curr_pos+1:end]);
+               to_idcs = to_idcs([1:curr_pos-1, curr_pos+1:end]);
+           else
+               curr_pos = curr_pos + 1;
+           end
+        end
+        from_idcs = seq{ii}(from_idcs);
+        to_idcs = seq{ii}(to_idcs);
+
         idcs = sub2ind(size(lg_bg), from_idcs, to_idcs);
         if calc_perplexity
             score(ii) = (score(ii) * prod(1 ./ exp(lg_bg(idcs))))^...
-                        (1/length(seq{ii}));
+                        (1/length(keep_idx));
         else
             score(ii) = score(ii) + sum(lg_bg(idcs));
         end
@@ -99,8 +170,6 @@ if calc_perplexity
 else
     tot_score = sum(score);
 end
-
-fprintf('%.2fs: score for all sequences is %.2f\n',toc,tot_score);
 
 
 % SUBFUNCTION DECLARATIONS %
