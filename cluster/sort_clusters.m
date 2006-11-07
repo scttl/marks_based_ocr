@@ -18,10 +18,13 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.4 2006-10-29 17:24:54 scottl Exp $
+% $Id: sort_clusters.m,v 1.5 2006-11-07 02:51:32 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.5  2006-11-07 02:51:32  scottl
+% sort truth labels (if given).
+%
 % Revision 1.4  2006-10-29 17:24:54  scottl
 % change to cluster struct, to use descender and ascender offsets, instead
 % of a single offset field.
@@ -59,6 +62,9 @@ Clust.descender_off = Clust.descender_off(idx);
 Clust.ascender_off = Clust.ascender_off(idx);
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(idx,:);
+end
+if isfield(Clust, 'truth_label')
+    Clust.truth_label = Clust.truth_label(idx);
 end
 
 %now we update the components associated cluster id
