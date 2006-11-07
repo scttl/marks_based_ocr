@@ -14,10 +14,13 @@ function display_lines(Lines, idx, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_lines.m,v 1.1 2006-09-22 17:56:06 scottl Exp $
+% $Id: display_lines.m,v 1.2 2006-11-07 02:52:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_lines.m,v $
+% Revision 1.2  2006-11-07 02:52:41  scottl
+% small bugfix for displaying x-height line.
+%
 % Revision 1.1  2006-09-22 17:56:06  scottl
 % initial check-in
 %
@@ -86,7 +89,7 @@ if draw_baseline || draw_xheight
         if draw_baseline
             M{ii}(1+Lines.baseline(idx(ii)),:,:)=repmat(base_col,1,max_width);
         end
-        if draw_baseline
+        if draw_xheight
             M{ii}(1+Lines.xheight(idx(ii)),:,:)=repmat(xheight_col,1,max_width);
         end
     end
