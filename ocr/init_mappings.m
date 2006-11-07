@@ -17,10 +17,13 @@ function map = init_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: init_mappings.m,v 1.1 2006-10-29 17:28:29 scottl Exp $
+% $Id: init_mappings.m,v 1.2 2006-11-07 02:55:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: init_mappings.m,v $
+% Revision 1.2  2006-11-07 02:55:06  scottl
+% implement ability to take true mapping (if available, and specified)
+%
 % Revision 1.1  2006-10-29 17:28:29  scottl
 % initial revision.
 %
@@ -32,12 +35,13 @@ function map = init_mappings(Clust, Syms, varargin)
 %distance metric to use when matching
 match_metric = 'hausdorff';
 
-take_nearest = 1;  %number of closest matchings to take for each cluster
+take_nearest = 3;  %number of closest matchings to take for each cluster
 
 match_thresh = 1.5;  %any matches with a distance less than this are also taken
 
 resize_method = 'nearest';  %method of resize for symbol images
 
+include_true_labels = false;
 
 
 % CODE START %
@@ -78,7 +82,12 @@ for ii=1:Clust.num
         if num < take_nearest
             num = take_nearest;
         end
-        map{ii} = idx(1:num);
+        if include_true_labels && isfield(Clust, 'truth_label')
+            match_idx = find(Syms.val == Clust.truth_label(ii));
+            map{ii} = [match_idx; idx(1:num-length(match_idx))];
+        else
+            map{ii} = idx(1:num);
+        end
     end
     fprintf('%.2fs: found %d matches for cluster %d\n',toc,length(map{ii}),ii);
 end
