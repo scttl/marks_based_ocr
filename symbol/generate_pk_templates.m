@@ -18,10 +18,13 @@ function [bitmaps, offsets, charnames] = generate_pk_templates(font, cn)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_pk_templates.m,v 1.1 2006-10-29 17:06:21 scottl Exp $
+% $Id: generate_pk_templates.m,v 1.2 2006-11-07 02:49:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_pk_templates.m,v $
+% Revision 1.2  2006-11-07 02:49:06  scottl
+% bugfix for handling single quote character.
+%
 % Revision 1.1  2006-10-29 17:06:21  scottl
 % initial revision
 %
@@ -54,9 +57,9 @@ elseif nargin == 2
     charnames = cn;
 end
 
-[fid, msg] = fopen(fontname);
+[fid, msg] = fopen(font);
 if fid == -1
-    error('unable to find/open the font file: %s.\nReason: %s', fontname, msg);
+    error('unable to find/open the font file: %s.\nReason: %s', font, msg);
 end
 fclose(fid);
 
@@ -66,7 +69,14 @@ for ii=1:numchars
     thischar=charnames(ii);
     fprintf(1,'Char %c (%d/%d)\n',thischar,ii,numchars);
 
-    [s,w] = unix(['pk2bm -b -c''', thischar, ''' ', fontname]);
+    if strcmp(thischar, '''')
+        %since the character is a single quote, we must escape it differently
+        %for the shell
+        cmd = ['pk2bm -b -c"''" ', font];
+    else
+        cmd = ['pk2bm -b -c''', thischar, ''' ', font];
+    end
+    [s,w] = unix(cmd);
     if s ~= 0
         error('problem running pk2bm: %s', w);
     end
