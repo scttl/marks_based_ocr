@@ -64,11 +64,14 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.3 2006-10-18 15:52:10 scottl Exp $
+% $Id: get_comps.m,v 1.4 2006-11-07 02:52:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
-% Revision 1.3  2006-10-18 15:52:10  scottl
+% Revision 1.4  2006-11-07 02:52:06  scottl
+% no change.
+%
+% Revision 1.3  2006/10/18 15:52:10  scottl
 % small fix for optional argument passing.
 %
 % Revision 1.2  2006-10-09 16:30:39  scottl
