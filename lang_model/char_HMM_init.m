@@ -26,12 +26,15 @@ function [trans, emit, init, d_idx] = char_HMM_init(D, clust_counts, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: char_HMM_init.m,v 1.1 2006-10-18 16:02:23 scottl Exp $
+% $Id: char_HMM_init.m,v 1.2 2006-11-13 17:57:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: char_HMM_init.m,v $
-% Revision 1.1  2006-10-18 16:02:23  scottl
-% nitial check-in.
+% Revision 1.2  2006-11-13 17:57:23  scottl
+% no change.
+%
+% Revision 1.1  2006/10/18 16:02:23  scottl
+% Initial check-in.
 %
 
 
