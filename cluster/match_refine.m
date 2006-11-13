@@ -17,11 +17,14 @@ function [Clust, Comps] = match_refine(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.7 2006-10-18 15:39:22 scottl Exp $
+% $Id: match_refine.m,v 1.8 2006-11-13 17:56:47 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
-% Revision 1.7  2006-10-18 15:39:22  scottl
+% Revision 1.8  2006-11-13 17:56:47  scottl
+% small spacing improvements.
+%
+% Revision 1.7  2006/10/18 15:39:22  scottl
 % optional argument reorganization.
 %
 % Revision 1.6  2006/08/30 17:38:23  scottl
@@ -129,3 +132,4 @@ while ~isempty(rr)
     end
     rr = find(Clust.refined == false, 1, 'first');
 end
+fprintf('\n');

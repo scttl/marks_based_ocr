@@ -52,10 +52,13 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.9 2006-10-29 17:24:53 scottl Exp $
+% $Id: cluster_comps.m,v 1.10 2006-11-13 17:56:32 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.10  2006-11-13 17:56:32  scottl
+% small spacing improvements.
+%
 % Revision 1.9  2006-10-29 17:24:53  scottl
 % change to cluster struct, to use descender and ascender offsets, instead
 % of a single offset field.
@@ -192,9 +195,10 @@ for pp=1:length(Comps.files)
 
     %perform a single straight match refinement over these new clusters to
     %reduce their number.
-    fprintf('\n\n%.2fs: Starting straight-match refine pass\n', toc);
+    fprintf('%.2fs: Starting straight-match refine pass\n', toc);
     [Clust, Comps] = match_refine(Clust, Comps, 'dist_metric', 'euc', ...
                      'distance_thrsh', straight_match_thresh);
+    fprintf('\n');
 end
 
 if resize_imgs && Comps.found_lines
