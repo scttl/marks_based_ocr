@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.2 2006-11-07 02:51:05 scottl Exp $
+% $Id: add_space_model.m,v 1.3 2006-11-13 17:56:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.3  2006-11-13 17:56:12  scottl
+% small fix to remove dependence on timers.
+%
 % Revision 1.2  2006-11-07 02:51:05  scottl
 % estimate space width as where the 2nd mode start to rise (instead of the
 % peak).  This gives better estimates in practice.  Also add the truth
@@ -79,7 +82,7 @@ if isempty(space_width)
             break;
         end
     end
-    fprintf('%.2fs: estimated space width at %d pixels\n', toc, space_width);
+    fprintf('estimated space width at %d pixels\n', space_width);
 end
 
 if isempty(space_height)
@@ -202,4 +205,4 @@ Clust.model_spaces = true;
 %    Clust.bigram(fr,to) = Clust.bigram(fr,to) + 1;
 %end
 
-fprintf('%.2fs: finished creating space character model\n', toc);
+fprintf('finished creating space character model\n');
