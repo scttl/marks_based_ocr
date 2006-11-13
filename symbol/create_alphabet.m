@@ -22,6 +22,8 @@ function Syms = create_alphabet(file, varargin)
 %           size and font used are defined below.  If present this is used to
 %           initially guide initial mappings between cluster images and
 %           symbols.
+%     use_srilm - this field determines how we build or n-gram model (if we
+%                 build one).  Defaults to false
 %     corpus_files - this is optionally created as a cell array, and used to
 %                    store the list of text files read to determine bigram
 %                    counts and words etc.
@@ -29,24 +31,35 @@ function Syms = create_alphabet(file, varargin)
 %           the corpora
 %     count - a vector of values listing how many times each symbol value
 %             appears in the corpus.
+%     trigram - A distribution over which symbol is likely to follow the
+%               previous two symbols based on counts in the corpora (stored as
+%               a 3 dimensional matrix)
 %     bigram - A distribution over which symbols are likely to follow other
 %              symbols based on counts in the corpora (stored as a matrix).
 %              The entries are (possibly smoothed) counts listing how many
 %              times one character was seen following another.
+%     first_bg_count - a matrix lsting how many times each symbol follows the
+%                      start symbol at the beginning of a line (possibly 
+%                      smoothed)
 %     first_count - a vector values listing how many times each symbol value
 %                   appears at the start of a line (possibly smoothed)
 %     words - a cell array of all the words grouped together from symbols in
 %             the alphabet, and found in the corpora
 %     word_count - a vector listing how many times each word appears in the
 %                  corpora
+%     srilm_file - if use_srilm is set to true, we estimate our n-gram counts
+%                  and save them on disk in srilm_file
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.1 2006-10-29 17:06:21 scottl Exp $
+% $Id: create_alphabet.m,v 1.2 2006-11-13 18:10:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.2  2006-11-13 18:10:09  scottl
+% added ability to use SRILM based files, and internal trigram models.
+%
 % Revision 1.1  2006-10-29 17:06:21  scottl
 % initial revision
 %
@@ -73,9 +86,28 @@ pk_pattern = 'pk$';  %match *pk
 %by default we don't process any corpora looking for word and character counts
 corpora_files = {};
 
+%by default estimate the model internally
+use_srilm = false;
+
+%which order n-gram model should we estimate if using SRILM
+order = 3;
+
+%which character should we map space to if srilm being used?
+srilm_space_map = '_';
+srilm_vocab_file = '/tmp/srilm_input.vocab';
+
+%the following parameters are only set if we aren't using SRILM
+%if processing corpora, how many pseudocounts should we add to each trigram
+%entry?
+tg_pseudo = 1;
+
 %if processing corpora, how many pseudocounts should we add to each bigram
 %entry?
 bg_pseudo = 1;
+
+%if processing corpora, how many pseudocounts should we add to each first
+%two characters in line appearance?
+fc_bg_pseudo = 1;
 
 %if processing corpora, how many pseudocounts should we add to each first
 %character in line appearance?
@@ -93,18 +125,19 @@ elseif nargin > 1
     process_optional_args(varargin{:});
 end
 
-%first ensure the file passed exists and can be opened for reading
-fid = fopen(file, 'r', 'n', encoding);
-
+fid = fopen(file,'r','n',encoding);
 if fid == -1
-    error('problems opening the symbol file passed\n');
+    error('cannot open file %s', file);
 end
-
 Syms = init_symbols(file, encoding);
 
 %read all characters (including whitespace, but ignoring the trailing newline)
-char_list = fgetl(fid)';
+%char_list = textscan(fid, '%c%*[^\n]');  %this doesn't handle space correctly
+char_list = textscan(fid, '%c','delimiter', '\n' );
 fclose(fid);
+char_list = cell2mat(char_list);
+char_list = regexprep(char_list', '\n', ' '); %hack to get spaces correctly
+char_list = char_list';
 
 Syms.val = double(char_list);
 Syms.num = length(Syms.val);
@@ -123,40 +156,69 @@ end
 
 if ~isempty(corpora_files)
     fprintf('%.2fs: reading text corpus\n');
-    D = create_word_dictionary(corpora_files);
-
-    if length(D.char) > Syms.num
-        error('more symbols in corpus than in specified symbol files');
-    end
-    Syms.count = zeros(Syms.num, 1, 'uint32');
-    Syms.bigram = zeros(Syms.num, Syms.num);
-    Syms.first_count = zeros(Syms.num, 1, 'uint32');
-
-    %must find the mapping between characters found in the corpus, and our
-    %symbol characters
-    idx = zeros(length(D.char),1);
-    for ii=1:length(D.char)
-        pos = strfind(char_list', D.char(ii));
-        if length(pos) ~= 1
-            error('symbol: "%c" in corpus, is not in symbol list', D.char(ii));
+    if use_srilm
+        Syms.use_srilm = true;
+        %first create the temporary input file
+        char_list = regexprep(char_list', ' ', srilm_space_map);
+        fid = fopen(srilm_vocab_file, 'w');
+        if fid == -1
+            error('problem creating srilm vocab file');
         end
-        idx(ii) = pos;
+        fprintf(fid, '%c\n', char_list);
+        fclose(fid);
+
+        %update the value for the space char
+        Syms.val(Syms.val == double(' ')) = double(srilm_space_map);
+        
+        %now create the language model file
+        Syms.srilm_file = srilm_lm_init(corpora_files, 'order', order, ...
+                          'input_vocab', srilm_vocab_file);
+
+        %cleanup the temp vocab file
+        delete(srilm_vocab_file);
+    else
+        D = create_word_dictionary(corpora_files);
+    
+        if length(D.char) > Syms.num
+            error('more symbols in corpus than in specified symbol files');
+        end
+        Syms.count = zeros(Syms.num, 1, 'uint32');
+        Syms.bigram = zeros(Syms.num, Syms.num, 'uint32');
+        Syms.trigram = zeros(Syms.num, Syms.num, Syms.num, 'uint32');
+        Syms.first_count = zeros(Syms.num, 1, 'uint32');
+        Syms.first_bg_count = zeros(Syms.num, Syms.num, 'uint32');
+    
+        %must find the mapping between characters found in the corpus, and our
+        %symbol characters
+        idx = zeros(length(D.char),1);
+        for ii=1:length(D.char)
+            pos = strfind(char_list', D.char(ii));
+            if length(pos) ~= 1
+                error('symbol: "%c" in corpus, not in symbol list', D.char(ii));
+            end
+            idx(ii) = pos;
+        end
+        Syms.count(idx) = D.char_count;
+    
+        %smooth the bigram by adding pseudo-counts
+        Syms.bigram(idx,idx) = D.char_bigram;
+        Syms.bigram = Syms.bigram + bg_pseudo;
+    
+        %smooth the trigram by adding pseudo-counts
+        Syms.trigram(idx,idx,idx) = D.char_trigram;
+        Syms.trigram = Syms.trigram + tg_pseudo;
+    
+        %smooth the start counts by adding pseudo-counts
+        Syms.first_count(idx) = D.first_count;
+        Syms.first_count = Syms.first_count + fc_pseudo;
+        Syms.first_bg_count(idx,idx) = D.first_bg_count;
+        Syms.first_bg_count = Syms.first_bg_count + fc_bg_pseudo;
+    
+        Syms.words = D.word;
+        Syms.word_count = D.word_count;
     end
-    Syms.count(idx) = D.char_count;
-
-    %smooth the bigram by adding pseudo-counts
-    Syms.bigram(idx,idx) = D.char_bigram;
-    Syms.bigram = Syms.bigram + bg_pseudo;
-
-    %smooth the start counts by adding pseudo-counts
-    Syms.first_count(idx) = D.first_count;
-    Syms.first_count = Syms.first_count + fc_pseudo;
-
     Syms.corpus_files = corpora_files;
-    Syms.words = D.word;
-    Syms.word_count = D.word_count;
 end
-
 
 fprintf('%.2fs: Symbols initialized\n');
 
@@ -173,8 +235,12 @@ Syms.encoding = enc;
 Syms.val = double([]);  %easiest to convert from double
 Syms.img = cell(0);
 Syms.corpus_files = cell(0);
+Syms.use_srilm = false;
 Syms.count = uint32([]);
-Syms.bigram = [];
+Syms.trigram = uint32([]);
+Syms.bigram = uint32([]);
+Syms.first_bg_count = uint32([]);
 Syms.first_count = uint32([]);
 Syms.words = cell(0);
 Syms.word_count = uint32([]);
+Syms.srilm_file = '';
