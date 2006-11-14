@@ -13,10 +13,8 @@ function Syms = create_alphabet(file, varargin)
 %     input_file - this specifies the path and name of the file used to find
 %                  the symbols
 %     encoding - character encoding used for the symbols
-%     val - this vector will hold integer representations of each encoded
-%           symbol.  Since these will be displayed using the char() function,
-%           the encoding on the machine being run must match the encoding of
-%           the symbols for them to be displayed correctly elsewhere in the code
+%     val - this cell array will hold string representations of each encoded
+%           symbol.
 %     img - this is optionally created (depending on parameter settings below),
 %           and will store a template image representation of the symbol.  The
 %           size and font used are defined below.  If present this is used to
@@ -53,10 +51,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.2 2006-11-13 18:10:09 scottl Exp $
+% $Id: create_alphabet.m,v 1.3 2006-11-14 22:50:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.3  2006-11-14 22:50:41  scottl
+% changed using character values to strings (to accomodate ligatures etc)
+%
 % Revision 1.2  2006-11-13 18:10:09  scottl
 % added ability to use SRILM based files, and internal trigram models.
 %
@@ -131,26 +132,24 @@ if fid == -1
 end
 Syms = init_symbols(file, encoding);
 
-%read all characters (including whitespace, but ignoring the trailing newline)
-%char_list = textscan(fid, '%c%*[^\n]');  %this doesn't handle space correctly
-char_list = textscan(fid, '%c','delimiter', '\n' );
+%read all input symbols (including whitespace, but ignoring trailing newline)
+sym_list = textscan(fid, '%s','delimiter', '\n', 'whitespace', '');
+%this creates a single cell containing the cell array
+sym_list = sym_list{1};
 fclose(fid);
-char_list = cell2mat(char_list);
-char_list = regexprep(char_list', '\n', ' '); %hack to get spaces correctly
-char_list = char_list';
 
-Syms.val = double(char_list);
+Syms.val = sym_list;
 Syms.num = length(Syms.val);
 
 if ~isempty(template_font)
     fprintf('%.2fs: generating template images\n');
 
     if isempty(regexp(template_font, pk_pattern))
-        Syms.img = generate_templates(template_font, char_list, ...
+        Syms.img = generate_templates(template_font, sym_list, ...
                    'ptsize', font_ptsize);
     else
-        %check the pk file exists (can be opened)
-        Syms.img = generate_pk_templates(template_font, char_list);
+        %attempt to generate templates using pk2bm
+        Syms.img = generate_pk_templates(template_font, 'charnames', sym_list);
     end
 end
 
@@ -159,17 +158,19 @@ if ~isempty(corpora_files)
     if use_srilm
         Syms.use_srilm = true;
         %first create the temporary input file
-        char_list = regexprep(char_list', ' ', srilm_space_map);
+        for ii=1:Syms.num
+            %convert spaces to the appropriate map character
+            if strcmp(Syms.val{ii}, ' ')
+                Syms.val{ii} = regexprep(Syms.val{ii}, ' ', srilm_space_map);
+            end
+        end
         fid = fopen(srilm_vocab_file, 'w');
         if fid == -1
             error('problem creating srilm vocab file');
         end
-        fprintf(fid, '%c\n', char_list);
+        fprintf(fid, '%s\n', Syms.val{:});
         fclose(fid);
 
-        %update the value for the space char
-        Syms.val(Syms.val == double(' ')) = double(srilm_space_map);
-        
         %now create the language model file
         Syms.srilm_file = srilm_lm_init(corpora_files, 'order', order, ...
                           'input_vocab', srilm_vocab_file);
@@ -192,11 +193,15 @@ if ~isempty(corpora_files)
         %symbol characters
         idx = zeros(length(D.char),1);
         for ii=1:length(D.char)
-            pos = strfind(char_list', D.char(ii));
-            if length(pos) ~= 1
+            for jj=1:Syms.num
+                if strmatch(sym_list{ii}, D.char(ii))
+                    idx(ii) = jj;
+                    break;
+                end
+            end
+            if idx(ii) == 0
                 error('symbol: "%c" in corpus, not in symbol list', D.char(ii));
             end
-            idx(ii) = pos;
         end
         Syms.count(idx) = D.char_count;
     
@@ -232,7 +237,7 @@ function Syms = init_symbols(file, enc)
 Syms.num = uint16(0);
 Syms.input_file = file;
 Syms.encoding = enc;
-Syms.val = double([]);  %easiest to convert from double
+Syms.val = cell(0);
 Syms.img = cell(0);
 Syms.corpus_files = cell(0);
 Syms.use_srilm = false;
