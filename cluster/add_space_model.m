@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.3 2006-11-13 17:56:12 scottl Exp $
+% $Id: add_space_model.m,v 1.4 2006-11-22 17:02:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.4  2006-11-22 17:02:54  scottl
+% Updated to reflect changes in truth_label field
+%
 % Revision 1.3  2006-11-13 17:56:12  scottl
 % small fix to remove dependence on timers.
 %
@@ -190,19 +193,11 @@ if Clust.found_offsets
     Clust.ascender_off(Clust.num) = 0;
 end
 if isfield(Clust, 'truth_label')
-    Clust.truth_label(Clust.num) = ' ';
+    Clust.truth_label{Clust.num} = ' ';
 end
 
 
 Comps.model_spaces = true;
 Clust.model_spaces = true;
-
-%update the bigram too?
-%Clust.num_trans = size(Trans,1);
-%Clust.bigram = zeros(Clust.num);
-%for ii=1:size(Trans,1)
-%    fr = Trans(ii,1); to = Trans(ii,2);
-%    Clust.bigram(fr,to) = Clust.bigram(fr,to) + 1;
-%end
 
 fprintf('finished creating space character model\n');
