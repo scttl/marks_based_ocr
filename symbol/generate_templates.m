@@ -11,13 +11,19 @@ function bitmaps = generate_templates(fontname, sn, varargin)
 %
 %   symnames should be a cell array of symbols to generate bitmaps of.
 %
+%   NOTE: this program makes use of the ImageMagick 'convert' utility 
+%
+
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_templates.m,v 1.5 2006-11-14 22:51:14 scottl Exp $
+% $Id: generate_templates.m,v 1.6 2006-11-22 17:00:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_templates.m,v $
+% Revision 1.6  2006-11-22 17:00:56  scottl
+% updates to fix convert's output of specific characters.
+%
 % Revision 1.5  2006-11-14 22:51:14  scottl
 % changed to a cell array of strings instead of chars.
 %
@@ -36,6 +42,10 @@ tmp_img = '/tmp/tmp_template.png';
 
 %should we remove the dots above lowercase i, and j characters?
 strip_dots = true;
+
+%this temp file is used to write the value of symbols like '@' that convert 
+%has problems displaying from the command line.
+tmp_sym_file = '/tmp/tmp_sym.txt';
 
 
 % CODE START %
@@ -58,16 +68,24 @@ for ii=1:numsyms
         bitmaps{ii,:} = zeros(dims,dims);
         continue;
     elseif strcmp(sn{ii}, '''')
-        %since the character is a single quote, we must escape it differently
-        %for the shell
+        %single quotes have to be quoted differently to prevent shell probs
         cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
-                     num2str(ptsize), ' label:"\''" ', tmp_img];
-    elseif strcmp(sn{ii}, '"')  %same problem with double quotes
+               num2str(ptsize), ' label:"\''" ', tmp_img];
+        %@@note: for CMR10 this produces the " character.
+    elseif strcmp(sn{ii}, '"')
+        %double quotes need the '\' as a prefix for CMR10
         cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
-                     num2str(ptsize), ' label:''\"'' ', tmp_img];
-    elseif strcmp(sn{ii}, '@')
+               num2str(ptsize), ' label:''\"'' ', tmp_img];
+    elseif ~isempty(strfind('@{}', sn{ii}))
+        %the '@' symbol is special to convert
+        fid = fopen(tmp_sym_file, 'w');
+        if fid == -1
+            error('problems creating temporary sym file: %s', tmp_sym_file);
+        end
+        fprintf(fid, '%s\n', sn{ii});
+        fclose(fid);
         cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
-                     num2str(ptsize), ' label:''\', sn{ii}, ''' ', tmp_img];
+                     num2str(ptsize), ' label:@', tmp_sym_file, ' ', tmp_img];
     else
         cmd = ['convert -trim -font ', fontname, ' -pointsize ', ...
                      num2str(ptsize), ' label:''', sn{ii}, ''' ', tmp_img];
@@ -81,7 +99,7 @@ for ii=1:numsyms
 
     bitmaps{ii,:} = ~im2bw(imread(tmp_img),0.5);  %convert to binary
 
-    unix(['rm -f ' tmp_img]);
+    unix(['rm -f ' tmp_img, ' ', tmp_sym_file]);
 
     if strip_dots && (strcmp(sn{ii}, 'i') || strcmp(sn{ii}, 'j'))
         %strip the dots from these lowercase letters to match what we do during
