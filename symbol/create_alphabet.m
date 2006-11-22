@@ -51,10 +51,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.3 2006-11-14 22:50:41 scottl Exp $
+% $Id: create_alphabet.m,v 1.4 2006-11-22 16:59:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.4  2006-11-22 16:59:45  scottl
+% updates to handle ligatures (multi-char symbols)
+%
 % Revision 1.3  2006-11-14 22:50:41  scottl
 % changed using character values to strings (to accomodate ligatures etc)
 %
@@ -157,18 +160,23 @@ if ~isempty(corpora_files)
     fprintf('%.2fs: reading text corpus\n');
     if use_srilm
         Syms.use_srilm = true;
-        %first create the temporary input file
-        for ii=1:Syms.num
-            %convert spaces to the appropriate map character
-            if strcmp(Syms.val{ii}, ' ')
-                Syms.val{ii} = regexprep(Syms.val{ii}, ' ', srilm_space_map);
-            end
+        %first create the temporary input vocab file and convert any spaces to 
+        %the appropriate map character
+        idx = find(strcmp(Syms.val, ' '));
+        if ~isempty(idx)
+            Syms.val{idx} = srilm_space_map;
         end
         fid = fopen(srilm_vocab_file, 'w');
         if fid == -1
             error('problem creating srilm vocab file');
         end
-        fprintf(fid, '%s\n', Syms.val{:});
+        %ensure that the srilm vocabulary only contains single characters (not
+        %ligatures since these will not be found)
+        for ii=1:Syms.num
+            if length(Syms.val{ii}) == 1
+                fprintf(fid, '%s\n', Syms.val{ii});
+            end
+        end
         fclose(fid);
 
         %now create the language model file
@@ -193,13 +201,14 @@ if ~isempty(corpora_files)
         %symbol characters
         idx = zeros(length(D.char),1);
         for ii=1:length(D.char)
-            for jj=1:Syms.num
-                if strmatch(sym_list{ii}, D.char(ii))
-                    idx(ii) = jj;
-                    break;
-                end
-            end
-            if idx(ii) == 0
+            match_idx = find(strcmp(Syms.val, D.char(ii)));
+            if length(match_idx) > 1
+                warning('MBOCR:MultMatch', 'Found multiple matches for %c', ...
+                D.char(ii));
+                idx(ii) = match_idx(1);
+            elseif length(match_idx) == 1
+                idx(ii) = match_idx;
+            else
                 error('symbol: "%c" in corpus, not in symbol list', D.char(ii));
             end
         end
