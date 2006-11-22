@@ -25,10 +25,13 @@ function [best_map,score] = learn_mappings(Clust, Comps, Syms, Lines, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: learn_mappings.m,v 1.1 2006-11-07 02:55:25 scottl Exp $
+% $Id: learn_mappings.m,v 1.2 2006-11-22 17:07:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: learn_mappings.m,v $
+% Revision 1.2  2006-11-22 17:07:33  scottl
+% added ability to perform BFS traversal.
+%
 % Revision 1.1  2006-11-07 02:55:25  scottl
 % initial check-in.
 %
@@ -38,13 +41,20 @@ function [best_map,score] = learn_mappings(Clust, Comps, Syms, Lines, varargin)
 %%%%%%%%%%%%%%%
 %note that these are used to make function calls more efficient
 %they will be cleared upon function termination.
-global list num_chars map lg_bg lg_start leaf_node b_map b_score eol_seq ...
-       eol_id num_start next_idx prev_idx order;
+global list num_chars map lg_ng lg_start leaf_node b_map ...
+       b_score eol_seq eol_id num_start next_idx prev_idx order;
 
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 eol_id = 0;   %this is used to create a dummy cluster representing end-of-line
+
+%by default we do a depth-first search through the mapping candidates.  Set
+%this to false to do a breadth-first search.
+dfs_ordering = true;  
+
+%what order of n-grams should we use?
+order = 3;
 
 
 % CODE START %
@@ -58,9 +68,6 @@ end
 
 if ~isfield(Syms, 'img') || isempty(Syms.img)
     error('we require template symbol images!');
-end
-if ~isfield(Syms, 'corpus_files') || isempty(Syms.corpus_files)
-    error('we require symbol and word counts from a text corpus!');
 end
 
 %check that spaces have been added (and add them if they haven't)
@@ -80,24 +87,14 @@ fprintf('%.2fs: mappings initialized\n', toc);
 seq = get_cluster_seq(Comps, 1:Lines.num);
 fprintf('%.2fs: cluster sequence found\n', toc);
 
-
-%get the log probabilities of our bigram and start character distributions
-num_chars = Syms.num;
-lg_start = log(double(Syms.first_count) ./ ...
-               repmat(sum(double(Syms.first_count)), Syms.num, 1));
-lg_bg = log(Syms.bigram ./ repmat(sum(Syms.bigram, 2), 1, Syms.num));
-%augment them with their maximum, for unknown variable calculations
-lg_start(num_chars + 1) = max(lg_start);
-lg_bg(num_chars+1,:) = max(lg_bg,[],1);
-lg_bg(:, num_chars+1) = max(lg_bg,[],2);
-
 %convert the line sequences to a single EOL delimited sequence
-eol_seq = [eol_id];
+eol_seq = eol_id;
 for ii=1:length(seq)
     eol_seq = [eol_seq; seq{ii}; eol_id];
 end
 
 %now store for each cluster where in the sequence it is
+num_chars = Syms.num;
 num_start = zeros(Clust.num);
 next_idx = cell(Clust.num,1);
 prev_idx = cell(Clust.num,1);
@@ -116,28 +113,55 @@ for ii=1:Clust.num
 end
 fprintf('%.2fs: cluster sequence neighbours stored\n', toc);
 
-%determine an appropriate ordering
-order = 1:Clust.num
-
-%now iterate over mappings in order until the optimal one is found
-leaf_node = Clust.num;
+%determine an appropriate ordering, trimming nodes with a single mapping
+order = 1:Clust.num;
 b_map = [];
 b_score = -Inf;
 curr_map = (num_chars+1) .* ones(Clust.num,1);
+for ii=1:Clust.num
+    if length(map{ii}) == 1
+        curr_map(ii) = map{ii}(1);
+        pos = ii - (Clust.num - length(order));
+        order = order([1:pos-1,pos+1:end]);
+    end
+end
+leaf_node = order(end);
+
+%now iterate over mappings in order until the optimal one is found
+if ~dfs_ordering
+    %for the breadth-first search, we must first establish the score of the
+    %left-most path (for comparison purposes)
+    b_map = curr_map;
+    for ii=1:Clust.num
+        b_map(ii) = map{ii}(1);
+    end
+    b_score = sum(score_sequence(clust_to_char_map(seq, b_map), ...
+              order, lg_start, lg_ng));
+end
+
 list = [0, NaN, ...
-       sum(score_sequence(clust_to_char_map(seq, curr_map), lg_start, lg_bg))];
+       sum(score_sequence(clust_to_char_map(seq, curr_map), order, ...
+       lg_start, lg_ng))];
+       keyboard
 while ~isempty(list)
-    curr_node = list(end,1);
-    curr_char = list(end,2);
-    curr_score = list(end,3);
-    list = list(1:end-1,:);
+    if dfs_ordering
+        curr_node = list(end,1);
+        curr_char = list(end,2);
+        curr_score = list(end,3);
+        list = list(1:end-1,:);
+    else
+        curr_node = list(1,1);
+        curr_char = list(1,2);
+        curr_score = list(1,3);
+        list = list(2:end,:);
+    end
     curr_map = iter_bb_solve_map(curr_map, curr_node, curr_char, curr_score);
 end
 fprintf('%.2fs: mapping complete\n', toc);
 best_map = b_map;
 score = b_score;
 
-clear map lg_bg lg_start leaf_node b_map b_score eol_seq eol_id num_start ...
+clear map lg_ng lg_start leaf_node b_map b_score eol_seq eol_id num_start ...
       next_idx prev_idx order;
 
 
@@ -168,6 +192,7 @@ else
         curr_map(order(curr_idx)) = curr_char;
     end
     for ii=length(map{order(curr_idx+1)}):-1:1
+    %for ii=1:length(map{order(curr_idx+1)}) %used for BFS ordering
         curr_child = map{order(curr_idx+1)}(ii);
         curr_map(order(curr_idx+1)) = curr_child;
         curr_map(order(curr_idx+2:end)) = num_chars+1;
@@ -264,9 +289,9 @@ end
 %NOTE: we assume the cluster sequence is a single vector, with lines separated
 %by EOL or dummy cluster id (which should be passed in eol_id).  We also assume
 %the cluster sequence both starts with, and ends with the EOL id.
-%Finally, if the new or old chararacter id's are outside of the range of valid
-%id's (given the size of the start and bigram tables, we treat them as unknowns,
-%and calculate their score by choosing the best possible value.
+%Finally, we assume that all unknowns are mapped to the num_chars+1 value, and
+%that the bigram and start tables containg the 'best' value of the tables as
+%the value at these entries.
 function delta = calc_delta(map, clust_id, newchar_id, oldchar_id)
 
 global num_chars eol_seq eol_id lg_start lg_bg num_start next_idx prev_idx;
@@ -285,7 +310,6 @@ end
 %since we can potentially transfer to clust_id consecutvely, we must ensure we
 %use the correct mapping.  We also must fixup the mapping if newchar_id or
 %oldchar_id are left unspecified.
-map(map < 1 | map > num_chars | isnan(map)) = num_chars + 1;
 new_map = map;
 new_map(clust_id) = newchar_id;
 old_map = map;
