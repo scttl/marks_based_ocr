@@ -12,7 +12,7 @@ function [lm_file, vocab] = srilm_lm_init(Files, varargin)
 %   LM_FILE returned is a string listing the path and name of the ARPA formatted
 %   text file that can be used in subsequent language model tasks.
 %
-%   VOCAB_LIST returned is a cell array listing the characters (or words) found 
+%   VOCAB_LIST returned is a cell array listing the symbols (or words) found 
 %   in the copora passed.
 %
 %   NOTE: any default values defined below in the LOCAL VARS can be overridden 
@@ -24,10 +24,13 @@ function [lm_file, vocab] = srilm_lm_init(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: srilm_lm_init.m,v 1.1 2006-11-13 17:58:23 scottl Exp $
+% $Id: srilm_lm_init.m,v 1.2 2006-11-22 17:11:13 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: srilm_lm_init.m,v $
+% Revision 1.2  2006-11-22 17:11:13  scottl
+% strip unknown, pause, and start and end of sentence tokens from vocab.
+%
 % Revision 1.1  2006-11-13 17:58:23  scottl
 % initial check-in.
 %
@@ -60,6 +63,9 @@ tmp_dir = '/tmp';
 
 %temporary vocab file name
 tmp_vocab = [tmp_dir, '/vocab.temp'];
+
+%which vocabulary tokens should be stripped?  (present the list as a cell array)
+vocab_strip = {'-pau-'; '<s>'; '</s>'; '<unk>'};
 
 
 % CODE START %
@@ -122,17 +128,23 @@ if s ~= 0
 end
 
 %read and store the vocabulary file contents
-vocab = textread(tmp_vocab, '%c%*[^\n]');
+fid = fopen(tmp_vocab);
+if fid == -1
+    error('problems reading vocab file: %s', tmp_vocab);
+end
+vocab = textscan(tmp_vocab, '%s', 'delimiter', '\n', 'whitespace', '');
+vocab = vocab{1};
 cmd = ['rm -f ', tmp_vocab];
 [s,w] = unix(cmd);
 if s ~= 0
     error('error removing temp vocab file: %s', cmd);
 end
 
-%since the vocabulary file includes <s>, </s>, <unk>, and -pau- tokens, we 
-%strip them from the returned vocabulary
-rem_idx = find(vocab == '<', 3);
-rem_idx = [rem_idx; find(vocab == '-', 1)];
-keep_idx = setdiff(1:length(vocab), rem_idx);
-vocab = vocab(keep_idx);
-
+%strip any unwanted vocabulary characters (like <unk> and others added by SRILM)
+if ~isempty(vocab_strip)
+    rem_idx = [];
+    for ii=1:length(vocab_strip)
+        rem_idx = [rem_idx; find(strcmp(vocab, vocab_strip{ii}))];
+    end
+    vocab = vocab(setdiff(1:length(vocab), rem_idx));
+end
