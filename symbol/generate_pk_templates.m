@@ -1,4 +1,4 @@
-function [bitmaps, offsets, charnames] = generate_pk_templates(font, cn)
+function [bitmaps, offsets, charnames] = generate_pk_templates(font, varargin)
 % GENERATE_PK_TEMPLATES  Create bitmaps of characters using the pk font passed
 %
 %   [bitmaps, offsets, charnames] = generate_pk_templates(font, [var1, val1]...)
@@ -13,15 +13,20 @@ function [bitmaps, offsets, charnames] = generate_pk_templates(font, cn)
 %   If the font doesn't exist, an error is returned
 %
 %   NOTE: This makes use of the UNIX pk2bm utility, so we're limited to the
-%   first 128 ASCII characters only (regardless of the machine's encoding)
+%   first 128 ASCII characters only (regardless of the machine's encoding),
+%   thus any ligatures, or multiple character symbols will not be generated
+%   correctly (only the first character is taken)
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_pk_templates.m,v 1.2 2006-11-07 02:49:06 scottl Exp $
+% $Id: generate_pk_templates.m,v 1.3 2006-11-22 17:01:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_pk_templates.m,v $
+% Revision 1.3  2006-11-22 17:01:46  scottl
+% small update to warn when trying to recognize multi-char symbols
+%
 % Revision 1.2  2006-11-07 02:49:06  scottl
 % bugfix for handling single quote character.
 %
@@ -41,7 +46,9 @@ function [bitmaps, offsets, charnames] = generate_pk_templates(font, cn)
 
 % LOCAL VARIABLES %
 %%%%%%%%%%%%%%%%%%%
-charnames=char([32,46,65:90,97:122]);  %A-Z, a-z, ., ' '
+
+%default characters to generate templates of
+charnames=mat2cell(char([32,46,65:90,97:122])');  %A-Z, a-z, ., ' '
 
 pat = ['.* height : (\d+)\n', ... %get the value of the height
        '.* width : (\d+)\n', ... %the value of the width
@@ -49,12 +56,13 @@ pat = ['.* height : (\d+)\n', ... %get the value of the height
        '.* yoff : (\d+|-\d+)\n\n', ... %y offset (again +ve or -ve)
        '(.*)'];   %this will initially hold the character bitmap
 
+
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 1 || nargin > 2
+if nargin < 1
     error('incorrect number of arguments specified!');
-elseif nargin == 2
-    charnames = cn;
+elseif nargin > 1
+    process_optional_args(varargin{:});
 end
 
 [fid, msg] = fopen(font);
@@ -66,7 +74,11 @@ fclose(fid);
 numchars=length(charnames);
 
 for ii=1:numchars
-    thischar=charnames(ii);
+    thischar=charnames{ii};
+    if length(thischar) > 1
+        warning('MBOCR:MulticharSym', 'Multi-char templates not supported');
+        thischar = thischar(1);
+    end
     fprintf(1,'Char %c (%d/%d)\n',thischar,ii,numchars);
 
     if strcmp(thischar, '''')
@@ -123,7 +135,6 @@ for ii=1:numchars
     on_idx = find(strtrim(reshape(res{1}{5}, vals(ii,4)+3, ...
              vals(ii,3))') == '*');
     bitmaps{ii}(on_idx) = 1;
-
 end
 
 %the baseline offsets are calculated as the difference between the height of
