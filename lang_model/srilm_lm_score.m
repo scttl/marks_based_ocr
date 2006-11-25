@@ -29,10 +29,14 @@ function [log_prob, ppl] = srilm_lm_score(pipe, fid, seq, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: srilm_lm_score.m,v 1.2 2006-11-22 17:11:13 scottl Exp $
+% $Id: srilm_lm_score.m,v 1.3 2006-11-25 20:10:15 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: srilm_lm_score.m,v $
+% Revision 1.3  2006-11-25 20:10:15  scottl
+% added small pause to ensure the correct line gets read.  Small efficiency
+% tweaks based on profiling code.
+%
 % Revision 1.2  2006-11-22 17:11:13  scottl
 % rewritten to use popen for efficient scoring.
 %
@@ -70,20 +74,21 @@ ppl = NaN;
 if ~strcmp(seq(end), char(10))
     seq = [seq, char(10)];
 end
-num_bytes = popenw(pipe, [seq, escape_seq, char(10)], 'char');
+popenw(pipe, [seq, escape_seq, char(10)], 'char');
 line = fgetl(fid);
 ii = 0;
-while ii < 10 && ((ischar(line) && isempty(regexp(line, 'logprob'))) || ...
-      (isnumeric(line) && line == -1))
+while ii < 10 && ((ischar(line) && isempty(regexp(line, 'logprob', 'once'))) ...
+      || (isnumeric(line) && line == -1))
     line = fgetl(fid);
     ii = ii+1;
+    pause(.01);  %crap hack to "block" until there's data in the file
 end
 if ii < 10
     %if run correctly, line should be something like the following:
     %0 zeroprobs, logprob= -1865.95 ppl= 23.497 ppl1= 24.987
     tmp_res = regexp(line, 'logprob= (\S+) ppl= (\S+)', 'tokens');
-    log_prob = str2num(tmp_res{1}{1});
-    ppl = str2num(tmp_res{1}{2});
+    log_prob = str2double(tmp_res{1}{1});
+    ppl = str2double(tmp_res{1}{2});
 else
     fprintf('unable to read valid line\n');
 end
