@@ -21,10 +21,13 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.5 2006-10-29 17:23:17 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.6 2006-11-25 20:05:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
+% Revision 1.6  2006-11-25 20:05:56  scottl
+% bugfix in handling comparisons with blank images.
+%
 % Revision 1.5  2006-10-29 17:23:17  scottl
 % fix for handling blank images.
 %
@@ -135,7 +138,14 @@ else
 end
 start_col = 1;
 for ii= 1:num
-    tsc = start_col + col_idx(ii);
+    if col_idx(ii) <= half_w
+        %this can happen if we are comparing to an all blank image patch
+        %so the min value returned is the first column.  Just set to the center
+        %in such a case (will get the same score regardless)
+        tsc = start_col + S1(2) + ceil(max_col/2);
+    else
+        tsc = start_col + col_idx(ii);
+    end
     tsr = row_off + row_idx(tsc);
     img1_mat(tsr-half_h:tsr+end_h,tsc-half_w:tsc+end_w) = bin_img1;
     start_col = start_col + 2*S1(2) + max_col;
