@@ -25,10 +25,13 @@ function [pipe, srilm_seq_file, srilm_fid] = srilm_lm_open(lm, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: srilm_lm_open.m,v 1.1 2006-11-22 17:11:13 scottl Exp $
+% $Id: srilm_lm_open.m,v 1.2 2006-11-25 20:09:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: srilm_lm_open.m,v $
+% Revision 1.2  2006-11-25 20:09:37  scottl
+% bugfix to ensure the correct line gets read (see srilm_lm_score too)
+%
 % Revision 1.1  2006-11-22 17:11:13  scottl
 % initial revision.
 %
@@ -84,11 +87,8 @@ if pipe < 0
     error('problems creating pipe handle via popenw');
 end  
 
-%crap hack to ensure that buffering works correctly.  No idea why it doesn't
-%work until at least one non-empty line is written (SRI-LM code looks 
-%like its being flushed etc.)
-popenw(pipe, ['JUNK', char(10), escape_seq, char(10)], 'char');
-pause(1);
+popenw(pipe, [escape_seq, char(10)], 'char');
+pause(1);  %ensure the file will exist before we try and open it
 srilm_fid = fopen(srilm_seq_file, 'r');
 
 if srilm_fid == -1
