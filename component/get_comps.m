@@ -60,14 +60,19 @@ function Comps = get_comps(Files, varargin)
 %                         ground_truth_label()
 %     truth_label - this vector will hold decimal ASCII character values for
 %                   each character (or partial character) that has been asigned.
+%     model_spaces - this boolean will be set to true if spaces have been
+%                    modelled and counts taken.  See add_space_model()
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.4 2006-11-07 02:52:06 scottl Exp $
+% $Id: get_comps.m,v 1.5 2006-11-25 20:06:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.5  2006-11-25 20:06:54  scottl
+% small addition of model_spaces field.
+%
 % Revision 1.4  2006-11-07 02:52:06  scottl
 % no change.
 %
@@ -418,3 +423,4 @@ Comps.descender_off = int16([]);
 Comps.ascender_off = int16([]);
 Comps.found_true_labels = false;
 Comps.truth_label = uint8([]);
+Comps.model_spaces = false;
