@@ -10,17 +10,21 @@ function map = init_mappings(Clust, Syms, varargin)
 %
 %   map returned is a cell array, with one row per cluster, each entry of which
 %   contains a vector listing character indices that match this symbol within a
-%   predefined threhold (which can be overridden).  We make sure that the
+%   predefined threshold (which can be overridden).  We make sure that the
 %   closest matching symbol is also included (based on a distance metric)
 %
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: init_mappings.m,v 1.2 2006-11-07 02:55:06 scottl Exp $
+% $Id: init_mappings.m,v 1.3 2006-11-25 20:13:34 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: init_mappings.m,v $
+% Revision 1.3  2006-11-25 20:13:34  scottl
+% change to ensure that we don't double count template matches when
+% including true labels that also appear in the short-list.
+%
 % Revision 1.2  2006-11-07 02:55:06  scottl
 % implement ability to take true mapping (if available, and specified)
 %
@@ -71,7 +75,7 @@ for ii=1:Syms.num
     rsz_syms{ii} = imresize(Syms.img{ii}, md_height/size(Syms.img{ii},1), ...
                    resize_method);
 end
-fprintf('%.2fs: finished resizing symbol images\n', toc, md_height);
+fprintf('%.2fs: finished resizing symbol images. Height %.2f\n',toc,md_height);
 
 %loop through each cluster and determine which symbols map to it.
 for ii=1:Clust.num
@@ -83,8 +87,20 @@ for ii=1:Clust.num
             num = take_nearest;
         end
         if include_true_labels && isfield(Clust, 'truth_label')
-            match_idx = find(Syms.val == Clust.truth_label(ii));
-            map{ii} = [match_idx; idx(1:num-length(match_idx))];
+            match_idx = find(strcmp(Syms.val, Clust.truth_label{ii}));
+            if isempty(match_idx)
+                warning('MBOCR:NoMatch','No truth label match for: %d\n',ii);
+            end
+            %prevent counting the truth label twice if it includes in the
+            %closest template matches
+            keep_idx = idx(1:num-length(match_idx));
+            for jj=1:length(match_idx)
+                keep_idx = keep_idx(keep_idx ~= match_idx(jj));
+                if isempty(keep_idx)
+                    break;
+                end
+            end
+            map{ii} = [match_idx; keep_idx];
         else
             map{ii} = idx(1:num);
         end
