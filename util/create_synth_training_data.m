@@ -21,11 +21,15 @@ function [vals, imgs] = create_synth_training_data(Files, chars, num)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_synth_training_data.m,v 1.2 2006-08-05 17:39:33 scottl Exp $
+% $Id: create_synth_training_data.m,v 1.3 2006-11-29 16:40:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_synth_training_data.m,v $
-% Revision 1.2  2006-08-05 17:39:33  scottl
+% Revision 1.3  2006-11-29 16:40:33  scottl
+% split build_tex_image into its own file (so it can be called from other
+% functions)
+%
+% Revision 1.2  2006/08/05 17:39:33  scottl
 % small grammatical fix.
 %
 % Revision 1.1  2006/06/10 21:01:47  scottl
@@ -170,44 +174,6 @@ end
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%build_tex_image: given an input string, create a TeX formatted file around it,
-%compile it, and pass it to the dvipng utility to create an image representation
-%then load that image back into matlab, and clean up created files
-%NOTE: currently cannot change font etc.
-function img = build_tex_image(str)
-
-tex_file='/tmp/tmp_ocr.tex';
-log_file='/tmp/tmp_ocr.log';
-dvi_file='/tmp/tmp_ocr.dvi';
-png_file='/tmp/tmp_ocr.png';
-png_dpi='300';
-
-img = [];
-
-fid = fopen(tex_file, 'w');
-fprintf(fid, '\\nopagenumbers\n%s\n\\end', str);
-fclose(fid);
-
-[s,w] = unix(['tex -output-directory=/tmp ', tex_file]);
-if s ~= 0
-    unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file]);
-    error('problem running TeX: %s', w);
-end
-
-[s,w] = unix(['dvipng -o ', png_file, ' ', ' -D ', png_dpi, ' ' dvi_file]);
-if s ~= 0
-    unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file, ' ', png_file]);
-    error('problem running dvipng: %s', w);
-end
-
-img = (imread(png_file) > 0);
-[r,c] = find(img == 1, 1, 'first');
-img = img(:,c:end);
-[r,c] = find(img == 1, 1, 'last');
-img = img(:,1:c);
-unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file, ' ', png_file]);
-
 
 %build_bitmap_image: given an input string as well as character and associated 
 %bitmaps, convert the string into an image representation
