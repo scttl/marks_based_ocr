@@ -48,14 +48,25 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %     bigram - a num x num matrix that denotes (smoothed) transition 
 %              probabilities.  Again, this isn't calculated here.
 %
+%     found_true_labels - this is a boolean that will be set to true if the
+%                         ground truth labels for each cluster have been
+%                         caluculated.  This can be done with a call to
+%                         clust_ground_truth_label()
+%     truth_label - this cell array will hold strings containing the true
+%                   symbols this cluster blob of ink refers to.
+%     model_spaces - this boolean will be set to true if spaces have been
+%                    modelled and counts taken.  See add_space_model()
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.10 2006-11-13 17:56:32 scottl Exp $
+% $Id: cluster_comps.m,v 1.11 2006-12-01 22:57:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.11  2006-12-01 22:57:37  scottl
+% added erosion ability, updated some documentation, removed spurious lines
+%
 % Revision 1.10  2006-11-13 17:56:32  scottl
 % small spacing improvements.
 %
@@ -118,7 +129,7 @@ merge_pct = .85;  %ensure at least 85% of the elements in each cluster match
 merge_min_comps = 3; %ensure that the cluster has at least 3 elements 
 
 %these parameters determine whether averaging of combined components will be
-%done (or whether the modal images is used instead -- recommended for Hausdorff)
+%done (or whether the modal image is used instead -- recommended for Hausdorff)
 avg_splits = false;
 avg_matches = true;
 
@@ -131,6 +142,12 @@ resize_method = 'nearest';
 
 %by default we don't work with thinned representations of the images
 use_thinned_imgs = false;
+
+%by default we don't erode the images (in an effort to encourage splitting
+%glued-together components)
+erode_imgs = false;
+erosion_se = strel('square', 3);  %try help strel for other choices
+eroision_iters = 1;
 
 %what value is assigned to 'on' pixels in the cluster averages initially
 fg_val = 1;
@@ -204,19 +221,12 @@ end
 if resize_imgs && Comps.found_lines
     %try rescaling the images
     fprintf('\n\n%.2fs: Rescaling odd-sized clusters\n', toc);
-    %sc = zeros(Clust.num,1);
-    %for ii=1:Clust.num
-    %    sc(ii) = size(Clust.avg{ii},1);
-    %end
-    %sc = mode(sc) ./ sc;
 
     for ii=1:Clust.num
         co = Clust.comps{ii};
         sc = mode(Comps.scale_factor(co));
-        %if sc(ii) ~= 1
         if sc ~= 1
             Clust.avg{ii} = imresize(Clust.avg{ii}, sc, resize_method);
-            %Clust.avg{ii} = imresize(Clust.avg{ii}, sc(ii), resize_method);
             Clust.norm_sq(ii) = sum(Clust.avg{ii}(:));
         end
     end
@@ -228,6 +238,14 @@ if use_thinned_imgs
     for ii=1:Clust.num
         Clust.avg{ii} = double(bwmorph(Clust.avg{ii}, 'thin', Inf));
         Clust.norm_sq(ii) = sum(Clust.avg{ii}(:));
+    end
+elseif erode_imgs
+    fprintf('\n\n%.2fs: eroding Cluster averages\n', toc);
+    for ii=1:erosion_iters
+        for jj=1:Clust.num
+            Clust.avg{ii} = imerode(Clust.avg{ii}, erosion_se);
+            Clust.norm_sq(ii) = sum(Clust.avg{ii}(:));
+        end
     end
 end
 
@@ -320,3 +338,6 @@ Clust.descender_off = int16([]);
 Clust.ascender_off = int16([]);
 Clust.num_trans = 0;
 Clust.bigram = [];
+Clust.found_true_labels = false;
+Clust.true_labels = {};
+Clust.model_spaces = false;
