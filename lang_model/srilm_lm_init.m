@@ -24,10 +24,13 @@ function [lm_file, vocab] = srilm_lm_init(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: srilm_lm_init.m,v 1.2 2006-11-22 17:11:13 scottl Exp $
+% $Id: srilm_lm_init.m,v 1.3 2006-12-01 23:01:11 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: srilm_lm_init.m,v $
+% Revision 1.3  2006-12-01 23:01:11  scottl
+% changed order to a numerical value.
+%
 % Revision 1.2  2006-11-22 17:11:13  scottl
 % strip unknown, pause, and start and end of sentence tokens from vocab.
 %
@@ -46,7 +49,7 @@ global MOCR_PATH;
 lm_file = [MOCR_PATH, '/results/lm.arpa'];
 
 %what order n-grams should we create?
-order = '3';
+order = 3;
 
 %what sort of discounting should we do?
 discount = '';  %this defaults to good-turing backoff
@@ -117,8 +120,8 @@ if length(Files) > 1
 else
     input = ['-text ', Files{1}];
 end
-cmd = ['ngram-count -order ', order, ' ', discount, ' ', other_params, ...
-       ' -write-vocab ', tmp_vocab, ' ', input, ' -lm ' lm_file];
+cmd = ['ngram-count -order ', num2str(order), ' ', discount, ' ', ...
+       other_params, ' -write-vocab ', tmp_vocab, ' ', input, ' -lm ' lm_file];
 if ~isempty(input_vocab)
    cmd = [cmd, ' -limit-vocab -vocab ', input_vocab];
 end
