@@ -51,10 +51,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.4 2006-11-22 16:59:45 scottl Exp $
+% $Id: create_alphabet.m,v 1.5 2006-12-01 23:02:39 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.5  2006-12-01 23:02:39  scottl
+% implemented ability to use TeX and dvipng to generate character images.
+%
 % Revision 1.4  2006-11-22 16:59:45  scottl
 % updates to handle ligatures (multi-char symbols)
 %
@@ -76,16 +79,21 @@ function Syms = create_alphabet(file, varargin)
 encoding = feature('DefaultCharacterSet');  
 
 %by default we don't generate templates.  Change this to a string giving the 
-%fontname (or full path to a pk font) to generate templats.
+%fontname (or full path to a pk font) to generate templats.  Or one can use the
+%string specified by tex_pattern below to use TeX to render images in its
+%default font
 template_font = []; 
 
 %in what point size should the templates be generated.  This has no effect if
 %templates are not being generated, or if we are using a pk file in a
 %particular DPI
-font_ptsize = 32;
+font_ptsize = 12;
 
 %how can we tell if a template font passed is the path to a pk font?
 pk_pattern = 'pk$';  %match *pk
+
+%how can we tell if a template font passed requires us to use TeX?
+tex_pattern = 'USE_TEX';
 
 %by default we don't process any corpora looking for word and character counts
 corpora_files = {};
@@ -129,7 +137,7 @@ elseif nargin > 1
     process_optional_args(varargin{:});
 end
 
-fid = fopen(file,'r','n',encoding);
+fid = fopen(file,'r','n');
 if fid == -1
     error('cannot open file %s', file);
 end
@@ -147,12 +155,30 @@ Syms.num = length(Syms.val);
 if ~isempty(template_font)
     fprintf('%.2fs: generating template images\n');
 
-    if isempty(regexp(template_font, pk_pattern))
-        Syms.img = generate_templates(template_font, sym_list, ...
-                   'ptsize', font_ptsize);
-    else
+    if ~isempty(regexp(template_font, pk_pattern))
         %attempt to generate templates using pk2bm
         Syms.img = generate_pk_templates(template_font, 'charnames', sym_list);
+    elseif ~isempty(regexp(template_font, tex_pattern))
+        %use TeX to render image templates (note that these won't be scaled,
+        %and we must mutiply the pointsize by 10 to get the appropriate dpi for
+        %dvipng
+        Syms.img = cell(Syms.num,1);
+        for ii=1:Syms.num
+            if strcmp(Syms.val{ii}, ' ')
+                %just build a dummy blank image
+                Syms.img{ii} = zeros(font_ptsize);
+            elseif ~isempty(regexp(Syms.val{ii}, '[\{\}\%&\$#_\^~\\]'))
+                %have to treat these characters, since they are special in TeX
+                %use \char and the number (need to get numbers)
+            else
+                Syms.img{ii} = build_tex_image(Syms.val{ii}, 'png_dpi', ...
+                               font_ptsize*10);
+            end
+        end
+    else
+        %use imagemagick to render image templates in the font passed
+        Syms.img = generate_templates(template_font, sym_list, ...
+                   'ptsize', font_ptsize);
     end
 end
 
