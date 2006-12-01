@@ -1,7 +1,7 @@
-function d = hausdorff_dist(img1, other_imgs, pct)
+function d = hausdorff_dist(img1, other_imgs, varargin)
 %  HAUSDORFF_DIST  Calculate the Hausdorff distance from 1 image to others.
 %
-%    distance = HAUSDORFF_DIST(img1, other_imgs, [percent])
+%    distance = HAUSDORFF_DIST(img1, other_imgs, [VAR1, VAL1]...)
 %
 % img1 is an image intensity matrix, typically the average of
 % all items in a cluster.
@@ -19,12 +19,16 @@ function d = hausdorff_dist(img1, other_imgs, pct)
 % the two images passed.
 %
 
+
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.6 2006-11-25 20:05:56 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.7 2006-12-01 22:58:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
+% Revision 1.7  2006-12-01 22:58:21  scottl
+% small change in argument processing and handling blanks.
+%
 % Revision 1.6  2006-11-25 20:05:56  scottl
 % bugfix in handling comparisons with blank images.
 %
@@ -54,16 +58,23 @@ percent = 1; %what portion of the closest pixel distances should be considered?
 %should we average the "distances" between the images, or take the maximum?
 use_avg = true;
 
+
 % CODE START %
 %%%%%%%%%%%%%%
-if nargin < 2 || nargin > 3
+if nargin < 2
     error('incorrect number of args!');
-elseif nargin == 3
-    percent = pct;
+elseif nargin > 2
+    process_optional_args(varargin{:});
 end
 
 S1 = size(img1);
 
+if isempty(other_imgs)
+    warning('MBOCR:noCompImg', ...
+            'No comparison images passed\n');
+    d = [];
+    return;
+end
 if iscell(other_imgs)
     num = length(other_imgs);
     if(size(other_imgs,1) ~= num)
