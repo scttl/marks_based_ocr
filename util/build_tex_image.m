@@ -17,10 +17,14 @@ function img = build_tex_image(str, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: build_tex_image.m,v 1.1 2006-11-29 16:40:33 scottl Exp $
+% $Id: build_tex_image.m,v 1.2 2006-12-04 19:19:27 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: build_tex_image.m,v $
+% Revision 1.2  2006-12-04 19:19:27  scottl
+% update to fix optional arg processing, added new dvipng parameters,
+% use external crop image utility function.
+%
 % Revision 1.1  2006-11-29 16:40:33  scottl
 % split build_tex_image into its own file (so it can be called from other
 % functions)
@@ -33,7 +37,15 @@ tex_file='/tmp/tmp_ocr.tex';
 log_file='/tmp/tmp_ocr.log';
 dvi_file='/tmp/tmp_ocr.dvi';
 png_file='/tmp/tmp_ocr.png';
-png_dpi='300';
+
+%how big should the image be?
+png_dpi = 190;
+
+%at what point should anti-aliased pixel values be considered on?
+aa_thresh = 3;
+
+%what to use for foreground pixels?
+fg_val = 1;
 
 
 % CODE START %
@@ -42,7 +54,7 @@ png_dpi='300';
 if nargin < 1
     error('incorrect number of arguments passed');
 elseif nargin > 1
-    process_option_args(varargin{:});
+    process_optional_args(varargin{:});
 end
 
 img = [];
@@ -59,16 +71,19 @@ if s ~= 0
     unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file]);
     error('problem running TeX: %s', w);
 end
-
-[s,w] = unix(['dvipng -o ', png_file, ' ', ' -D ', png_dpi, ' ' dvi_file]);
+[s,w] = unix(['dvipng -o ', png_file, ' ', ' -D ', num2str(png_dpi), ...
+              ' -bg "rgb 0.0 0.0 0.0" -fg "rgb 1.0 1.0 1.0" ' dvi_file]);
 if s ~= 0
     unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file, ' ', png_file]);
     error('problem running dvipng: %s', w);
 end
 
-img = (imread(png_file) > 0);
-[r,c] = find(img == 1, 1, 'first');
-img = img(:,c:end);
-[r,c] = find(img == 1, 1, 'last');
-img = img(:,1:c);
+img = imread(png_file) > aa_thresh;
+if fg_val == 0
+    img = ~img;
+end
+
+%crop the image to have a tight bounding box
+img = crop_image(img);
+
 unix(['rm -f ' tex_file, ' ', dvi_file, ' ', log_file, ' ', png_file]);
