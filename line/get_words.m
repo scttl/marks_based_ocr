@@ -17,10 +17,13 @@ function words = get_words(line_img, space_width, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_words.m,v 1.1 2006-12-04 23:15:31 scottl Exp $
+% $Id: get_words.m,v 1.2 2006-12-04 23:27:55 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_words.m,v $
+% Revision 1.2  2006-12-04 23:27:55  scottl
+% small bugfix in creating the cell array
+%
 % Revision 1.1  2006-12-04 23:15:31  scottl
 % initial revision.
 %
@@ -82,5 +85,5 @@ end
 
 words = cell(length(start_idx),1);
 for ii=1:length(start_idx)
-    words = [words; {line_img(:, start_idx(ii):end_idx(ii))}];
+    words{ii} = line_img(:, start_idx(ii):end_idx(ii));
 end
