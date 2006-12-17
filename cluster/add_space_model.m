@@ -14,10 +14,14 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.4 2006-11-22 17:02:54 scottl Exp $
+% $Id: add_space_model.m,v 1.5 2006-12-17 20:11:03 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.5  2006-12-17 20:11:03  scottl
+% calculate spaces as gap between neighbouring components who lie at least
+% partially between the baseline and x-height.
+%
 % Revision 1.4  2006-11-22 17:02:54  scottl
 % Updated to reflect changes in truth_label field
 %
@@ -94,14 +98,15 @@ if isempty(space_height)
 end
 
 %we will create spaces in the large gaps between neighbouring components that
-%stretch over the baseline (assuming line information has been found).
+%lie at least partially between the x-height line and the baseline 
+%(assuming line information has been found).
 num_spaces = floor(trans_dist / space_width);
 space_idx = find(num_spaces >= 1);
 if Comps.found_lines
-    bot_pos = Comps.pos(idx(space_idx),4);
-    %top_pos = Comps.pos(idx(space_idx),2);
-    bl_pos = uint16(int16(bot_pos) - Comps.descender_off(idx(space_idx)));
-    valid_idx = find(bl_pos <= bot_pos); %& (bl_pos - top_pos) >= space_height);
+    heights = Comps.pos(idx(space_idx),4) - Comps.pos(idx(space_idx),2) + 1;
+    asc = Comps.ascender_off(idx(space_idx));
+    desc = Comps.descender_off(idx(space_idx));
+    valid_idx = find((asc<=0 | asc < heights) & (desc<=0 | desc < heights));
     space_idx = space_idx(valid_idx);
     invalid_idx = setdiff(1:length(num_spaces), space_idx);
     num_spaces(invalid_idx) = 0;
