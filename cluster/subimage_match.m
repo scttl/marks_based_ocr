@@ -23,10 +23,13 @@ function [t_row, l_col, score] = subimage_match(sub_img, img, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: subimage_match.m,v 1.1 2006-12-04 23:14:06 scottl Exp $
+% $Id: subimage_match.m,v 1.2 2006-12-17 20:17:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: subimage_match.m,v $
+% Revision 1.2  2006-12-17 20:17:46  scottl
+% small change to remove unneccessary line.
+%
 % Revision 1.1  2006-12-04 23:14:06  scottl
 % initial revision.
 %
@@ -53,7 +56,6 @@ sz = size(sub_img);
 area = prod(sz);
 sub_sum = sum(sub_img(:));
 inv_sub = 1 - sub_img;
-inv_sub_sum = sum(inv_sub(:));
 
 pos_corr = abs(filter2(sub_img,img) - sub_sum);
 neg_corr = filter2(inv_sub,img);
