@@ -22,10 +22,14 @@ function d = hausdorff_dist(img1, other_imgs, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: hausdorff_dist.m,v 1.7 2006-12-01 22:58:21 scottl Exp $
+% $Id: hausdorff_dist.m,v 1.8 2006-12-17 20:13:00 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: hausdorff_dist.m,v $
+% Revision 1.8  2006-12-17 20:13:00  scottl
+% take the max (instead of the average) of the two directional distances
+% by default.
+%
 % Revision 1.7  2006-12-01 22:58:21  scottl
 % small change in argument processing and handling blanks.
 %
@@ -56,7 +60,7 @@ on_thresh = 0.5;  %when is a fractional pixel considered on?
 percent = 1; %what portion of the closest pixel distances should be considered?
 
 %should we average the "distances" between the images, or take the maximum?
-use_avg = true;
+use_avg = false;
 
 
 % CODE START %
