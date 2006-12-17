@@ -60,10 +60,13 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.11 2006-12-01 22:57:37 scottl Exp $
+% $Id: cluster_comps.m,v 1.12 2006-12-17 20:11:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.12  2006-12-17 20:11:46  scottl
+% fixup a couple of small typos in field names.
+%
 % Revision 1.11  2006-12-01 22:57:37  scottl
 % added erosion ability, updated some documentation, removed spurious lines
 %
@@ -214,7 +217,7 @@ for pp=1:length(Comps.files)
     %reduce their number.
     fprintf('%.2fs: Starting straight-match refine pass\n', toc);
     [Clust, Comps] = match_refine(Clust, Comps, 'dist_metric', 'euc', ...
-                     'distance_thrsh', straight_match_thresh);
+                     'distance_thresh', straight_match_thresh);
     fprintf('\n');
 end
 
@@ -339,5 +342,5 @@ Clust.ascender_off = int16([]);
 Clust.num_trans = 0;
 Clust.bigram = [];
 Clust.found_true_labels = false;
-Clust.true_labels = {};
+Clust.truth_label = {};
 Clust.model_spaces = false;
