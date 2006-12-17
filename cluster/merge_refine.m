@@ -17,10 +17,13 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.7 2006-10-29 17:24:54 scottl Exp $
+% $Id: merge_refine.m,v 1.8 2006-12-17 20:15:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
+% Revision 1.8  2006-12-17 20:15:43  scottl
+% update truth labels as well when merging clusters.
+%
 % Revision 1.7  2006-10-29 17:24:54  scottl
 % change to cluster struct, to use descender and ascender offsets, instead
 % of a single offset field.
@@ -57,7 +60,7 @@ min_match_comp = 3;
 display_matches = false;
 
 %should we thin merged clusters when created?
-use_thinned_imgs = true;
+use_thinned_imgs = false;
 
 %should we resize merged clusters when created?
 resize_imgs = false;
@@ -196,7 +199,19 @@ while ~ isempty(rr)
                                    Comps.pos(r_merge_comps,2) + 1);
             end
 
-            %ground truth assignment (doesn't change)
+            %ground truth assignment
+            if Comps.found_true_labels
+                %need to find differing truth labels
+                part_match = find(~strcmp(Comps.truth_label(lnb_merge_comps),...
+                                  Comps.truth_label(r_merge_comps)));
+                while ~isempty(part_match)
+                    s1 = Comps.truth_label{lnb_merge_comps(part_match(1))};
+                    s2 = Comps.truth_label{r_merge_comps(part_match(1))};
+                    Comps.truth_label{r_merge_comps(part_match(1))} = ...
+                          overlap_strings(s1, s2);
+                    part_match = part_match(2:end);
+                end
+            end
 
             %clusters (we'll require a new cluster for the merged components
             %if at least one of the components from the original right half 
@@ -228,9 +243,12 @@ while ~ isempty(rr)
                     Clust.ascender_off(rr) = int16(mode(single(...
                                    Comps.ascender_off(r_unmerged_comps))));
                 end
+                if Clust.found_true_labels
+                    Clust.truth_label(merge_clust) = Clust.truth_label(rr);
+                end
             end
             if length(lnb_merge_comps) ~= Clust.num_comps(mf_clust)
-                %some unmerged left-halfs remain
+                %some unmerged left-halves remain
                 lnb_unmerged_comps = setdiff(Clust.comps{mf_clust}, ...
                                      lnb_merge_comps);
                 Clust.num_comps(mf_clust) = length(lnb_unmerged_comps);
@@ -265,6 +283,10 @@ while ~ isempty(rr)
                                         Comps.descender_off(r_merge_comps))));
                 Clust.ascender_off(merge_clust) = int16(mode(single(...
                                         Comps.ascender_off(r_merge_comps))));
+            end
+            if Clust.found_true_labels
+                Clust.truth_label{merge_clust} = overlap_strings(...
+                  Clust.truth_label{mf_clust}, Clust.truth_label{merge_clust});
             end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
@@ -376,6 +398,20 @@ while ~ isempty(rr)
                                    Comps.pos(r_merge_comps,2) + 1);
             end
 
+            %ground truth assignment
+            if Comps.found_true_labels
+                %need to find differing truth labels
+                part_match = find(~strcmp(Comps.truth_label(tnb_merge_comps),...
+                                  Comps.truth_label(r_merge_comps)));
+                while ~isempty(part_match)
+                    s1 = Comps.truth_label{tnb_merge_comps(part_match(1))};
+                    s2 = Comps.truth_label{r_merge_comps(part_match(1))};
+                    Comps.truth_label{r_merge_comps(part_match(1))} = ...
+                          overlap_strings(s1, s2);
+                    part_match = part_match(2:end);
+                end
+            end
+
             %clusters (we'll require a new cluster for the merged components
             %if at least one of the components from the original bottom half 
             %cluster is not being merged.
@@ -405,6 +441,9 @@ while ~ isempty(rr)
                                    Comps.descender_off(r_unmerged_comps))));
                     Clust.ascender_off(rr) = int16(mode(single(...
                                    Comps.ascender_off(r_unmerged_comps))));
+                end
+                if Clust.found_true_labels
+                    Clust.truth_label(merge_clust) = Clust.truth_label(rr);
                 end
             end
             if length(tnb_merge_comps) ~= Clust.num_comps(mf_clust)
@@ -443,6 +482,10 @@ while ~ isempty(rr)
                                         Comps.descender_off(r_merge_comps))));
                 Clust.ascender_off(merge_clust) = int16(mode(single(...
                                         Comps.ascender_off(r_merge_comps))));
+            end
+            if Clust.found_true_labels
+                Clust.truth_label{merge_clust} = overlap_strings(...
+                  Clust.truth_label{mf_clust}, Clust.truth_label{merge_clust});
             end
             Clust.refined(merge_clust) = true;
             Clust.changed(merge_clust) = true;
@@ -504,6 +547,9 @@ if Clust.found_offsets
     Clust.descender_off = Clust.descender_off(keep_clust);
     Clust.ascender_off = Clust.ascender_off(keep_clust);
 end
+if Clust.found_true_labels
+    Clust.truth_label = Clust.truth_label(keep_clust);
+end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_clust,keep_clust);
 end
@@ -518,33 +564,43 @@ end
 %recalculate average: Use the listing of components passed to determine the
 %average intensity image of them.
 function new_avg = recalc_avg(Comps, idcs, use_thin, use_resize, rsz_method)
-    imgs = get_comp_imgs(Comps, idcs);
-    if use_resize && Comps.found_lines
-        %normalize the images
-        for ii=1:length(imgs)
-            imgs{ii} = imresize(imgs{ii}, Comps.scale_factor(idcs(ii)), ...
-                       rsz_method);
-        end
-    elseif use_resize
-        warning('MBOCR:NoScaleFactor', ...
-                'unable to renormalize images because scale_factor not set');
+imgs = get_comp_imgs(Comps, idcs);
+if use_resize && Comps.found_lines
+    %normalize the images
+    for ii=1:length(imgs)
+        imgs{ii} = imresize(imgs{ii}, Comps.scale_factor(idcs(ii)), ...
+                   rsz_method);
     end
+elseif use_resize
+    warning('MBOCR:NoScaleFactor', ...
+            'unable to renormalize images because scale_factor not set');
+end
 
-    new_avg = imgs{1};
-    new_tot = 1;
-    for ii=2:length(imgs)
-        [ht,wd] = size(imgs{ii});
-        if all(size(new_avg) == [ht,wd])
-            new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
-                      (1/(new_tot+1) .* imgs{ii});
-        else
-            new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
-                      (1/(new_tot+1) .* imresize(imgs{ii}, size(new_avg)));
-        end
-        new_tot = new_tot + 1;
+new_avg = imgs{1};
+new_tot = 1;
+for ii=2:length(imgs)
+    [ht,wd] = size(imgs{ii});
+    if all(size(new_avg) == [ht,wd])
+        new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
+                  (1/(new_tot+1) .* imgs{ii});
+    else
+        new_avg = (new_tot/(new_tot+1) .* new_avg) + ...
+                  (1/(new_tot+1) .* imresize(imgs{ii}, size(new_avg)));
     end
+    new_tot = new_tot + 1;
+end
 
-    if use_thin
-        %thin the new image too
-        new_avg = double(bwmorph(new_avg, 'thin', Inf));
-    end
+if use_thin
+    %thin the new image too
+    new_avg = double(bwmorph(new_avg, 'thin', Inf));
+end
+
+
+%string overlap: Merge the left and right half strings passed at the
+%maximally overlapping point ex: 'ar', 'rk' = 'ark'
+function s = overlap_strings(left,right)
+pos = 0;
+while pos < length(left) && ~strcmp(left(pos+1:end), right(1))
+    pos = pos + 1;
+end
+s = [left(1:pos), right];
