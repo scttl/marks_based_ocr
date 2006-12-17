@@ -15,11 +15,14 @@ function [Clust, Comps] = split_refine(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.9 2006-10-18 15:49:32 scottl Exp $
+% $Id: split_refine.m,v 1.10 2006-12-17 20:17:08 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
-% Revision 1.9  2006-10-18 15:49:32  scottl
+% Revision 1.10  2006-12-17 20:17:08  scottl
+% bugfix in checking when value is NaN
+%
+% Revision 1.9  2006/10/18 15:49:32  scottl
 % changes to allow scale-invariant splits, better processing of optional
 % arguments, some efficiency improvements.
 %
@@ -345,7 +348,7 @@ if num_splits >= 1
         lcol = sort(lcol);
         L = L(lrow(1):lrow(end),lcol(1):lcol(end));
 
-        if modal_height ~= NaN
+        if ~isnan(modal_height)
             L = imresize(L, modal_height ./ size(L,1), resize_method);
         end
         if thin_img
