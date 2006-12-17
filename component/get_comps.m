@@ -66,10 +66,15 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.5 2006-11-25 20:06:54 scottl Exp $
+% $Id: get_comps.m,v 1.6 2006-12-17 19:52:26 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.6  2006-12-17 19:52:26  scottl
+% update method of calculating neighbour distance based on boudning box
+% distances (instead of ink to ink distances).  Also fix a couple of
+% mis-references to the page variable.
+%
 % Revision 1.5  2006-11-25 20:06:54  scottl
 % small addition of model_spaces field.
 %
@@ -99,8 +104,8 @@ max_ar_diff = 10.0;
 
 %the minimum size (in number of pixels) of an element for it to be considered
 %for reference: dot's on i's are about 3x3 on NIPS papers
-min_elem_width = 4;
-min_elem_height = 4;
+min_elem_width = 2;
+min_elem_height = 2;
 
 %the maximum size (in number of pixels) of an element for it to be considered
 %for reference: typical text characters in NIPS papers are about 10-30x10-30
@@ -309,6 +314,7 @@ for pp=1:num_pgs
         prev_row  = R(ii);
         last_col  = C(ii);
     end
+
     %now get the left and right distances.  This requires working with the
     %transpose to ensure we get items in L-R order
     [C, R] = find(Lbl_img' ~= 0);
@@ -364,6 +370,19 @@ for pp=1:num_pgs
         last_row  = R(ii);
     end
     clear C R;
+    %update the neighbour distances based on bounding boxes
+    for ii = 1:4
+        idx = find(Comps.nb(:,ii) ~= 0);
+        if ii<=2
+            alt = ii+2;
+            nbs = Comps.nb(idx,ii);
+            Comps.nb_dist(idx,ii) = Comps.pos(idx,ii) - Comps.pos(nbs,alt);
+        else
+            alt = ii-2;
+            nbs = Comps.nb(idx,ii);
+            Comps.nb_dist(idx,ii) = Comps.pos(nbs,alt) - Comps.pos(idx,ii);
+        end
+    end
     fprintf('%.2fs: Neighbours of each component found\n', toc);
 
     %initialize the remaining Comps fields
@@ -386,8 +405,8 @@ for pp=1:num_pgs
             pause;
         end
         if save_cc_page
-            fprintf('%.2fs: Writing components of page %d to disk\n', toc, p);
-            imwrite(Rgb_img, [img_prefix, num2str(p), '.', img_format], ...
+            fprintf('%.2fs: Writing components of page %d to disk\n', toc, pp);
+            imwrite(Rgb_img, [img_prefix, num2str(pp), '.', img_format], ...
                     img_format);
         end
     end
@@ -422,5 +441,5 @@ Comps.scale_factor = [];
 Comps.descender_off = int16([]);
 Comps.ascender_off = int16([]);
 Comps.found_true_labels = false;
-Comps.truth_label = uint8([]);
+Comps.truth_label = cell(0);
 Comps.model_spaces = false;
