@@ -17,10 +17,14 @@ function [Clust, Comps] = match_refine(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.8 2006-11-13 17:56:47 scottl Exp $
+% $Id: match_refine.m,v 1.9 2006-12-17 20:13:52 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
+% Revision 1.9  2006-12-17 20:13:52  scottl
+% show the 5 farthest matches that are still within the threshold
+% (intead of the 5 closest), when displaying matches.
+%
 % Revision 1.8  2006-11-13 17:56:47  scottl
 % small spacing improvements.
 %
@@ -59,7 +63,6 @@ haus_batchsize = 2000;
 
 %by default take the average when combining clusters (instead of the mode).
 use_avg = true;
-
 
 display_images = false;  %set this to true to display matches as they are found
 
@@ -108,13 +111,14 @@ while ~isempty(rr)
         fprintf('found %d matches for cluster %d\r', num_match, rr);
         if display_images
             clf;
-            num_match = min(num_match, 5);  %only show the first 5 matches
+            num_match = min(num_match, 5);  %only show the last 5 matches
             subplot(1,num_match+1,1), imshow(Clust.avg{rr});
             xlabel('r'); title('Main Cluster');
             for ii=1:num_match
-                subplot(1,1+num_match,1+ii), imshow(Clust.avg{match_idcs(ii)});
-                xlabel(match_idcs(ii)); 
-                title(sprintf('dist: %.3f', D(match_idcs(ii))));
+                pos = length(match_idcs) - ii + 1;
+                subplot(1,1+num_match,1+ii), imshow(Clust.avg{match_idcs(pos)});
+                xlabel(match_idcs(pos)); 
+                title(sprintf('dist: %.3f', D(match_idcs(pos))));
             end
             drawnow;
             pause(.5);
