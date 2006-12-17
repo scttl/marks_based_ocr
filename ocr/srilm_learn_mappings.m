@@ -3,7 +3,7 @@ function [best_map,best_score,best_ppl] = srilm_learn_mappings(Clust, ...
 % SRILM_LEARN_MAPPINGS  Determine most likely cluster to symbol mappings
 %
 %   [best_map, best_score, best_ppl] = SRILM_LEARN_MAPPINGS(Clust, Comps, ...
-%                                      Syms, Lines, [var1,val1]...)
+%                                      Syms, Lines, map, [var1,val1]...)
 %   This function attempts to learn a good mapping from each cluster to a
 %   single character symbol by finding the maximum-likelihood score mapping
 %   when procesing the image lines in Lines.  This function makes use of the 
@@ -13,9 +13,7 @@ function [best_map,best_score,best_ppl] = srilm_learn_mappings(Clust, ...
 %
 %   Comps should be a struct like that returned from get_comps()
 %
-%   Syms should be a struct like that returned from create_alphabet.  We
-%   require that template images have been created for each symbol too (via
-%   generate_templates)
+%   Syms should be a struct like that returned from create_alphabet.
 %
 %   Lines should be a struct like that returned from get_lines()
 %
@@ -34,10 +32,13 @@ function [best_map,best_score,best_ppl] = srilm_learn_mappings(Clust, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: srilm_learn_mappings.m,v 1.3 2006-12-05 16:05:23 scottl Exp $
+% $Id: srilm_learn_mappings.m,v 1.4 2006-12-17 20:01:44 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: srilm_learn_mappings.m,v $
+% Revision 1.4  2006-12-17 20:01:44  scottl
+% updated description, removed dependence on having template images present.
+%
 % Revision 1.3  2006-12-05 16:05:23  scottl
 % major re-write fixing bugs and separating map setup from this function.
 %
@@ -58,8 +59,7 @@ function [best_map,best_score,best_ppl] = srilm_learn_mappings(Clust, ...
 %%%%%%%%%%%%%%
 %by default we do a depth-first search through the mapping candidates.  Set
 %this to false to do a breadth-first search.
-dfs_ordering = true
-;  
+dfs_ordering = true;  
 
 unknown_char = '<unk>'; %symbol to use for oov chars
 
@@ -70,7 +70,7 @@ other_params = '';
 
 %this value controls how deep in the tree we will explore.  Set to Inf, all
 %levels will be explored
-bound_depth = 32;
+bound_depth = Inf;
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -82,9 +82,6 @@ elseif nargin > 5
 end
 
 %some basic sanity checking
-if ~isfield(Syms, 'img') || isempty(Syms.img)
-    error('we require template symbol images!');
-end
 if ~isfield(Syms, 'corpus_files') || isempty(Syms.corpus_files)
     error('we require symbol and word counts from a text corpus!');
 end
