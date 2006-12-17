@@ -18,10 +18,13 @@ function display_subimage_match(sub_img, img, t_row, l_col, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_subimage_match.m,v 1.1 2006-12-04 23:13:35 scottl Exp $
+% $Id: display_subimage_match.m,v 1.2 2006-12-17 19:50:26 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_subimage_match.m,v $
+% Revision 1.2  2006-12-17 19:50:26  scottl
+% bugfix in processing optional arguments, use imtool instead of imshow
+%
 % Revision 1.1  2006-12-04 23:13:35  scottl
 % initial revision.
 %
@@ -51,13 +54,14 @@ img_format = 'png';
 if nargin < 4
     error('incorrect number of arguments specified');
 elseif nargin > 4
-    process_optional_arguments(varargin{:});
+    process_optional_args(varargin{:});
 end
 
 sz = size(sub_img);
 img_sz = size(img);
 
 img = double(img);
+img(img ~= 0) = 1;  %need to binarize the image (for labelling to work)
 for ii=1:length(t_row)
     sr = t_row(ii);
     er = t_row(ii)+sz(1)-1;
@@ -82,7 +86,7 @@ for ii=1:length(t_row)
     img(sr:er, sc:ec) = xx;
 end
 img = label2rgb(img, map, bg_col);
-imshow(img);
+imtool(img);
 
 if save_matches
     fprintf('writing image to disk\n');
