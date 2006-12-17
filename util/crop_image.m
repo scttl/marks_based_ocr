@@ -1,9 +1,12 @@
-function img = crop_image(img, varargin)
+function [img,col1,row1,col2,row2] = crop_image(img, varargin)
 % CROP_IMAGE   Remove extra pixels to create tight bounding box around image
 %
-%   IMG = CROP_IMAGE(IMG, [VAR1, VAL1]...)
+%   [IMG, L_COL, T_ROW, R_COL, B_ROW] = CROP_IMAGE(IMG, [VAR1, VAL1]...)
 %   IMG should be a matrix of pixel values (between 0 and 1), with 0 denoting
 %       background
+%
+%   The positions L_COL, T_ROW, R_COL, and B_ROW returned refer to the left,
+%   top, right, and bottom positions where the original image was cropped.
 %
 %   VAR1 and VAL1 are optional, and can be used to override the default values
 %   for the LOCAL VARS defined below.  Each VAR1 should be a string giving the
@@ -14,10 +17,13 @@ function img = crop_image(img, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: crop_image.m,v 1.1 2006-12-04 19:19:39 scottl Exp $
+% $Id: crop_image.m,v 1.2 2006-12-17 19:59:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: crop_image.m,v $
+% Revision 1.2  2006-12-17 19:59:56  scottl
+% updated to include returning the updated row and column positions.
+%
 % Revision 1.1  2006-12-04 19:19:39  scottl
 % initial revision.
 %
