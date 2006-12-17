@@ -18,10 +18,13 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.5 2006-11-07 02:51:32 scottl Exp $
+% $Id: sort_clusters.m,v 1.6 2006-12-17 20:16:32 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.6  2006-12-17 20:16:32  scottl
+% updates to when truth labels are sorted.
+%
 % Revision 1.5  2006-11-07 02:51:32  scottl
 % sort truth labels (if given).
 %
@@ -63,7 +66,7 @@ Clust.ascender_off = Clust.ascender_off(idx);
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(idx,:);
 end
-if isfield(Clust, 'truth_label')
+if ~isempty(Clust.truth_label)
     Clust.truth_label = Clust.truth_label(idx);
 end
 
