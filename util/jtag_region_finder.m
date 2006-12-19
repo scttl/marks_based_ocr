@@ -25,11 +25,14 @@ function pos = jtag_region_finder(jtag_file, rgn_list)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: jtag_region_finder.m,v 1.1 2006-06-03 20:56:01 scottl Exp $
+% $Id: jtag_region_finder.m,v 1.2 2006-12-19 21:41:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: jtag_region_finder.m,v $
-% Revision 1.1  2006-06-03 20:56:01  scottl
+% Revision 1.2  2006-12-19 21:41:21  scottl
+% no change.
+%
+% Revision 1.1  2006/06/03 20:56:01  scottl
 % Initial check-in.
 %
 %
