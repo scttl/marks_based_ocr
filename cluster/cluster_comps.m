@@ -47,7 +47,10 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                 transitions found.  Note that this is not calculated here
 %     bigram - a num x num matrix that denotes (smoothed) transition 
 %              probabilities.  Again, this isn't calculated here.
-%
+%     pos_count - a cell array containing up to wordlen entries.  Each entry 
+%                 will be a num x X matrix where each row contains scalar
+%                 counts of  how many times that cluster is seen in "words" of 
+%                 length X (X \in {1,...,wordlen}).  
 %     found_true_labels - this is a boolean that will be set to true if the
 %                         ground truth labels for each cluster have been
 %                         caluculated.  This can be done with a call to
@@ -60,10 +63,14 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.12 2006-12-17 20:11:46 scottl Exp $
+% $Id: cluster_comps.m,v 1.13 2006-12-19 22:13:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.13  2006-12-19 22:13:43  scottl
+% added pos_count field.  Implemented ability to return clusters
+% without refining.
+%
 % Revision 1.12  2006-12-17 20:11:46  scottl
 % fixup a couple of small typos in field names.
 %
@@ -112,6 +119,12 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %8) are the only valid entries
 num_dirs = 8;
 
+%this determines whether we will iteratively attempt to refine the initial
+%clustering by repeated, splits, merges, and matches.  Setting this to false
+%means that we only perform a single straight-Euclidean distance grouping over
+%the pages
+refine_clusters = true;
+
 %these parameters control the distance metric used during grouping.  Valid
 %choices are: 'euc', 'conv', or 'hausdorff' for Euclidian, Convolutional
 %Euclidian, or Hausdorff (with underlying Euclidian) distance measurements
@@ -121,6 +134,7 @@ split_metric='euc';
 
 %the following parameters control when things are grouped together.
 straight_match_thresh = .009;  %good for NIPS papers
+%straight_match_thresh = .01;  %attempt for unlv data
 %straight_match_thresh = .013;  %infinity book setting
 match_thresh = .009;  %1.3;  %hausdorff euclidian distance thresh
 
@@ -252,10 +266,16 @@ elseif erode_imgs
     end
 end
 
+
 %now repeatedly perform merges, splits, and matches until the number of
 %clusters remains constant.  First time through, refine all clusters.
 Clust.refined(:) = false;
 Clust.changed(:) = false;
+if ~refine_clusters
+    %skip the refinement.
+    return;
+end
+
 first_pass = true;
 while true
     num_clusts = Clust.num;
@@ -341,6 +361,7 @@ Clust.descender_off = int16([]);
 Clust.ascender_off = int16([]);
 Clust.num_trans = 0;
 Clust.bigram = [];
+Clust.pos_count = {};
 Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;

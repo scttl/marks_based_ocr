@@ -26,10 +26,14 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.8 2006-10-29 17:24:54 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.9 2006-12-19 22:13:42 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
+% Revision 1.9  2006-12-19 22:13:42  scottl
+% added pos_count field.  Implemented ability to return clusters
+% without refining.
+%
 % Revision 1.8  2006-10-29 17:24:54  scottl
 % change to cluster struct, to use descender and ascender offsets, instead
 % of a single offset field.
@@ -143,6 +147,11 @@ if Clust.found_offsets
 end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_list, keep_list);
+end
+if ~isempty(Clust.pos_count)
+    for ii=1:length(Clust.pos_count)
+        Clust.pos_count{ii} = Clust.pos_count{ii}(keep_list,:);
+    end
 end
 
 %we also must update the cluster id associated with the components 

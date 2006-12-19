@@ -17,10 +17,14 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.8 2006-12-17 20:15:43 scottl Exp $
+% $Id: merge_refine.m,v 1.9 2006-12-19 22:13:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
+% Revision 1.9  2006-12-19 22:13:43  scottl
+% added pos_count field.  Implemented ability to return clusters
+% without refining.
+%
 % Revision 1.8  2006-12-17 20:15:43  scottl
 % update truth labels as well when merging clusters.
 %
@@ -232,6 +236,12 @@ while ~ isempty(rr)
                     Clust.bigram(Clust.num,:) = NaN;
                     Clust.bigram(:,Clust.num) = NaN;
                 end
+                if ~isempty(Clust.pos_count)
+                    for ii=1:length(Clust.pos_count)
+                        Clust.pos_count{ii}(Clust.num,:) = ...
+                                        Clust.pos_count{ii}(rr,:);
+                    end
+                end
                 %recalculate average for rr
                 Clust.mode_num(rr) = length(r_unmerged_comps);
                 Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps, ...
@@ -431,6 +441,12 @@ while ~ isempty(rr)
                     Clust.bigram(Clust.num,:) = NaN;
                     Clust.bigram(:,Clust.num) = NaN;
                 end
+                if ~isempty(Clust.pos_count)
+                    for ii=1:length(Clust.pos_count)
+                        Clust.pos_count{ii}(Clust.num,:) = ...
+                                        Clust.pos_count{ii}(rr,:);
+                    end
+                end
                 %recalculate average for rr
                 Clust.mode_num(rr) = length(r_unmerged_comps);
                 Clust.avg{rr} = recalc_avg(Comps, r_unmerged_comps, ...
@@ -552,6 +568,11 @@ if Clust.found_true_labels
 end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_clust,keep_clust);
+end
+if ~isempty(Clust.pos_count)
+    for ii=1:length(Clust.pos_count)
+        Clust.pos_count{ii} = Clust.pos_count{ii}(keep_clust,:);
+    end
 end
 for ii = 1:Clust.num
     Comps.clust(Clust.comps{ii}) = ii;

@@ -18,10 +18,14 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.6 2006-12-17 20:16:32 scottl Exp $
+% $Id: sort_clusters.m,v 1.7 2006-12-19 22:13:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.7  2006-12-19 22:13:43  scottl
+% added pos_count field.  Implemented ability to return clusters
+% without refining.
+%
 % Revision 1.6  2006-12-17 20:16:32  scottl
 % updates to when truth labels are sorted.
 %
@@ -65,6 +69,11 @@ Clust.descender_off = Clust.descender_off(idx);
 Clust.ascender_off = Clust.ascender_off(idx);
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(idx,:);
+end
+if ~isempty(Clust.pos_count)
+    for ii=1:length(Clust.pos_count)
+        Clust.pos_count{ii} = Clust.pos_count{ii}(idx,:);
+    end
 end
 if ~isempty(Clust.truth_label)
     Clust.truth_label = Clust.truth_label(idx);
