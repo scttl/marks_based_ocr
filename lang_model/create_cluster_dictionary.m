@@ -1,30 +1,30 @@
-function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
-                                   num, P)
+function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, varargin)
 % CREATE_CLUSTER_DICTIONARY Create a list and counts of blobs (chars)
 %
-%   [Clust, Comps] = CREATE_CLUSTER_DICTIONARY(Clust, Comps, [num], ...
-%                             [Pos])
+%   [Clust, Comps] = CREATE_CLUSTER_DICTIONARY(Clust, Comps, [var1, val1]...)
 %
-%   This function uses already clustered page data to come up with baseline
-%   offsets and counts of cluster transitions for use in constructing a 
-%   dictionary.
+%   This function uses already clustered page data to come up with counts of 
+%   cluster transitions for use in constructing a dictionary.
 %
-%   num is optional, and if specified determines the number of clusters (i.e.
-%   characters) to use.  This is done based on a descending order of number of 
-%   elements belonging to that cluster.  If not given, it defaults to 50
+%   We assume that the Comps struct passed contains line related information
+%   like ascender and descender offsets (see get_lines() for more info).
+%   Similarily, the Clust struct should also contain this information
 %
-%   Pos is optional, and if specified it should be a cell array of nx4 matrices
-%   giving line bounding boxes (indexed by page).  It should have the same
-%   number of entries as Comps, and should be like Pos returned in get_lines.
-%   If not passed, it will be calculated in this function (which takes longer).
+%   Any of the variables below can be overridden by passing in its name and new
+%   value as an additional pair of arguments
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.8 2006-09-22 18:01:41 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.9 2006-12-19 21:40:46 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
+% Revision 1.9  2006-12-19 21:40:46  scottl
+% assume that line offset information is already stored,
+% rewrite how space models get added.  Added cluster positional count
+% information.
+%
 % Revision 1.8  2006-09-22 18:01:41  scottl
 % added MSGID to warning message
 %
@@ -55,111 +55,68 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-num_clusts = 50;
-baseline_thresh = 0.2;
-intensity_thresh = 0.5;  %min value for cluster pixel be considered 'on'
-bg_val = 0;
-
-add_space = true;  %should we add a space character bitmap and bigram count?
-space_width = 12;  %typical value between words (the space width)
-space_height = 12; %how tall should the space character be from the baseline 
+model_spaces = true;  %should we add a space character bitmap and bigram count?
 
 smoothing_counts = 1;  %add plus-one smoothing to ensure all transitions are
                        %possible.
-D = {};
-Pos = {};
+
+%up to what length non-space sequence of blobs (i.e. word) should we include in
+%our positional counts
+max_word_len = 10;
 
 
 % CODE START %
 %%%%%%%%%%%%%%
 tic;
 
-if nargin < 2 || nargin > 4
+if nargin < 2
     error('incorrect number of arguments passed');
-elseif nargin >= 3
-    num_clusts = num;
-    if nargin == 4
-        Pos = P;
-    end
+elseif nargin > 2
+    process_optional_args(varargin{:});
+end
+
+%ensure line information present in clusters and components
+if ~isfield(Comps, 'ascender_off') || ~isfield(Comps, 'descender_off')
+    error('we require components to contain line information');
+elseif ~Clust.found_offsets
+    error('we require clusters to contain line information');
+end
+
+num_pgs = size(Comps.pg_size,1);
+
+%add the 'space character' Cluster if specified and it doesn't already exist
+if model_spaces && ~Clust.model_spaces
+    [Clust, Comps] = add_space_model(Clust, Comps);
+    fprintf('%.2fs: finished adding space model\n', toc);
 end
 
 %sort the clusters to ensure they are ordered by number of elements
 [Clust, Comps] = sort_clusters(Clust, Comps);
 
-num_pgs = size(Comps.pg_size,1);
-if isempty(Pos) || length(Pos) < num_pgs
-    %must run get_lines to determine all line boundaries
-    fprintf('%.2fs: determining line boundaries of all pages\n', toc);
-    Pos = get_lines(Comps);
-    fprintf('%.2fs: finished determining line boundaries\n', toc);
-end
-
-if ~ Clust.found_offsets
-    fprintf('%.2fs: calculating baseline offsets for each cluster\n', toc);
-    if ~ Comps.found_offsets
-        fprintf('%.2fs: calculating baseline offsets for each component\n',toc);
-        for pp=1:num_pgs
-            idx = find(Comps.pg == pp);
-            M = ~imread(Comps.files{pp});
-            for line=1:size(Pos{pp},1)
-                lpos = Pos{pp}(line,:);
-                lidx = find(Comps.pos(idx,2) >= lpos(2) & ...
-                            Comps.pos(idx,4) <= lpos(4));
-                lidx = idx(lidx);
-                offs = get_baselines(M(lpos(2):lpos(4),lpos(1):lpos(3)) ~= ...
-                       bg_val, baseline_thresh);
-                Comps.offset(lidx) = (Comps.pos(lidx,4) - lpos(2)) - offs;
-            end
+if model_spaces
+    %attempt to infer which Cluster belongs to the space character.  In any 
+    %reasonable document this will almost certainly be the first cluster.  Use 
+    %our assigned truth value as a sanity check
+    space_idx = 1;
+    if isfield(Clust ,'truth_label') && ~isempty(Clust.truth_label) && ...
+       ~strcmp(Clust.truth_label{1}, ' ')
+        %attempt to find it using true labels
+        space_idx = find(strcmp(Clust.truth_label, ' '));
+        if isempty(space_idx)
+            warning('MBOCR:spaceNotFound', ...
+            'Space character not found.  Will be ignored in counts.\n');
+            model_spaces = false;
         end
-        Comps.found_offsets = true;
-        fprintf('%.2fs: finished calculating component offsets\n',toc);
+    else
+        warning('MBOCR:spaceNotFound', ...
+        'Space character nor truth labels found.  Spaces ignored in counts\n');
+        model_spaces = false;
     end
-    %take the mode of each Component offset belonging to that cluster
-    for cc=1:Clust.num
-        offs = single(Comps.offset(Clust.comps{cc}));
-        off_vals = unique(offs);
-        if length(off_vals) == 1
-            Clust.offset(cc) = offs(1);
-        elseif length(off_vals) > 1
-            [mf_bin, mf_bin] = max(hist(offs,off_vals));
-            Clust.offset(cc) = off_vals(mf_bin);
-        end
-    end
-    Clust.found_offsets = true;
-    fprintf('%.2fs: finished calculating baseline offsets\n', toc);
 end
-
-%add the 'space character' Cluster to the end if specified
-if add_space
-    Clust.num = Clust.num + 1;
-    Clust.num_comps(Clust.num) = 0;
-    Clust.mode_num(Clust.num) = 0;
-    Clust.comps{Clust.num} = [];
-    Clust.avg{Clust.num} = bg_val + zeros(space_height, space_width);
-    Clust.norm_sq(Clust.num) = 0;
-    Clust.offset(Clust.num) = 0;
-    Clust.refined(Clust.num) = 0;
-    Clust.changed(Clust.num) = 0;
-end
-fprintf('%.2fs: finished counting chars and creating bitmaps\n', toc);
 
 %now create the bigram counts
 idx = find(Comps.nb(:,3) ~= 0);
 Trans = double([Comps.clust(idx), Comps.clust(Comps.nb(idx,3))]);
-trans_dist = Comps.pos(Trans(:,2),1) - Comps.pos(Trans(:,1),3);
-if add_space
-    %add space transitions (based on distance)
-    blank_clust = Clust.num;
-    blank_trans = floor(trans_dist / space_width);
-    Clust.num_comps(Clust.num) = sum(blank_trans);
-    Clust.mode_num(Clust.num) = Clust.num_comps(Clust.num);
-    blank_idx = find(blank_trans > 0);
-    Trans = [Trans; blank_clust+zeros(length(blank_idx),1), Trans(blank_idx,2)];
-    Trans(blank_idx,2) = blank_clust;
-    blank_trans(blank_idx) = blank_trans(blank_idx) - 1;
-    num_b_trans = sum(blank_trans(blank_idx));
-    Trans = [Trans; blank_clust+zeros(num_b_trans,2)];
-end
 Clust.num_trans = size(Trans,1);
 Clust.bigram = zeros(Clust.num);
 for ii=1:size(Trans,1)
@@ -180,5 +137,46 @@ if any(Z == 0)
     Z(zero_rows) = 1;
 end
 Clust.bigram = Clust.bigram ./ repmat(Z,1,Clust.num);
-
 fprintf('%.2fs: finished creating character bigram matrix\n', toc);
+
+%now determine component positional counts
+if ~model_spaces
+    warning('MBOCR:spaceNotFound', ...
+            'no positional counts can be taken.  Spaces not found');
+end
+Clust.pos_count = cell(1,max_word_len);
+for ii=unique(Comps.line)'
+    m = find(Comps.line == ii);
+    [idx,idx] = min(Comps.pos(m,1));  %find left-most component on this line
+    nbs = m(idx);
+    while Comps.nb(nbs(end),3) ~= 0
+        nbs = [nbs; Comps.nb(nbs(end),3)];
+    end
+    spc_pos = find(Comps.clust(nbs) == space_idx);
+    pos = 0;
+    while ~isempty(spc_pos)
+        len = spc_pos(1)-1 - pos;
+        if len > 0 && len <= max_word_len
+            Clust.pos_count{len} = [Clust.pos_count{len}; ...
+                                    Comps.clust(nbs(pos+1:spc_pos(1)-1))'];
+        end
+        pos = spc_pos(1);
+        spc_pos = spc_pos(2:end);
+    end
+    %must also include word between the last space and the end of the line
+    len = length(nbs) - pos;
+    if len > 0 && len <= max_word_len
+        Clust.pos_count{len} = [Clust.pos_count{len}; ...
+                                Comps.clust(nbs(pos+1:end))'];
+    end
+end
+%now go through the cluster "word" lists created above, and update the counts
+for ii=1:max_word_len
+    w = Clust.pos_count{ii};
+    Clust.pos_count{ii} = zeros(Clust.num,ii);
+    for jj=1:Clust.num
+        Clust.pos_count{ii}(jj,:) = sum(w == jj);
+    end
+end
+fprintf('%.2fs: finished counting positions of components\n', toc);
+
