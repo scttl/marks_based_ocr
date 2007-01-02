@@ -25,10 +25,14 @@ function pos = jtag_region_finder(jtag_file, rgn_list)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: jtag_region_finder.m,v 1.2 2006-12-19 21:41:21 scottl Exp $
+% $Id: jtag_region_finder.m,v 1.3 2007-01-02 19:21:52 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: jtag_region_finder.m,v $
+% Revision 1.3  2007-01-02 19:21:52  scottl
+% made class and position matching more robust, removed depenedence on
+% iteration over lines.
+%
 % Revision 1.2  2006-12-19 21:41:21  scottl
 % no change.
 %
@@ -39,8 +43,12 @@ function pos = jtag_region_finder(jtag_file, rgn_list)
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-class_str = 'class = ';
-pos_str =  'pos = ';
+class_str = 'class ';
+class_pat = 'class\s*=\s*(\w*)\s*';
+class_rep = '$1';
+pos_str =  'pos ';
+pos_pat = 'pos\s*=\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*';
+pos_rep = '$1 $2 $3 $4';
 pos = [];
 
 
@@ -53,14 +61,10 @@ data = textread(jtag_file, '%s', 'delimiter', '\n', 'commentstyle', 'matlab');
 class_idx = strmatch(class_str, data);
 pos_idx = strmatch(pos_str, data);
 classes = data(class_idx);
-for i=1:size(classes,1)
-    classes{i} = classes{i}(length(class_str)+1:end);
-end
+classes = regexprep(classes, class_pat, class_rep);
 str_pos = data(pos_idx);
-for i=1:size(str_pos,1)
-    P = sscanf(str_pos{i}, [pos_str, '%d %d %d %d']);
-    pos = [pos; P(1), P(2), P(3), P(4)];
-end
+str_pos = regexprep(str_pos, pos_pat, pos_rep);
+pos = str2num(char(str_pos));
 
 keep_idx = [];
 for i=1:size(rgn_list,2)
