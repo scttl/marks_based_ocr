@@ -1,4 +1,4 @@
-function img = crop_jtag_regions(jtag_file, img, region_list, varargin)
+function new_img = crop_jtag_regions(jtag_file, img, keep_region_list, varargin)
 % CROP_JTAG_REGIONS  Use a JTAG file to crop components due to their region type
 %
 % CROPPED_IMG = crop_jtag_regions(FILENAME, IN_IMG, JTAG_CROP_REGIONS)
@@ -12,10 +12,14 @@ function img = crop_jtag_regions(jtag_file, img, region_list, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: crop_jtag_regions.m,v 1.1 2006-09-20 21:45:33 scottl Exp $
+% $Id: crop_jtag_regions.m,v 1.2 2007-01-02 19:23:38 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: crop_jtag_regions.m,v $
+% Revision 1.2  2007-01-02 19:23:38  scottl
+% modified code so that regions are kept instead of removed (thus background
+% is clean)
+%
 % Revision 1.1  2006-09-20 21:45:33  scottl
 % initial check-in.
 %
@@ -35,9 +39,12 @@ end
 
 %(we assume the jtag file is in the same directory as the image file,
 % and has the same name, but with the extension .jtag instead)
+new_img = img;
 if exist(jtag_file, 'file');
-    pos = jtag_region_finder(jtag_file, region_list);
+    pos = jtag_region_finder(jtag_file, keep_region_list);
+    new_img(:) = bg_val;
     for ii=1:size(pos,1)
-        img(pos(ii,2):pos(ii,4), pos(ii,1):pos(ii,3)) = bg_val;
+        new_img(pos(ii,2):pos(ii,4), pos(ii,1):pos(ii,3)) = ...
+                img(pos(ii,2):pos(ii,4), pos(ii,1):pos(ii,3));
     end
 end
