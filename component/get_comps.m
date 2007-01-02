@@ -66,10 +66,13 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.6 2006-12-17 19:52:26 scottl Exp $
+% $Id: get_comps.m,v 1.7 2007-01-02 19:23:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.7  2007-01-02 19:23:12  scottl
+% changed cropping so that regions are kept instead of removed.
+%
 % Revision 1.6  2006-12-17 19:52:26  scottl
 % update method of calculating neighbour distance based on boudning box
 % distances (instead of ink to ink distances).  Also fix a couple of
@@ -114,13 +117,15 @@ max_elem_height = 100;
 
 %should we remove certain regions if an associated jtag file exits?
 crop_regions = true;
-%give a cell array list of the regions to be removed.  Possible choices are:
+%give a cell array list of the regions to be kept.  Possible choices are:
 %section_heading, subsection_heading, footer, references, bullet_item, 
 %table_label, header, authour_list, code_block, main_title, figure_label, 
 %figure, image, text, equation, footnote, figure_caption, decoration, abstract,
 %table, graph, eq_number, editor_list, table_caption,  pg_number
-rem_region_list = {'figure', 'figure_label', 'image', 'decoration', 'table', ...
-    'code_block', 'table_label', 'graph', 'equation', 'eq_number'};
+keep_region_list = {'section_heading', 'subsection_heading', 'footer', ...
+     'references', 'bullet_item', 'table_label', 'header', 'authour_list', ...
+     'code_block', 'main_title', 'figure_label', 'text', 'footnote', ...
+     'figure_caption', 'abstract', 'editor_list', 'table_caption', 'pg_number'};
 jtag_extn = 'jtag';  %file extension for jtag files
 
 %should we display the page image before and after processing?  This uses
@@ -185,7 +190,7 @@ for pp=1:num_pgs
                     'file has no extension. Unable to parse regions');
         else
             jtag_file = [Comps.files{pp}(1:dot_pos(end)), jtag_extn];
-            Lbl_img = crop_jtag_regions(jtag_file, Lbl_img, rem_region_list);
+            Lbl_img = crop_jtag_regions(jtag_file, Lbl_img, keep_region_list);
             fprintf('%.2fs: done cropping unwanted regions from this page\n',...
                     toc);
         end
