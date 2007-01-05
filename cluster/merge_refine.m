@@ -17,10 +17,13 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.9 2006-12-19 22:13:43 scottl Exp $
+% $Id: merge_refine.m,v 1.10 2007-01-05 17:07:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
+% Revision 1.10  2007-01-05 17:07:56  scottl
+% prohibit writing reams of debug output to the diary if in use.
+%
 % Revision 1.9  2006-12-19 22:13:43  scottl
 % added pos_count field.  Implemented ability to return clusters
 % without refining.
@@ -75,6 +78,10 @@ resize_method = 'nearest';
 del_comps = [];
 del_clusts = [];
 
+%set this to true to ensure the reams of printed dialogue are included in diary
+%(typically you won't want this, unless debugging)
+write_to_diary = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -83,6 +90,15 @@ if nargin < 2
     error('incorrect number of arguments specified!');
 elseif nargin > 2
     process_optional_args(varargin{:});
+end
+
+if ~write_to_diary
+    if strcmp(get(0,'Diary'), 'on')
+        diary off;
+    else
+        %this ensures we don't attempt to turn on an 'off' diary
+        write_to_diary = true;
+    end
 end
 
 %initially put all elements in the refine list if not passed
@@ -578,6 +594,9 @@ for ii = 1:Clust.num
     Comps.clust(Clust.comps{ii}) = ii;
 end
 
+if ~write_to_diary
+    diary on;
+end
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
