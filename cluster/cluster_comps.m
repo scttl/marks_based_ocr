@@ -51,6 +51,8 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                 will be a num x X matrix where each row contains scalar
 %                 counts of  how many times that cluster is seen in "words" of 
 %                 length X (X \in {1,...,wordlen}).  
+%     pos_total - a scalar listing the total counts of each positional
+%                 character
 %     found_true_labels - this is a boolean that will be set to true if the
 %                         ground truth labels for each cluster have been
 %                         caluculated.  This can be done with a call to
@@ -63,10 +65,13 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.13 2006-12-19 22:13:43 scottl Exp $
+% $Id: cluster_comps.m,v 1.14 2007-01-05 17:06:55 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.14  2007-01-05 17:06:55  scottl
+% added pos_total field initalization.  Made the straight-match sweep optional.
+%
 % Revision 1.13  2006-12-19 22:13:43  scottl
 % added pos_count field.  Implemented ability to return clusters
 % without refining.
@@ -118,6 +123,12 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %the number of directions to consider when looking for conn. components (4 or
 %8) are the only valid entries
 num_dirs = 8;
+
+%this determines whether we will run a quick straight-match sweep over the
+%clusters as a a first step in reducing the number of clusters.  For noiseless
+%documents this is recommended to increase efficiency.  For noisy documents
+%this may be less effective.
+run_straight_sweep = true;
 
 %this determines whether we will iteratively attempt to refine the initial
 %clustering by repeated, splits, merges, and matches.  Setting this to false
@@ -190,7 +201,7 @@ warning(override_display, 'MBOCR:override');
 Clust = init_clust();
 
 %iterate through each page adding its components to our cluster list and
-%performing straight match refinements to reduce the number of clusters
+%optionally performing a straight match refinement to reduce the num of clusters
 for pp=1:length(Comps.files)
 
     fprintf('Processing page %d\n', pp);
@@ -229,9 +240,12 @@ for pp=1:length(Comps.files)
 
     %perform a single straight match refinement over these new clusters to
     %reduce their number.
-    fprintf('%.2fs: Starting straight-match refine pass\n', toc);
-    [Clust, Comps] = match_refine(Clust, Comps, 'dist_metric', 'euc', ...
-                     'distance_thresh', straight_match_thresh);
+    if run_straight_sweep
+        fprintf('%.2fs: Starting straight-match refine pass\n', toc);
+        [Clust, Comps] = match_refine(Clust, Comps, 'dist_metric', 'euc', ...
+                         'distance_thresh', straight_match_thresh);
+    end
+    fprintf('%.2fs: %d clusters remain\n', toc, Clust.num);
     fprintf('\n');
 end
 
@@ -291,6 +305,7 @@ while true
                      merge_min_comps, 'resize_imgs', resize_imgs, ...
                      'resize_method', resize_method, 'use_thinned_imgs', ...
                      use_thinned_imgs);
+    fprintf('%.2fs: %d clusters remain\n', toc, Clust.num);
 
     if first_pass
         %first time through we want to attempt to match over all
@@ -302,6 +317,7 @@ while true
     [Clust, Comps] = match_refine(Clust, Comps, 'dist_metric', match_metric, ...
                      'distance_thresh', match_thresh, 'use_avg', ...
                      avg_matches);
+    fprintf('%.2fs: %d clusters remain\n', toc, Clust.num);
 
     if first_pass
         %first time through we want to attempt to split over all
@@ -314,6 +330,7 @@ while true
                      'use_avg', avg_splits, 'resize_imgs', resize_imgs, ...
                      'resize_method', resize_method, 'use_thinned_imgs', ...
                      use_thinned_imgs);
+    fprintf('%.2fs: %d clusters remain\n', toc, Clust.num);
 
 
     %to speed up subsequent refinements we only need to further process
@@ -362,6 +379,7 @@ Clust.ascender_off = int16([]);
 Clust.num_trans = 0;
 Clust.bigram = [];
 Clust.pos_count = {};
+Clust.pos_total = 0;
 Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;
