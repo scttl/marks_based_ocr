@@ -15,10 +15,13 @@ function [Clust, Comps] = split_refine(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_refine.m,v 1.10 2006-12-17 20:17:08 scottl Exp $
+% $Id: split_refine.m,v 1.11 2007-01-05 17:08:18 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_refine.m,v $
+% Revision 1.11  2007-01-05 17:08:18  scottl
+% prohibit writing reams of deubg output to the diary if being used.
+%
 % Revision 1.10  2006-12-17 20:17:08  scottl
 % bugfix in checking when value is NaN
 %
@@ -78,6 +81,10 @@ use_thinned_imgs = false;
 %should we display matches onscreen (wastes resources)
 display_matches = false;
 
+%set this to true to ensure the reams of printed dialogue are included in diary
+%(typically you won't want this, unless debugging)
+write_to_diary = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -85,6 +92,15 @@ if nargin < 2
     error('incorrect number of arguments specified!');
 elseif nargin > 2
     process_optional_args(varargin{:});
+end
+
+if ~write_to_diary
+    if strcmp(get(0,'Diary'), 'on')
+        diary off;
+    else
+        %this ensures we don't attempt to turn on an 'off' diary
+        write_to_diary = true;
+    end
 end
 
 %start by determining the pixel width of the smallest element in all the
@@ -286,6 +302,9 @@ while ~isempty(rr)
     rr = find(Clust.refined == false, 1, 'first');
 end
 
+if ~write_to_diary
+    diary on;
+end
 
 
 % SUBFUNCTION DECLARATIONS %
