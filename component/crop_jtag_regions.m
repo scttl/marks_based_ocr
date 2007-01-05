@@ -1,21 +1,26 @@
-function new_img = crop_jtag_regions(jtag_file, img, keep_region_list, varargin)
+function [new_img,pos] = crop_jtag_regions(jtag_file, img, keep_region_list, ...
+                         varargin)
 % CROP_JTAG_REGIONS  Use a JTAG file to crop components due to their region type
 %
-% CROPPED_IMG = crop_jtag_regions(FILENAME, IN_IMG, JTAG_CROP_REGIONS)
+% [CROPPED_IMG, REGIONS] = crop_jtag_regions(FILENAME, IN_IMG,JTAG_CROP_REGIONS)
 %
 % This function looks for a JTAG named FILENAME, and if it finds one, it 
 % augments the components found in IN_IMG, removing those that are positioned 
-% inside regions belonging to the JTAG_CROP_REGIONS list.
+% outside regions belonging to the JTAG_CROP_REGIONS list.
 %
-% The updated component image is returned in CROPPED_IMG
+% The updated component image is returned in CROPPED_IMG, and the list of 
+% region positions is returned in the nx4 matrix REGIONS.
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: crop_jtag_regions.m,v 1.2 2007-01-02 19:23:38 scottl Exp $
+% $Id: crop_jtag_regions.m,v 1.3 2007-01-05 17:09:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: crop_jtag_regions.m,v $
+% Revision 1.3  2007-01-05 17:09:21  scottl
+% return region information also.
+%
 % Revision 1.2  2007-01-02 19:23:38  scottl
 % modified code so that regions are kept instead of removed (thus background
 % is clean)
