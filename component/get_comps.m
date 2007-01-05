@@ -30,6 +30,10 @@ function Comps = get_comps(Files, varargin)
 %          nearest neighbours by component id.
 %     nb_dist - an nx4 numeric matrix listing its left, top, right, and bottom 
 %               nearest neighbours distances (in pixels)
+%     regions - this mx5 matrix lists the page number and 4 positional
+%               co-ordinates (left,top,right, and bottom) of each region found
+%               if an associated jtag file is being used to crop regions.  If
+%               this isn't the case, this is left empty.
 %     found_lines - this is a boolean that will be set to true if the line to
 %                   which each component belongs is found, and the parameters
 %                   below have been set.  It is initially false, and the
@@ -66,10 +70,14 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.7 2007-01-02 19:23:12 scottl Exp $
+% $Id: get_comps.m,v 1.8 2007-01-05 17:10:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.8  2007-01-05 17:10:21  scottl
+% added region field to Comps structure, useful for selecting and ordering
+% text from individual regions (for ground truth comparison etc.)
+%
 % Revision 1.7  2007-01-02 19:23:12  scottl
 % changed cropping so that regions are kept instead of removed.
 %
@@ -182,7 +190,7 @@ for pp=1:num_pgs
     Comps.pg_size(pp,:) = size(Lbl_img);
 
     if crop_regions
-        %remove the regions listed based on the associated jtag file (if one
+        %keep only the regions listed based on the associated jtag file (if one
         %exists)
         dot_pos = strfind(Comps.files{pp}, '.');
         if isempty(dot_pos)
@@ -190,7 +198,8 @@ for pp=1:num_pgs
                     'file has no extension. Unable to parse regions');
         else
             jtag_file = [Comps.files{pp}(1:dot_pos(end)), jtag_extn];
-            Lbl_img = crop_jtag_regions(jtag_file, Lbl_img, keep_region_list);
+            [Lbl_img,r] = crop_jtag_regions(jtag_file,Lbl_img,keep_region_list);
+            Comps.regions = [Comps.regions; [repmat(pp, size(r,1), 1), r]];
             fprintf('%.2fs: done cropping unwanted regions from this page\n',...
                     toc);
         end
@@ -439,6 +448,7 @@ Comps.pos = uint16([]);
 Comps.pg = uint32([]);
 Comps.nb = [];
 Comps.nb_dist = uint16([]);
+Comps.regions = [];
 Comps.found_lines = false;
 Comps.line = uint64([]);   %uint32([]);
 Comps.modal_height = NaN;
