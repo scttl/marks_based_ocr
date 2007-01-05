@@ -24,10 +24,13 @@ function Comps = merge_diacritic_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_diacritic_comps.m,v 1.1 2006-12-17 19:52:47 scottl Exp $
+% $Id: merge_diacritic_comps.m,v 1.2 2007-01-05 17:10:59 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_diacritic_comps.m,v $
+% Revision 1.2  2007-01-05 17:10:59  scottl
+% bugfix to ensure we don't attempt to create self-referential neighbours.
+%
 % Revision 1.1  2006-12-17 19:52:47  scottl
 % initial revision.
 %
@@ -55,6 +58,7 @@ if ~Comps.found_lines
     error('Comps must contain line information');
 end
 
+init_comps_num = Comps.max_comp;
 ii = 1;
 while ii<=Comps.max_comp
     %line matches
@@ -120,11 +124,15 @@ while ii<=Comps.max_comp
         Comps.nb_dist(ii,2) = Comps.nb_dist(top,2);
         Comps.nb(ii,4) = Comps.nb(bot,4);
         Comps.nb_dist(ii,4) = Comps.nb_dist(bot,4);
-        if ii_in_idx || ~idx_in_ii && Comps.nb_dist(ii,1) > Comps.nb_dist(idx,1)
+        if ii_in_idx || Comps.nb(ii,1) == idx || ...
+           (~idx_in_ii && Comps.nb(idx,1) ~= ii && ...
+           Comps.nb_dist(ii,1) > Comps.nb_dist(idx,1))
             Comps.nb(ii,1) = Comps.nb(idx,1);
             Comps.nb_dist(ii,1) = Comps.nb_dist(idx,1);
         end
-        if ii_in_idx || ~idx_in_ii && Comps.nb_dist(ii,3) > Comps.nb_dist(idx,3)
+        if ii_in_idx || Comps.nb(ii,3) == idx || ...
+           (~idx_in_ii && Comps.nb(idx,3) ~= ii && ...
+           Comps.nb_dist(ii,3) > Comps.nb_dist(idx,3))
             Comps.nb(ii,3) = Comps.nb(idx,3);
             Comps.nb_dist(ii,3) = Comps.nb_dist(idx,3);
         end
@@ -184,7 +192,6 @@ while ii<=Comps.max_comp
             Comps.clust = Comps.clust(keep_idx);
         end
 
-
         %ensure that the index moves to the next valid component
         if idx <= ii
             ii = ii - 1;
@@ -194,3 +201,5 @@ while ii<=Comps.max_comp
     ii = ii + 1;
 end
 
+fprintf('Merger complete.  Inital: %d comps, now %d comps\n', ...
+        init_comps_num, Comps.max_comp);
