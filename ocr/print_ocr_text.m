@@ -23,10 +23,13 @@ function text = print_ocr_text(line_nums, Comps, Syms, map, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: print_ocr_text.m,v 1.1 2006-11-25 20:11:09 scottl Exp $
+% $Id: print_ocr_text.m,v 1.2 2007-01-05 17:16:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: print_ocr_text.m,v $
+% Revision 1.2  2007-01-05 17:16:45  scottl
+% added ability to limit printed OCR text to specific regions.
+%
 % Revision 1.1  2006-11-25 20:11:09  scottl
 % initial revision.
 %
@@ -53,6 +56,9 @@ add_spaces = false;
 %the format for this parameter should be a regexp pattern
 map_to_space_pattern = '[_]';
 
+%by default, don't limit the sequence returned to a particular region
+keep_region = [0 0 0 0];
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -74,7 +80,7 @@ for ii=1:Syms.num
 end
 
 %get the cluster sequences corresponding to the lines passed
-seq = get_cluster_seq(Comps, line_nums);
+seq = get_cluster_seq(Comps, line_nums, 'keep_region', keep_region);
 
 for ii=1:length(seq)
     text{ii} = cell2mat(Syms.val(map(seq{ii})))';
