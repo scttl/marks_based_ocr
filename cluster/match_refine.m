@@ -17,10 +17,13 @@ function [Clust, Comps] = match_refine(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: match_refine.m,v 1.9 2006-12-17 20:13:52 scottl Exp $
+% $Id: match_refine.m,v 1.10 2007-01-05 17:07:30 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: match_refine.m,v $
+% Revision 1.10  2007-01-05 17:07:30  scottl
+% prohibit debug output if diary is on.
+%
 % Revision 1.9  2006-12-17 20:13:52  scottl
 % show the 5 farthest matches that are still within the threshold
 % (intead of the 5 closest), when displaying matches.
@@ -66,6 +69,10 @@ use_avg = true;
 
 display_images = false;  %set this to true to display matches as they are found
 
+%set this to true to ensure the reams of printed dialogue are included in diary
+%(typically you won't want this, unless debugging)
+write_to_diary = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -73,6 +80,15 @@ if nargin < 2
     error('incorrect number of arguments specified!');
 elseif nargin > 2
     process_optional_args(varargin{:});
+end
+
+if ~write_to_diary
+    if strcmp(get(0,'Diary'), 'on')
+        diary off;
+    else
+        %this ensures we don't attempt to turn on an 'off' diary
+        write_to_diary = true;
+    end
 end
 
 %go through each unrefined cluster and attempt to group it with other clusters
@@ -137,3 +153,7 @@ while ~isempty(rr)
     rr = find(Clust.refined == false, 1, 'first');
 end
 fprintf('\n');
+
+if ~write_to_diary
+    diary on;
+end
