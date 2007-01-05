@@ -14,10 +14,13 @@ function D = create_word_dictionary(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_word_dictionary.m,v 1.5 2006-12-19 21:38:19 scottl Exp $
+% $Id: create_word_dictionary.m,v 1.6 2007-01-05 17:17:58 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_word_dictionary.m,v $
+% Revision 1.6  2007-01-05 17:17:58  scottl
+% added additional skip characters (limit to basic ASCII symbols for now).
+%
 % Revision 1.5  2006-12-19 21:38:19  scottl
 % added character positional count information.
 %
@@ -45,7 +48,7 @@ eol = 10;  %encoding for the character corresponding to the newline character
 
 %list of character to disclude from our counts.  Typically these will be the
 %non-printable chars though it can be customized
-strip_chars = [1:31,127];
+strip_chars = [1:31,127:999];
 
 %when creating the positional counts, up to what word length should we include?
 max_word_len = 10;
