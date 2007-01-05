@@ -25,10 +25,13 @@ function pos = jtag_region_finder(jtag_file, rgn_list)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: jtag_region_finder.m,v 1.3 2007-01-02 19:21:52 scottl Exp $
+% $Id: jtag_region_finder.m,v 1.4 2007-01-05 17:05:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: jtag_region_finder.m,v $
+% Revision 1.4  2007-01-05 17:05:21  scottl
+% small fix to ensure regions are returned in their original order
+%
 % Revision 1.3  2007-01-02 19:21:52  scottl
 % made class and position matching more robust, removed depenedence on
 % iteration over lines.
@@ -70,4 +73,6 @@ keep_idx = [];
 for i=1:size(rgn_list,2)
     keep_idx = [keep_idx; strmatch(rgn_list{i}, classes)];
 end
+%ensure we return the positions in the same order they were given
+keep_idx = sort(keep_idx);
 pos = pos(keep_idx,:);
