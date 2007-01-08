@@ -26,9 +26,15 @@ function Syms = create_alphabet(file, varargin)
 %                    store the list of text files read to determine bigram
 %                    counts and words etc.
 %     NOTE: we assume the symbol alphabet is a superset of the symbols found in
-%           the corpora
+%           the corpora (otherwise an error is returned)
 %     count - a vector of values listing how many times each symbol value
 %             appears in the corpus.
+%     pos_count - A cell array, each entry of which lists how many times each
+%                 symbol occurs in each position of words of length the same as
+%                 the index of the entry.  Thus the 10th entry lists positional
+%                 counts for each symbol in words of length 10
+%     pos_total - A count listing the total number of occurences of each 
+%                 character in each position (up to the dimensions of pos_count)
 %     trigram - A distribution over which symbol is likely to follow the
 %               previous two symbols based on counts in the corpora (stored as
 %               a 3 dimensional matrix)
@@ -51,10 +57,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.5 2006-12-01 23:02:39 scottl Exp $
+% $Id: create_alphabet.m,v 1.6 2007-01-08 22:11:35 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.6  2007-01-08 22:11:35  scottl
+% added positional count information to each symbol.
+%
 % Revision 1.5  2006-12-01 23:02:39  scottl
 % implemented ability to use TeX and dvipng to generate character images.
 %
@@ -218,6 +227,8 @@ if ~isempty(corpora_files)
             error('more symbols in corpus than in specified symbol files');
         end
         Syms.count = zeros(Syms.num, 1, 'uint32');
+        Syms.pos_count = cell(size(D.pos_count));
+        Syms.pos_total = 0;
         Syms.bigram = zeros(Syms.num, Syms.num, 'uint32');
         Syms.trigram = zeros(Syms.num, Syms.num, Syms.num, 'uint32');
         Syms.first_count = zeros(Syms.num, 1, 'uint32');
@@ -240,6 +251,17 @@ if ~isempty(corpora_files)
         end
         Syms.count(idx) = D.char_count;
     
+        %count the total number of occurences of each char in each position
+        %for ii=1:length(D.pos_count)
+        %    Syms.pos_total = Syms.pos_total + sum(D.pos_count{ii}(:));
+        %end
+        Syms.pos_total = sum(Syms.count);
+
+        %now add the normalized positional counts
+        for ii=1:length(D.pos_count)
+            Syms.pos_count{ii}(idx,:) = D.pos_count{ii} ./ Syms.pos_total;
+        end
+
         %smooth the bigram by adding pseudo-counts
         Syms.bigram(idx,idx) = D.char_bigram;
         Syms.bigram = Syms.bigram + bg_pseudo;
@@ -247,7 +269,7 @@ if ~isempty(corpora_files)
         %smooth the trigram by adding pseudo-counts
         Syms.trigram(idx,idx,idx) = D.char_trigram;
         Syms.trigram = Syms.trigram + tg_pseudo;
-    
+
         %smooth the start counts by adding pseudo-counts
         Syms.first_count(idx) = D.first_count;
         Syms.first_count = Syms.first_count + fc_pseudo;
@@ -277,6 +299,8 @@ Syms.img = cell(0);
 Syms.corpus_files = cell(0);
 Syms.use_srilm = false;
 Syms.count = uint32([]);
+Syms.pos_count = cell(0);
+Syms.pos_total = 0;
 Syms.trigram = uint32([]);
 Syms.bigram = uint32([]);
 Syms.first_bg_count = uint32([]);
