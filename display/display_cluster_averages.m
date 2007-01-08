@@ -1,11 +1,13 @@
-function display_cluster_averages(Clust, varargin)
+function h = display_cluster_averages(Clust, varargin)
 %  DISPLAY_CLUSTER_AVERAGES  Display clusters and their # of items as an image
 %
-%   display_cluster_averages(Clust, [VAR1, VAL1]...)
+%   h = display_cluster_averages(Clust, [VAR1, VAL1]...)
 %
 %   Clust should be a struct containing a cell array field labelled average, 
 %   each of which is assumed to contain a matrix giving the average pixel 
 %   intensity corresponding to the elements of that cluster.
+%
+%   h is the associated figure handle created when displaying the image
 %
 %   LOCAL VARS parameters specified below can have their defaults overriden by
 %   specifiyng name and value pairs.  VAR1 should be a string specifying the
@@ -16,10 +18,14 @@ function display_cluster_averages(Clust, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_averages.m,v 1.8 2006-10-09 16:32:37 scottl Exp $
+% $Id: display_cluster_averages.m,v 1.9 2007-01-08 22:05:49 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_averages.m,v $
+% Revision 1.9  2007-01-08 22:05:49  scottl
+% add ability to display reverse video (black text on whitebackground)
+% image.  Also return the figure handle to the caller.
+%
 % Revision 1.8  2006-10-09 16:32:37  scottl
 % change to allow optional parameter processing and variable overriding.
 %
@@ -62,6 +68,10 @@ save_averages = false;
 global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
 img_prefix = [MOCR_PATH, '/results/cluster_averages'];
 img_format = 'png';
+
+%set this to true to reverse display (black text on white foreground)
+reverse_display = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -131,7 +141,11 @@ for ii=sorted_clust_idx(1:num_clust)'
     end
 end
 M = write_nums(M, X, Y, Txt);
-imshow(M);
+
+if reverse_display
+    M = 1-M;
+end
+h = imshow(M);
 
 %save the image to disk if required.
 if save_averages
