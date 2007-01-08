@@ -17,10 +17,14 @@ function seq = get_cluster_seq(Comps, line_nums, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_cluster_seq.m,v 1.2 2007-01-05 17:15:52 scottl Exp $
+% $Id: get_cluster_seq.m,v 1.3 2007-01-08 22:09:47 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_cluster_seq.m,v $
+% Revision 1.3  2007-01-08 22:09:47  scottl
+% fixed bug that could appear if there were non-consecutive neighbour
+% repititions.
+%
 % Revision 1.2  2007-01-05 17:15:52  scottl
 % added ability to limit lines to particular regions.  Fix potential bug
 % leading to infinite loop if a neighbour is self-referential.
@@ -75,25 +79,43 @@ for ii=1:length(line_nums)
         %this line lies above or below the region boundary.  Skip it
         continue;
     end
-    while keep_region(1) ~= 0 && idx ~= 0 && Comps.pos(idx,1) < keep_region(1)
-        idx = Comps.nb(idx,3);
+    while keep_region(1) ~= 0 && idx(end) ~= 0 && ...
+          Comps.pos(idx(end),1) < keep_region(1)
+        if any(idx == Comps.nb(idx(end),3))
+            %repeated neighbours, skip to next neighbour listing this one
+            next = find(Comps.nb(:,1) == Comps.nb(idx(end),3));
+            while ~isempty(next) && any(idx == next(1))
+                next = next(2:end);
+            end
+            if isempty(next)
+                idx(end) = 0;  %since we are still left of region boundary
+                break;
+            else
+                idx = [idx; next(1)];
+            end
+        else
+            idx = [idx; Comps.nb(idx(end),3)];
+        end
     end
-    if idx == 0
+    if idx(end) == 0
         %entire line lies left of the left region boundary.  Skip it
         seq{ii} = [];
         keep_lines = [keep_lines, ii];
         continue;
     end
-    out_list = idx;
+    out_list = idx(end);
     while Comps.nb(out_list(end),3) ~= 0 && (keep_region(3) == 0 || ...
           Comps.pos(out_list(end),3) <= keep_region(3))
-        if out_list(end) == Comps.nb(out_list(end),3)
+        if any(out_list == Comps.nb(out_list(end),3))
             %repeated neighbours, skip to the next neighbour listing this one
             next = find(Comps.nb(:,1) == out_list(end));
+            while ~isempty(next) && any(out_list == next(1))
+                next = next(2:end);
+            end
             if isempty(next)
                 break;
             else
-                out_list = [out_list, next(end)];
+                out_list = [out_list, next(1)];
             end
         else
             out_list = [out_list, Comps.nb(out_list(end),3)];
