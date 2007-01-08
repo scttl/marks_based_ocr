@@ -1,7 +1,7 @@
-function pos = jtag_region_finder(jtag_file, rgn_list)
+function [pos,keep_idx] = jtag_region_finder(jtag_file, rgn_list)
 % JTAG_REGION_FINDER    Returns pixel boundaries of regions of the type passed
 %
-%   pos = jtag_region_finder(jtag_file, region_list)
+%   [pos,reg_num] = jtag_region_finder(jtag_file, region_list)
 %
 %   This function attempts to open the jtag file passed (a jtag file is an ascii
 %   flat text file with a particular format that gives position co-ordinates of
@@ -22,13 +22,19 @@ function pos = jtag_region_finder(jtag_file, rgn_list)
 %   bottom) of each of the n regions found that correspond to one of the 
 %   region types listed in region_list
 %
+%   reg_num is a vector of length n, and lists what region number each of the
+%   kept regions is.
+%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: jtag_region_finder.m,v 1.4 2007-01-05 17:05:21 scottl Exp $
+% $Id: jtag_region_finder.m,v 1.5 2007-01-08 22:10:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: jtag_region_finder.m,v $
+% Revision 1.5  2007-01-08 22:10:37  scottl
+% add the region number to the list of output parameters.
+%
 % Revision 1.4  2007-01-05 17:05:21  scottl
 % small fix to ensure regions are returned in their original order
 %
