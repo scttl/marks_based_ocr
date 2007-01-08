@@ -20,11 +20,15 @@ function display_cluster_elements(Clust, Comps, idx, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_cluster_elements.m,v 1.7 2006-10-18 15:59:41 scottl Exp $
+% $Id: display_cluster_elements.m,v 1.8 2007-01-08 22:06:24 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_cluster_elements.m,v $
-% Revision 1.7  2006-10-18 15:59:41  scottl
+% Revision 1.8  2007-01-08 22:06:24  scottl
+% add ability to display results in reverse video (black text on white
+% background).
+%
+% Revision 1.7  2006/10/18 15:59:41  scottl
 % small change to make use of existing component grabbing functionality
 %
 % Revision 1.6  2006-10-09 16:33:55  scottl
@@ -70,6 +74,9 @@ save_elements = false;
 global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
 img_prefix = [MOCR_PATH, '/results/cluster_elements'];
 img_format = 'png';
+
+%set this to true to display black ink on a white background
+reverse_display = false;
 
 
 % CODE START %
@@ -154,6 +161,10 @@ for ii=1:size(M,1)
         col = col + col_w + col_pix_border - 1;
     end
     row = row + max(size_vals(ii,:,1)) + row_pix_border - 1;
+end
+
+if reverse_display
+    MM = 1 - MM;
 end
 imshow(MM);
 
