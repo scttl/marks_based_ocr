@@ -14,10 +14,14 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.5 2006-12-17 20:11:03 scottl Exp $
+% $Id: add_space_model.m,v 1.6 2007-01-08 22:02:48 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.6  2007-01-08 22:02:48  scottl
+% small fix for pages that don't contain enough spaces to estimate
+% modes properly.
+%
 % Revision 1.5  2006-12-17 20:11:03  scottl
 % calculate spaces as gap between neighbouring components who lie at least
 % partially between the baseline and x-height.
@@ -89,6 +93,12 @@ if isempty(space_width)
             break;
         end
     end
+    if isempty(space_width)
+        %this can happen if there aren't enough spaces to create 2 peaks (ie.
+        %only 1 word of components.  Just estimate space width at some value 
+        %larger than the largest component
+        space_width = max(trans_dist) + 1;
+    end
     fprintf('estimated space width at %d pixels\n', space_width);
 end
 
@@ -102,7 +112,7 @@ end
 %(assuming line information has been found).
 num_spaces = floor(trans_dist / space_width);
 space_idx = find(num_spaces >= 1);
-if Comps.found_lines
+if Comps.found_lines && ~isempty(space_idx)
     heights = Comps.pos(idx(space_idx),4) - Comps.pos(idx(space_idx),2) + 1;
     asc = Comps.ascender_off(idx(space_idx));
     desc = Comps.descender_off(idx(space_idx));
