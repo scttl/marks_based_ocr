@@ -16,10 +16,14 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.9 2006-12-19 21:40:46 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.10 2007-01-08 22:08:55 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
+% Revision 1.10  2007-01-08 22:08:55  scottl
+% fixed potential bug in repeated neighbour following.  Normalized
+% position counts.
+%
 % Revision 1.9  2006-12-19 21:40:46  scottl
 % assume that line offset information is already stored,
 % rewrite how space models get added.  Added cluster positional count
@@ -98,14 +102,15 @@ if model_spaces
     %reasonable document this will almost certainly be the first cluster.  Use 
     %our assigned truth value as a sanity check
     space_idx = 1;
-    if isfield(Clust ,'truth_label') && ~isempty(Clust.truth_label) && ...
-       ~strcmp(Clust.truth_label{1}, ' ')
-        %attempt to find it using true labels
-        space_idx = find(strcmp(Clust.truth_label, ' '));
-        if isempty(space_idx)
-            warning('MBOCR:spaceNotFound', ...
-            'Space character not found.  Will be ignored in counts.\n');
-            model_spaces = false;
+    if isfield(Clust ,'truth_label') && ~isempty(Clust.truth_label)
+        if ~strcmp(Clust.truth_label{1}, ' ')
+            %attempt to find it using true labels
+            space_idx = find(strcmp(Clust.truth_label, ' '));
+            if isempty(space_idx)
+                warning('MBOCR:spaceNotFound', ...
+                'Space character not found.  Will be ignored in counts.\n');
+                model_spaces = false;
+            end
         end
     else
         warning('MBOCR:spaceNotFound', ...
@@ -145,12 +150,26 @@ if ~model_spaces
             'no positional counts can be taken.  Spaces not found');
 end
 Clust.pos_count = cell(1,max_word_len);
+Clust.pos_total = Comps.max_comp;
 for ii=unique(Comps.line)'
     m = find(Comps.line == ii);
     [idx,idx] = min(Comps.pos(m,1));  %find left-most component on this line
     nbs = m(idx);
     while Comps.nb(nbs(end),3) ~= 0
-        nbs = [nbs; Comps.nb(nbs(end),3)];
+        if any(nbs == Comps.nb(nbs(end),3))
+            %repeated neighbours, skip to the next neighbour listing this one
+            next = find(Comps.nb(:,1) == Comps.nb(nbs(end),3));
+            while ~isempty(next) && any(nbs == next(1))
+                next = next(2:end);
+            end
+            if isempty(next)
+                break;
+            else
+                nbs = [nbs; next(1)];
+            end
+        else
+            nbs = [nbs; Comps.nb(nbs(end),3)];
+        end
     end
     spc_pos = find(Comps.clust(nbs) == space_idx);
     pos = 0;
@@ -170,12 +189,13 @@ for ii=unique(Comps.line)'
                                 Comps.clust(nbs(pos+1:end))'];
     end
 end
+fprintf('%.2fs: finished creating cluster word lists for pos counts\n', toc);
 %now go through the cluster "word" lists created above, and update the counts
 for ii=1:max_word_len
     w = Clust.pos_count{ii};
     Clust.pos_count{ii} = zeros(Clust.num,ii);
     for jj=1:Clust.num
-        Clust.pos_count{ii}(jj,:) = sum(w == jj);
+        Clust.pos_count{ii}(jj,:) = sum(w == jj) ./ Clust.pos_total;
     end
 end
 fprintf('%.2fs: finished counting positions of components\n', toc);
