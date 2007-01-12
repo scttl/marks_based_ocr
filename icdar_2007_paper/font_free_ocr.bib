@@ -1,29 +1,186 @@
-
-%
-%  $Description: Sample bibliography$ 
-% 
-%  $Author: scottl $ 
-%  $Date: 2006-12-19 21:29:44 $
-%  $Revision: 1.1 $
-%
-
-@Article{ex1,
-   author =   "Author, Ivan Marc",
-   title =   "Some Related Article {I} Wrote", 
-   journal =   "Some Fine Journal",
-   month = "January",
-   number = "7",
-   year =   "1999",
-   volume =   "99",
-   pages =   "1-100",
-}
+%% This BibTeX bibliography file was created using BibDesk.
+%% http://bibdesk.sourceforge.net/
 
 
-@Book{ex2,
-   author =   "Expert, Andreas Nikolaos", 
-   title =   "A Book He Wrote", 
-   publisher =   "His Publisher",
-   address = "Erewhon, NC",
-   year =   "1999"
-}
+%% Created for scottl at 2007-01-06 19:23:54 -0500 
 
+
+%% Saved with string encoding Western (ASCII) 
+
+
+@comment{jabref-entrytype: Webpage: req[url;title] opt[author;year;keywords]}
+
+
+
+@inproceedings{ho2000,
+	Annote = {shares a lot in common with our shape-free approach.  They make use of an ensemble of simple methods that look at v/p ratio (how many partial assignments match valid words in lexicon, versus total words containing those assigned clusters).
+
+Results are reported for business letters from the UNLV set, more than half achieve decent word accuracy (median is about 80%), but the other half fail (around 20% word accuracy).},
+	Author = {Ho, Tin Kam and Nagy, George},
+	Booktitle = {Proceedings of the 15th International Conference on Pattern Recognition (ICPR '00)},
+	Date-Added = {2007-01-06 15:17:02 -0500},
+	Date-Modified = {2007-01-06 15:20:42 -0500},
+	Keywords = {optical character recognition, language independent approach},
+	Local-Url = {ho/ho2000.pdf},
+	Pages = {27--30},
+	Pdf = {ho/ho2000.pdf},
+	Rating = {4},
+	Read = {Yes},
+	Title = {OCR with no shape training},
+	Volume = {4},
+	Year = {2000}}
+
+@article{hochberg1997,
+	Annote = {Gets connected components of training documents, throwing out those
+	with a height that is too small or too large, 
+	
+	rescaled to a uniform size (30x40 pixels).
+	
+	Uses simple clustering based on Hamming distance from training data
+	then takes the average image as a template
+	
+	(after thresholding pixels that aren't on at least half the time).
+	 
+	
+	Throws out clusters that don't have at least 3 elements, then attempts
+	to find matches of the templates in the
+	
+	test set of documents.  Classifies script of document based on the
+	number of matching templates.
+	
+	
+	Results are reasonable, though the documents in the test and train
+	set are often separate pages of the
+	
+	same document.  Has problems with unseen fonts (ex italicized roman)},
+	Author = {Hochberg, Judith and Kelly, Ppatrick and Thomas, Timothy and Kerns, Lila},
+	Date-Added = {2006-08-11 13:28:26 -0400},
+	Date-Modified = {2007-01-04 12:16:24 -0500},
+	Journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+	Keywords = {script identification, document analysis, optical character recognition},
+	Local-Url = {hochberg/hochberg1997.pdf},
+	Number = {2},
+	Pages = {176-181},
+	Pdf = {hochberg/hochberg1997.pdf},
+	Title = {Automatic script identification from document images using cluster-based templates},
+	Volume = {19},
+	Year = {1997}}
+
+@unpublished{huang2006,
+	Author = {Huang, Gary and McCallum, Andrew and Learned-Miller, Erik},
+	Date-Added = {2006-06-13 16:16:47 -0400},
+	Date-Modified = {2006-11-23 00:58:46 -0500},
+	Keywords = {ocr; cryptograms},
+	Local-Url = {huang/huang2006.pdf},
+        Note = {UMass Technical Report 06-45},
+	Month = {June},
+	Pdf = {huang/huang2006.pdf},
+	Rating = {5},
+	Read = {Yes},
+	Title = {Cryptogram Decoding for Optical Character Recognition},
+	Year = {2006}}
+
+@inproceedings{laven2005a,
+	Annote = {my first published paper!},
+	Author = {Laven, Kevin and Leishman, Scott and Roweis, Sam},
+	Booktitle = {Proceedings of the 8th International Conference on Document Analysis and Recognition},
+	Date-Added = {2005-09-19 23:24:06 -0400},
+	Date-Modified = {2006-10-12 11:19:23 -0400},
+	Keywords = {document image analysis},
+	Local-Url = {laven/laven2005a.pdf},
+	Pages = {357-361},
+	Pdf = {laven/laven2005a.pdf},
+	Rating = {5},
+	Title = {A Statistical Learning Approach To Document Image Analysis},
+	Volume = {1},
+	Year = {2005}}
+
+@misc{lewis2004,
+	Annote = {21,578 tagged Reuters news articles from 1987},
+	Author = {David D. Lewis},
+	Date-Added = {2007-01-06 18:54:46 -0500},
+	Date-Modified = {2007-01-06 19:12:24 -0500},
+	Howpublished = {electronically},
+	Keywords = {dataset, reuters corpus},
+	Month = {May},
+	Rating = {3},
+	Read = {Yes},
+	Title = {Reuters-21578 Text Categorization Test Collection},
+	Url = {http://www.daviddlewis.com/resources/testcollections/reuters21578/},
+	Year = {2004}}
+
+@article{nagy1987,
+	Annote = {one of the earliest attempts at using a cryptogram decoding approach to performing character recognition},
+	Author = {Nagy, George and Seth, Sharad and Einspahr, Kent},
+	Date-Added = {2007-01-05 10:08:13 -0500},
+	Date-Modified = {2007-01-05 10:10:43 -0500},
+	Journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+	Keywords = {cryptograms, dictionary based solution, hueristic search, optical character recognition, cryptograms},
+	Number = {5},
+	Pages = {710--715},
+	Publisher = {IEEE Computer Society Washington, DC, USA},
+	Rating = {4},
+	Read = {Yes},
+	Title = {Decoding substitution ciphers by means of word matching with application to OCR},
+	Volume = {9},
+	Year = {1987}}
+
+@article{nartker2005,
+	Annote = {outlines the UNLV ISRI dataset as well as the command line tools for testing performance.},
+	Author = {Nartker, Thomas A. and Rice, Stephen V. and Lumos, Steven E.},
+	Date-Added = {2007-01-04 12:11:01 -0500},
+	Date-Modified = {2007-01-04 12:12:59 -0500},
+	Journal = {Proceedings of SPIE},
+	Keywords = {optical character recognition, software tools, testing, dataset},
+	Local-Url = {nartker/nartker2005.pdf},
+	Pages = {37--47},
+	Pdf = {nartker/nartker2005.pdf},
+	Rating = {3},
+	Read = {Yes},
+	Title = {Software tools and test data for research and testing of page-reading OCR systems},
+	Volume = {5676},
+	Year = {2005}}
+
+@book{rucklidge1996,
+	Annote = {Discusses in detail the Hausdorff distance, and applies it to object detection.  There's isn't too much new information in here that isn't already covered in his other papers.},
+	Author = {Rucklidge, William J.},
+	Date-Added = {2007-01-04 12:00:53 -0500},
+	Date-Modified = {2007-01-04 12:02:47 -0500},
+	Keywords = {hausdorff distance, object recognition, distance transforms},
+	Number = {1173},
+	Publisher = {Springer},
+	Rating = {3},
+	Read = {Yes},
+	Series = {Lecture Notes in Computer Science},
+	Title = {Efficient Visual Recognition Using the Hausdorff Distance},
+	Year = {1996}}
+
+@inproceedings{sibun1994,
+	Annote = {simple yet effective method that uses x-heights and baseline offsets in common appearing words to determine language of a document.},
+	Author = {Sibun, Penelope and Spitz, A. Lawrence},
+	Booktitle = {Proceedings of the 4th Conference on Applied natural language processing},
+	Date-Added = {2007-01-04 12:05:46 -0500},
+	Date-Modified = {2007-01-04 12:08:00 -0500},
+	Keywords = {language classification, contextual analysis},
+	Local-Url = {sibun/sibun1994.pdf},
+	Pages = {15--21},
+	Pdf = {sibun/sibun1994.pdf},
+	Publisher = {Morgan Kaufmann Publishers Inc. San Francisco, CA, USA},
+	Rating = {4},
+	Read = {Yes},
+	Title = {Language determination: natural language processing from scanned document images},
+	Year = {1994}}
+
+@article{spitz1997,
+	Author = {Spitz, A. Lawrence},
+	Date-Added = {2007-01-04 11:11:05 -0500},
+	Date-Modified = {2007-01-04 11:15:03 -0500},
+	Journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+	Keywords = {multilingual script classification, machine printed OCR, language classification, Han-based languages, Latin-based languages, Asian scripts},
+	Local-Url = {spitz/spitz1997.pdf},
+	Number = {3},
+	Pages = {235--245},
+	Pdf = {spitz/spitz1997.pdf},
+	Title = {Determination of the script and language content of document images},
+	Volume = {19},
+	Year = {1997}}
