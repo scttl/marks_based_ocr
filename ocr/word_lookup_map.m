@@ -3,7 +3,7 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 %
 %   MAP = word_lookup_map(CLUST, COMPS, SYMS, [var1,val1]...)
 %   This function exploits word information taken from SYMS to determine an
-%   accurate maping from clusters in CLUST to individual character symbols in
+%   accurate mapping from clusters in CLUST to individual character symbols in
 %   SYMS.  This function is meant to implement assigning clusters to characters
 %   using the ``vp-ratio'' as defined by Ho and Nagy in their 2000 paper:
 %   ``OCR with no shape training''
@@ -25,10 +25,14 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.1 2007-01-09 00:13:50 scottl Exp $
+% $Id: word_lookup_map.m,v 1.2 2007-01-13 18:21:36 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.2  2007-01-13 18:21:36  scottl
+% finished implementation.  Added modifications for capital letter
+% handling.
+%
 % Revision 1.1  2007-01-09 00:13:50  scottl
 % initial check-in.
 %
@@ -41,7 +45,7 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 acceptance_thresh = .75;
 
 %you can define an order to explore the mappings in, or leave blank to
-%use default ordering (1:Syms.num)
+%use default ordering (1:Clust.num, 1:Syms.num for each)
 order = [];
 
 
@@ -98,17 +102,24 @@ for ii=1:length(seq)
         end
         curr_line = curr_line(2:end);
     end
+    if ~isempty(curr_word)
+        word_list{word_num} = curr_word;
+        curr_word = [];
+        word_num = word_num + 1;
+    end
 end
 
-%determine the length of each word in the lexicon (for faster matching)
+%group lexicon words by length, and order by frequency to improve matching speed
 lex_num_words = length(Syms.words);
-lex_lengths = zeros(lex_num_words,1);
+[sort_idx,sort_idx] = sort(Syms.word_count, 'descend');
+Syms.word_count = Syms.word_count(sort_idx);
+Syms.words = Syms.words(sort_idx);
 for ii=1:lex_num_words
     lex_length(ii) = length(Syms.words{ii});
 end
 lex_lists = cell(max(lex_length),1);
 for ii=1:length(lex_lists)
-    lex_lists{ii} = find(lex_length == ii);
+    lex_lists{ii} = cell2mat(Syms.words(find(lex_length == ii)));
 end
 
 %now loop through unmapped clusters, attempting to find those that end up in 
@@ -116,6 +127,9 @@ end
 %symbols are tried.
 idx = find(strcmp(sym_map, '.'));
 while ~isempty(idx)
+    max_score = 0;
+    max_idx = 1;
+    max_sym = '.';
     for ii=1:size(order,2)
         sym_map{idx(1)} = Syms.val{order(idx(1),ii)};
         sym_map{idx(1)} = regexprep(sym_map{idx(1)}, ...
@@ -125,19 +139,30 @@ while ~isempty(idx)
             %column using char
             sym_map{idx(1)} = sym_map{idx(1)}';
         end
-        score = calc_vp_score(sym_map, word_list(clust_words{idx(1)}), ...
-                              Syms.words, lex_lists);
-        if score >= acceptance_thresh
+        map(idx(1)) = order(idx(1),ii);
+        score = calc_vp_score(sym_map, map, word_list(clust_words{idx(1)}), ...
+                              lex_lists);
+        fprintf('.');
+        if ii == 1 && score >= acceptance_thresh
             %valid mapping!
             map(idx(1)) = order(idx(1),ii);
+            fprintf('Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
             idx = idx(2:end);
+            break;
+        elseif score > max_score
+            max_score = score;
+            max_idx = ii;
+            max_sym = sym_map{idx(1)};
         end
     end
-    %if we reach this point, no valid mapping has been found.
-    %@@?
-    fprintf('doh!\n');
-    sym_map{idx(1)} = '.';
-    idx = idx(2:end)'
+    if ii == size(order,2)
+        %if we reach this point, no valid mapping has been found.
+        map(idx(1)) = order(idx(1),max_idx);
+        fprintf('unable to find valid mapping for: %d\n', idx(1));
+        fprintf('Using: Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
+        sym_map{idx(1)} = max_sym;
+        idx = idx(2:end);
+    end
 end
 
 
@@ -147,7 +172,7 @@ end
 
 %this function determines the vp-ratio (proportion of the patterns given that
 %match valid dictionary words using the partial mapping passed).
-function score = calc_vp_score(map, pattern_list, word_list, word_lengths)
+function score = calc_vp_score(sym_map, clust_map, pattern_list, word_list)
 num_pat = length(pattern_list);
 match_count = 0;
 if num_pat == 0
@@ -156,11 +181,33 @@ if num_pat == 0
 end
 
 for ii=1:num_pat
-    this_pat = char(map(pattern_list{ii}))';
-    this_len = length(this_pat);
-    res = regexp(word_list(word_lengths{this_len}), this_pat, 'once');
-    if ~isempty(cell2mat(res))
+    this_len = length(pattern_list{ii});
+    idx = clust_map(pattern_list{ii}) ~= 0;
+    if all(idx == 0)
+        if ~isempty(word_list{this_len})
+            match_count = match_count + 1;
+        end
+        continue;
+    end
+    str = char(sym_map(pattern_list{ii}(idx)))';
+    if idx(1) == 1 && 65 <= str(1) && str(1) <= 90
+        %since a lot of words will have capital letters at the start of the 
+        %sentence, this will probably be missed by the lexicon, so convert 
+        %this character to lower-case before attempting to match
+        str(1) = str(1) + 32;
+    end
+    if this_len <= length(word_list) && ...
+       any(strmatch(str, word_list{this_len}(:,idx), 'exact'))
         match_count = match_count + 1;
+    elseif idx(end) == 0 && length(idx) > 1 && this_len > 1 && ...
+           this_len-1 <= length(word_list)
+        %since most of the lexicon will be missing words that end in punctuation
+        %also try matching on words with the last cluster symbol missing.
+        idx = idx(1:end-1);
+        str = char(sym_map(pattern_list{ii}(idx)))';
+        if any(strmatch(str, word_list{this_len-1}(:,idx), 'exact'))
+            match_count = match_count + 1;
+        end
     end
 end
 score = match_count / num_pat;
