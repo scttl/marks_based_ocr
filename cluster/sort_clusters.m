@@ -18,10 +18,13 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.7 2006-12-19 22:13:43 scottl Exp $
+% $Id: sort_clusters.m,v 1.8 2007-01-13 18:15:47 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.8  2007-01-13 18:15:47  scottl
+% update changed field when re-ordering.
+%
 % Revision 1.7  2006-12-19 22:13:43  scottl
 % added pos_count field.  Implemented ability to return clusters
 % without refining.
@@ -65,6 +68,7 @@ Clust.mode_num = Clust.mode_num(idx);
 Clust.avg = Clust.avg(idx);
 Clust.norm_sq = Clust.norm_sq(idx);
 Clust.refined = Clust.refined(idx);
+Clust.changed = Clust.changed(idx);
 Clust.descender_off = Clust.descender_off(idx);
 Clust.ascender_off = Clust.ascender_off(idx);
 if ~isempty(Clust.bigram)
