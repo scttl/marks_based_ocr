@@ -128,8 +128,9 @@ for ii=1:num_docs
     if run_map
         [order, score] = positional_learn_mappings(Clust, Syms, ...
                          'dist_metric', 'manhattan');
+        map = word_lookup_map(Clust, Comps, Syms, 'order', order);
         fprintf('mapping complete: %f\n', toc);
-        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
 
     load(res_datafile);
@@ -142,39 +143,64 @@ for ii=1:num_docs
             rgns = find(Comps.regions(:,1) == pgs(jj));
             this_pg = imgs{idx(jj)};
             for kk=1:length(rgns)
-                txt_file = [this_pg, '.Z', sprintf('%02d', kk)];
+                txt_file = [this_pg, '.Z', sprintf('%02d', ...
+                            Comps.regions(rgns(kk),2))];
                 res_txtfile = [res_dir, '/', txt_file];
-                res_rprtfile = [res_txtfile, '.rprt'];
-                print_ocr_text(lines, Comps, Syms, order(:,1), ...
+                res_char_rprtfile = [res_txtfile, '.char_rprt'];
+                res_word_rprtfile = [res_txtfile, '.word_rprt'];
+                print_ocr_text(lines, Comps, Syms, map, ... 
                        'display_text', false, 'save_results', true, ...
-                       'keep_region', Comps.regions(rgns(kk),2:5), ...
+                       'keep_region', Comps.regions(rgns(kk),3:6), ...
                        'save_file', res_txtfile);
                 cmd = ['accuracy ', gt_prefix, txt_file, ' ', ...
-                       res_txtfile, ' ', res_rprtfile];
+                       res_txtfile, ' ', res_char_rprtfile];
                 s = unix(cmd);
                 if s ~= 0
                     error('prob running accuracy. cmd: %s', cmd);
+                end
+                cmd = ['wordacc ', gt_prefix, txt_file, ' ', ...
+                       res_txtfile, ' ', res_word_rprtfile];
+                s = unix(cmd);
+                if s ~= 0
+                    error('prob running wordacc. cmd: %s', cmd);
                 end
             end
         end
         %combine all the report files in this directory into a single
         %cumulative report
-        rprts = dir([res_dir, '/*.rprt']);
-        rprt_list = '';
-        if length(rprts) > 1
-            for jj=1:length(rprts)
-                rprt_list = [rprt_list, res_dir, '/', rprts(jj).name, ' '];
+        char_rprts = dir([res_dir, '/*.char_rprt']);
+        word_rprts = dir([res_dir, '/*.word_rprt']);
+        char_rprt_list = '';
+        word_rprt_list = '';
+        if length(char_rprts) > 1
+            for jj=1:length(char_rprts)
+                char_rprt_list = [char_rprt_list, res_dir, '/', ...
+                                  char_rprts(jj).name, ' '];
+                word_rprt_list = [word_rprt_list, res_dir, '/', ...  
+                                  word_rprts(jj).name, ' '];
             end
-            cmd = ['accsum ', rprt_list, ' > ', res_dir, '/', ...
-                   docs{ii}, '.tot_rprt'];
+            cmd = ['accsum ', char_rprt_list, ' > ', res_dir, '/', ...
+                   docs{ii}, '.chartot_rprt'];
             s = unix(cmd);
             if s ~= 0
                 error('prob running accsum. cmd: %s', cmd);
             end
+            cmd = ['wordaccsum ', word_rprt_list, ' > ', res_dir, '/', ...
+                   docs{ii}, '.wordtot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running wordaccsum. cmd: %s', cmd);
+            end
         else
             %just copy the single file for the total count
-            cmd = ['cp ', res_dir, '/', rprts(jj).name, ' ', res_dir, '/', ...
-                   docs{ii}, '.tot_rprt'];
+            cmd = ['cp ', res_dir, '/', char_rprts(1).name, ' ', res_dir, ...
+                   '/', docs{ii}, '.chartot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running cp. cmd: %s', cmd);
+            end
+            cmd = ['cp ', res_dir, '/', word_rprts(1).name, ' ', res_dir, ...
+                   '/', docs{ii}, '.wordtot_rprt'];
             s = unix(cmd);
             if s ~= 0
                 error('prob running cp. cmd: %s', cmd);
@@ -183,6 +209,7 @@ for ii=1:num_docs
 
         fprintf('ocr analysis complete: %f\n', toc);
     end
+
 end
 
 if create_diary
