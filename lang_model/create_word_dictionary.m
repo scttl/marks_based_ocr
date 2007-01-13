@@ -14,10 +14,14 @@ function D = create_word_dictionary(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_word_dictionary.m,v 1.6 2007-01-05 17:17:58 scottl Exp $
+% $Id: create_word_dictionary.m,v 1.7 2007-01-13 18:20:26 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_word_dictionary.m,v $
+% Revision 1.7  2007-01-13 18:20:26  scottl
+% ensure that words and word counts are handled correctly when
+% multiple files are used.  Speed up positional count creation.
+%
 % Revision 1.6  2007-01-05 17:17:58  scottl
 % added additional skip characters (limit to basic ASCII symbols for now).
 %
@@ -65,13 +69,16 @@ for ii=1:num_files
     if fid == -1
         error('unable to open file');
     end
-    W = [W; textscan(fid, '%s')];
+    tmp = textscan(fid, '%s');
+    W = [W; tmp{:}];
     frewind(fid);
     C = [C; fread(fid)];
     fclose(fid);
 end
+
+
 fprintf('%.2fs: finished parsing files\n', toc);
-[D.word,ii,ii] = unique(W{1}(:));
+[D.word,ii,ii] = unique(W);
 D.word_count = accumarray(ii,1);
 D.word_len = zeros(size(D.word_count));
 for ii=1:length(D.word_len)
@@ -84,19 +91,16 @@ D.char = char(D.char);
 D.char_count = accumarray(ii,1);
 D.pos_count = cell(1,max_word_len);
 for ii=1:max_word_len
-    D.pos_count{ii} = zeros(length(D.char),ii);
-end
-for ii=1:size(W{1},1)
-    w = W{1}{ii};
-    len = length(w);
-    if len <= max_word_len
-        this_count = D.pos_count{len};
-        for jj=1:length(D.char)
-            ct = strfind(w, D.char(jj));
-            this_count(jj,ct) = this_count(jj,ct) + 1;
+    this_count = zeros(length(D.char),ii);
+    idx = find(D.word_len == ii);
+    words = cell2mat(D.word(idx));
+    for jj=1:length(D.char)
+        for kk=1:ii
+            this_count(jj,kk) = sum(D.word_count(idx(strcmp(words(:,kk), ...
+                                    {D.char(jj)}))));
         end
-        D.pos_count{len} = this_count;
     end
+    D.pos_count{ii} = this_count;
 end
 fprintf('%.2fs: finished creating and counting chars\n', toc);
 
