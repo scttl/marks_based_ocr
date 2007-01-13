@@ -16,10 +16,13 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.10 2007-01-08 22:08:55 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.11 2007-01-13 18:16:55 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
+% Revision 1.11  2007-01-13 18:16:55  scottl
+% just check if the line field exists, instead of checking for related fields.
+%
 % Revision 1.10  2007-01-08 22:08:55  scottl
 % fixed potential bug in repeated neighbour following.  Normalized
 % position counts.
@@ -80,10 +83,8 @@ elseif nargin > 2
 end
 
 %ensure line information present in clusters and components
-if ~isfield(Comps, 'ascender_off') || ~isfield(Comps, 'descender_off')
+if ~isfield(Comps, 'line') || isempty(Comps.line)
     error('we require components to contain line information');
-elseif ~Clust.found_offsets
-    error('we require clusters to contain line information');
 end
 
 num_pgs = size(Comps.pg_size,1);
