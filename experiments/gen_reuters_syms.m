@@ -24,33 +24,32 @@ run_syms=true;
 sym_in_file = [MOCR_PATH, '/data/input_utf8_syms.txt'];
 
 %this should give the path to where results will be kept
-%res_symfile = [MOCR_PATH, '/data/reuters_syms.mat'];
 res_symfile = [MOCR_PATH, '/results/reuters_syms.mat'];
 
 %these point at the files containing the actual text of the corpus
-%corpus_files = {[MOCR_PATH, '/data/reuters/000.body.txt']};
-corpus_files = {[MOCR_PATH, '/data/reuters/000.body.txt'];
-                [MOCR_PATH, '/data/reuters/001.body.txt'];
-                [MOCR_PATH, '/data/reuters/002.body.txt'];
-                [MOCR_PATH, '/data/reuters/003.body.txt'];
-                [MOCR_PATH, '/data/reuters/004.body.txt'];
-                [MOCR_PATH, '/data/reuters/005.body.txt'];
-                [MOCR_PATH, '/data/reuters/006.body.txt'];
-                [MOCR_PATH, '/data/reuters/007.body.txt'];
-                [MOCR_PATH, '/data/reuters/008.body.txt'];
-                [MOCR_PATH, '/data/reuters/009.body.txt'];
-                [MOCR_PATH, '/data/reuters/010.body.txt'];
-                [MOCR_PATH, '/data/reuters/011.body.txt'];
-                [MOCR_PATH, '/data/reuters/012.body.txt'];
-                [MOCR_PATH, '/data/reuters/013.body.txt'];
-                [MOCR_PATH, '/data/reuters/014.body.txt'];
-                [MOCR_PATH, '/data/reuters/015.body.txt'];
-                [MOCR_PATH, '/data/reuters/016.body.txt'];
-                [MOCR_PATH, '/data/reuters/017.body.txt'];
-                [MOCR_PATH, '/data/reuters/018.body.txt'];
-                [MOCR_PATH, '/data/reuters/019.body.txt'];
-                [MOCR_PATH, '/data/reuters/020.body.txt'];
-                [MOCR_PATH, '/data/reuters/021.body.txt']};
+corpus_files = {[MOCR_PATH, '/data/reuters/000.body.txt']};
+%corpus_files = {[MOCR_PATH, '/data/reuters/000.body.txt'];
+%                [MOCR_PATH, '/data/reuters/001.body.txt'];
+%                [MOCR_PATH, '/data/reuters/002.body.txt'];
+%                [MOCR_PATH, '/data/reuters/003.body.txt'];
+%                [MOCR_PATH, '/data/reuters/004.body.txt'];
+%                [MOCR_PATH, '/data/reuters/005.body.txt'];
+%                [MOCR_PATH, '/data/reuters/006.body.txt'];
+%                [MOCR_PATH, '/data/reuters/007.body.txt'];
+%                [MOCR_PATH, '/data/reuters/008.body.txt'];
+%                [MOCR_PATH, '/data/reuters/009.body.txt'];
+%                [MOCR_PATH, '/data/reuters/010.body.txt'];
+%                [MOCR_PATH, '/data/reuters/011.body.txt'];
+%                [MOCR_PATH, '/data/reuters/012.body.txt'];
+%                [MOCR_PATH, '/data/reuters/013.body.txt'];
+%                [MOCR_PATH, '/data/reuters/014.body.txt'];
+%                [MOCR_PATH, '/data/reuters/015.body.txt'];
+%                [MOCR_PATH, '/data/reuters/016.body.txt'];
+%                [MOCR_PATH, '/data/reuters/017.body.txt'];
+%                [MOCR_PATH, '/data/reuters/018.body.txt'];
+%                [MOCR_PATH, '/data/reuters/019.body.txt'];
+%                [MOCR_PATH, '/data/reuters/020.body.txt'];
+%                [MOCR_PATH, '/data/reuters/021.body.txt']};
 
 tic;
 %get the symbols
