@@ -17,10 +17,13 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.10 2007-01-05 17:07:56 scottl Exp $
+% $Id: merge_refine.m,v 1.11 2007-01-13 18:15:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
+% Revision 1.11  2007-01-13 18:15:23  scottl
+% prevent self-matches from occuring.
+%
 % Revision 1.10  2007-01-05 17:07:56  scottl
 % prohibit writing reams of debug output to the diary if in use.
 %
@@ -139,7 +142,7 @@ while ~ isempty(rr)
         %components.
         if mf_num >= min_match_comp && ...
            (mf_num / Clust.num_comps(mf_clust)) >= valid_pct && ...
-           (mf_num / Clust.num_comps(rr)) >= valid_pct
+           (mf_num / Clust.num_comps(rr)) >= valid_pct && mf_clust ~= rr
             %valid merge found, update neighbours, cluster averages etc.
             fprintf('valid left merge found\r');
             if display_matches
@@ -350,7 +353,7 @@ while ~ isempty(rr)
         %components.
         if mf_num >= min_match_comp && ...
            (mf_num / Clust.num_comps(mf_clust)) >= valid_pct && ...
-           (mf_num / Clust.num_comps(rr)) >= valid_pct
+           (mf_num / Clust.num_comps(rr)) >= valid_pct && mf_clust ~= rr
             %valid merge found, update neighbours, cluster averages etc.
             fprintf('valid top merge found\r');
             if display_matches
