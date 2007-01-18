@@ -25,10 +25,14 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.2 2007-01-13 18:21:36 scottl Exp $
+% $Id: word_lookup_map.m,v 1.3 2007-01-18 19:15:58 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.3  2007-01-18 19:15:58  scottl
+% changed order to a cell array, updates to handle the case where there
+% could be more than one space character.
+%
 % Revision 1.2  2007-01-13 18:21:36  scottl
 % finished implementation.  Added modifications for capital letter
 % handling.
@@ -45,8 +49,9 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 acceptance_thresh = .75;
 
 %you can define an order to explore the mappings in, or leave blank to
-%use default ordering (1:Clust.num, 1:Syms.num for each)
-order = [];
+%use default ordering (1:Syms.num for each cluster, going in order from
+%1:Clust.num)
+order = {};
 
 
 % CODE START %
@@ -61,17 +66,18 @@ if ~isfield(Clust, 'model_spaces') || ~Clust.model_spaces
     error('word lookup requires knowledge of space characters');
 end
 
-space_idx = find(strcmp(Clust.truth_label, ' '));
+space_idx = find(strcmp(Clust.truth_label, ' '),1);
 if isempty(space_idx)
     error('unable to locate the cluster representing spaces');
 end
-space_sym_idx = find(strcmp(Syms.val, ' '));
+space_sym_idx = find(strcmp(Syms.val, ' '),1);
 if isempty(space_sym_idx)
     error('unable to locate the Symbol representing spaces');
 end
 
 if isempty(order)
-    order = repmat(1:Syms.num, Clust.num, 1);
+    order = cell(Clust.num,1);
+    [order{:}] = deal(1:Syms.num);
 end
 
 %determine the sequence of cluster words
@@ -130,8 +136,9 @@ while ~isempty(idx)
     max_score = 0;
     max_idx = 1;
     max_sym = '.';
-    for ii=1:size(order,2)
-        sym_map{idx(1)} = Syms.val{order(idx(1),ii)};
+    this_order = order{idx(1)};
+    for ii=1:length(this_order)
+        sym_map{idx(1)} = Syms.val{this_order(ii)};
         sym_map{idx(1)} = regexprep(sym_map{idx(1)}, ...
                           '([\.\[\]\(\)\|\^\$\*\+\?\{\}])', '\\$1');
         if size(sym_map{idx(1)},2) > 1
@@ -139,13 +146,13 @@ while ~isempty(idx)
             %column using char
             sym_map{idx(1)} = sym_map{idx(1)}';
         end
-        map(idx(1)) = order(idx(1),ii);
+        map(idx(1)) = this_order(ii);
         score = calc_vp_score(sym_map, map, word_list(clust_words{idx(1)}), ...
                               lex_lists);
         fprintf('.');
         if ii == 1 && score >= acceptance_thresh
             %valid mapping!
-            map(idx(1)) = order(idx(1),ii);
+            map(idx(1)) = this_order(ii);
             fprintf('Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
             idx = idx(2:end);
             break;
@@ -155,9 +162,9 @@ while ~isempty(idx)
             max_sym = sym_map{idx(1)};
         end
     end
-    if ii == size(order,2)
+    if ii == length(this_order)
         %if we reach this point, no valid mapping has been found.
-        map(idx(1)) = order(idx(1),max_idx);
+        map(idx(1)) = this_order(max_idx);
         fprintf('unable to find valid mapping for: %d\n', idx(1));
         fprintf('Using: Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
         sym_map{idx(1)} = max_sym;
