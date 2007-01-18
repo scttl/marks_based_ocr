@@ -8,7 +8,6 @@ global MOCR_PATH;  %used to determine where to save results
 create_diary = true;
 if create_diary
     diary_file = [MOCR_PATH, '/results/unlv_BGT_all.diary'];
-    %diary_file = [MOCR_PATH, '/results/unlv_BGTscowl_all.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -25,14 +24,12 @@ run_ocr_analysis=true;
 %if attempting to determine mappings, this should list the file containing the
 %Syms corpora struct
 syms_struct_file = [MOCR_PATH, '/data/reuters_syms.mat'];
-%syms_struct_file = [MOCR_PATH, '/data/reuters_scowl_syms.mat'];
 
 %this directory determines where to find the ASCII text pages
 pg_dir = [MOCR_PATH, '/data/unlv_ocr/B/B_GT/'];
 
 %this should give the path to the base part of where results will be kept
 res_base = [MOCR_PATH, '/results/BGT'];
-%res_base = [MOCR_PATH, '/results/BGTscowl'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
