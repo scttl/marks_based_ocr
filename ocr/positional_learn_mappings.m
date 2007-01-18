@@ -10,9 +10,9 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 %
 %   Syms should be a struct like that returned from create_alphabet()
 %
-%   order returned will be a matrix listing for each cluster the symbol index
-%   order with the closest match in the first column, and the farthest match in
-%   the last column
+%   order returned will be a cell array listing for each cluster the symbol 
+%   index order with the closest match in the first column, and the farthest 
+%   match in the last column
 %
 %   score gives the corresponding distance to each symbol
 %
@@ -20,10 +20,14 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: positional_learn_mappings.m,v 1.1 2007-01-05 17:16:59 scottl Exp $
+% $Id: positional_learn_mappings.m,v 1.2 2007-01-18 19:14:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: positional_learn_mappings.m,v $
+% Revision 1.2  2007-01-18 19:14:45  scottl
+% changed order to a cell array so that it can differ in length for
+% each cluster.
+%
 % Revision 1.1  2007-01-05 17:16:59  scottl
 % initial check-in.
 %
@@ -36,6 +40,14 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 dist_metric = 'euc';  %other choice is 'manhattan'
+
+%should we limit the symbols returned to the unique values only?
+only_unique = true;
+
+%should we stop including distances after a certain number?  Set to 0 to
+%include all distances
+keep_best = 0;
+
 
 
 % CODE START %
@@ -60,8 +72,12 @@ end
 clust_pts = cell2mat(Clust.pos_count);
 sym_pts = cell2mat(Syms.pos_count);
 err_dist = zeros(Clust.num, Syms.num);
-order = zeros(Clust.num, Syms.num);
-score = zeros(Clust.num, Syms.num);
+num_cols = Syms.num;
+if keep_best == 0 || keep_best > Syms.num
+    keep_best = Syms.num;
+end
+order = cell(Clust.num, 1);
+score = cell(Clust.num, 1);
 for ii=1:Clust.num
     if strcmp(dist_metric, 'euc')
         err_dist(ii,:) = sum(...
@@ -73,8 +89,12 @@ for ii=1:Clust.num
 
     %sort the distances to determine the optimal mapping for this cluster
     [val,idx] = sort(err_dist(ii,:));
-    order(ii,:) = idx;
-    score(ii,:) = val;
+    %@@@if only_unique
+        %trim the indices to ensure that there are no repeat symbol values
+        %@@jj = 1;
+    %@@end
+    order{ii} = idx(1:keep_best);
+    score{ii} = val(1:keep_best);
 end
 fprintf('%.2fs: ordering complete\n', toc);
 
