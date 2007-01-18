@@ -10,10 +10,13 @@ function unlv_char_ocr_analysis(files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_char_ocr_analysis.m,v 1.1 2007-01-13 18:36:47 scottl Exp $
+% $Id: unlv_char_ocr_analysis.m,v 1.2 2007-01-18 19:16:36 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_char_ocr_analysis.m,v $
+% Revision 1.2  2007-01-18 19:16:36  scottl
+% updates to display more digits of accuracies and other stats
+%
 % Revision 1.1  2007-01-13 18:36:47  scottl
 % initial check-in.
 %
@@ -119,15 +122,15 @@ scatter(tot_a(:,1), tot_a(:,3)*100, 100, 'filled');
 xlabel('number of characters in document', 'FontSize', ft_size);
 ylabel('percentage of characters correctly identified', 'FontSize', ft_size);
 set(gca, 'FontSize', ft_size);
-fprintf('average number of characters per document: %.2f\n', mean(tot_a(:,1)));
-fprintf('average num of incorrectly identified chars: %.2f\n',mean(tot_a(:,2)));
-fprintf('average character accuracy per document: %.2f\n', mean(tot_a(:,3)));
+fprintf('average number of characters per document: %.4f\n', mean(tot_a(:,1)));
+fprintf('average num of incorrectly identified chars: %.4f\n',mean(tot_a(:,2)));
+fprintf('average character accuracy per document: %.4f\n', mean(tot_a(:,3)));
 fprintf('minimum document length (chars): %d\n', min(tot_a(:,1)));
 fprintf('maximum document length (chars): %d\n', max(tot_a(:,1)));
 fprintf('median document length (chars): %d\n', median(tot_a(:,1)));
-fprintf('minimum character accuracy: %.2f\n', min(tot_a(:,3)));
-fprintf('maximum character accuracy: %.2f\n', max(tot_a(:,3)));
-fprintf('median character accuracy: %.2f\n', median(tot_a(:,3)));
+fprintf('minimum character accuracy: %.4f\n', min(tot_a(:,3)));
+fprintf('maximum character accuracy: %.4f\n', max(tot_a(:,3)));
+fprintf('median character accuracy: %.4f\n', median(tot_a(:,3)));
 
 
 % SUBFUNCTION DECLARATIONS %
