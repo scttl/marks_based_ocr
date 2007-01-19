@@ -25,10 +25,15 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.3 2007-01-18 19:15:58 scottl Exp $
+% $Id: word_lookup_map.m,v 1.4 2007-01-19 19:53:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.4  2007-01-19 19:53:43  scottl
+% ensure that punctuation symbols are compared correctly now that strmatch
+% is used.  Use ISRI's expected reject symbol if no matching mapping
+% can be found and all scores are 0.
+%
 % Revision 1.3  2007-01-18 19:15:58  scottl
 % changed order to a cell array, updates to handle the case where there
 % could be more than one space character.
@@ -84,7 +89,6 @@ end
 seq = get_cluster_seq(Comps, unique(Comps.line));
 sym_map = cell(Clust.num,1);
 map = zeros(Clust.num,1);
-[sym_map{:}] = deal('.');
 sym_map{space_idx} = ' ';
 map(space_idx) = space_sym_idx;
 clust_words = cell(Clust.num,1);
@@ -131,16 +135,14 @@ end
 %now loop through unmapped clusters, attempting to find those that end up in 
 %scores above a pre-defined threshold, using the order to guide when certain 
 %symbols are tried.
-idx = find(strcmp(sym_map, '.'));
+idx = [1:space_idx-1,space_idx+1:Clust.num];
 while ~isempty(idx)
     max_score = 0;
     max_idx = 1;
-    max_sym = '.';
+    max_sym = '~';  %reject character
     this_order = order{idx(1)};
     for ii=1:length(this_order)
         sym_map{idx(1)} = Syms.val{this_order(ii)};
-        sym_map{idx(1)} = regexprep(sym_map{idx(1)}, ...
-                          '([\.\[\]\(\)\|\^\$\*\+\?\{\}])', '\\$1');
         if size(sym_map{idx(1)},2) > 1
             %this is to ensure that characters get glued-together in a single
             %column using char
