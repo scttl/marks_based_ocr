@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.5 2007-01-24 21:01:06 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.6 2007-01-24 23:28:06 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -127,6 +127,16 @@ However, unlike several of the aforementioned attempts, we do not limit
 ourselves to the lowercase alphabetic characters of the English language. 
 %@@briefly outline what we do differently@@
 
+%unfortunately this figure has to be moved to get it to appear on the same page
+%as its description.
+\begin{figure*}[ht]
+  \centering
+  \includegraphics[scale=1]{figures/input_lines}
+  \includegraphics[scale=1]{figures/line_comps}
+  \caption{Sample input image region and corresponding components, baselines,
+           and x-heights found}
+  \label{inimg_fig}
+\end{figure*}
 
 % CLUSTERING APPROACH %
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -159,17 +169,11 @@ is accomplished by looking for separate components that belong to the same
 line, are separated by a relatively small vertical distance (set manually), and
 have one of the components completely overlapping the other horizontally.
 
-Figure \ref{inimg_fig} displays a small region of input from a single document
-page (top), for which the procedures described above have been run.
-
-\begin{figure*}[ht]
-  \centering
-  \includegraphics[scale=1]{figures/input_lines}
-  \includegraphics[scale=1]{figures/line_comps}
-  \caption{Sample input image region and corresponding components, baselines,
-           and x-heights found}
-  \label{inimg_fig}
-\end{figure*}
+Figure \ref{inimg_fig} illustrates this line and component finding process on a
+small region of input text (top).  The bottom half of the figure shows that on
+this particular region, almost every connected component corresponds to a
+single character glyph.  The baseline and x-height of each line found is also
+shown.
 
 Each connected component image is initially assigned to its own cluster, then
 clusters are merged in an agglomerative fashion.  First a simple Euclidean
@@ -180,10 +184,11 @@ greatly reducing the number of clusters in a fairly efficient manner.
 
 As Figure \ref{eucdist_fig} shows, one of the problems in calculating the 
 Euclidean distance between two images is that each pixel difference is weighted 
-equally regardless of where it occurs.  As a result two images of the same 
-symbol that are either noisy or written in a slightly different font style or 
-size could end up having a larger distance than that between images of 
-different symbols.
+equally regardless of where it occurs (the bottom middle and right panes show
+the residual mismatched pixels for the corresponding binary input images above
+them).  As a result two images of the same symbol that are either noisy or 
+written in a slightly different font style or size could end up having a larger 
+distance than that between images of different symbols.
 
 \begin{figure}[ht]
   \centering
@@ -231,7 +236,12 @@ images to the comparison image.  Finally, the overall Hausdorff distance is
 calculated by taking the maximum of these two directed distances for each
 image.  Those that fall within a particular threshold ($\sqrt 2$ in our
 experiments) are then clustered together.  Figure \ref{hausdist_fig}
-shows this calculation between a few individual characters.
+shows this calculation between a lower case `e' and a lower case 'o', and
+between the `e' and an italicized version of the same character.  The Euclidean
+distance transform is calculated with the resultant values listed for each
+pixel, and an image of the character to be compared is laid overtop.  The on 
+pixel of the comparison character which lies farthest from any on pixel in the
+original character is highlighted. 
 
 \begin{figure}[ht]
   \centering
