@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.4 2007-01-22 12:57:12 roweis Exp $
+% $Id: font_free_ocr.tex,v 1.5 2007-01-24 21:01:06 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -87,32 +87,32 @@ Many previous attempts to ``font free'' character recognition share
 the same general structure. Each page of ink is segmented into components
 roughly corresponding to individual graphemes of the 
 underlying document language. These components are clustered together in an 
-unsupervised fashion based only on visual similarity.  For a language like English, 
-the ideal result of this step would be a set of clusters such that
+unsupervised fashion based only on visual similarity.  For a language like 
+English, the ideal result of this step would be a set of clusters such that
 each one contains all occurrences of a particular 
 character, digit, or punctuation symbol found in the document.
-Of course, such exact clusterings are rarely achievable in practice, and trade-offs must
-be made between the final number of clusters and the consistency of the
-component members within a cluster.
+Of course, such exact clusterings are rarely achievable in practice, and 
+trade-offs must be made between the final number of clusters and the 
+consistency of the component members within a cluster.
 
 In one of the earliest shape-free recognition approaches, Nagy et al. treated
 the clustered sequence of components as the input cipher-text of a 
 cryptogram\cite{nagy1987}.  Clusters were then assigned plain-text labels, 
-with the assignment guided by the frequency of matches to words looked up in a small dictionary.
-%
+with the assignment guided by the frequency of matches to words looked up in a 
+small dictionary.
+
 %@@@ Talk about Lee and Hull HMM approach too?  perhaps
-%Mention symbolically compressed documents?@@@ not here...
-%
-Building on this, Ho and Nagy attempted to infer cluster labels using a series of simple
-statistical modules\cite{ho2000}.  Each module scores potential assignments
-using what they call a ``v/p ratio'', which counts the number of valid
-dictionary words that match the partially assigned word patterns that contain
-the cluster to be mapped.  In subsequent work, Ho and Nagy used 
+
+Building on this, Ho and Nagy attempted to infer cluster labels using a series 
+of simple statistical modules\cite{ho2000}.  Each module scores potential 
+assignments using what they call a ``v/p ratio'', which counts the number of 
+valid dictionary words that match the partially assigned word patterns that 
+contain the cluster to be mapped.  In subsequent work, Ho and Nagy used 
 several n-gram, frequency, and word-positional features to construct a 
 classifier able to reliably determine whether an appropriately segmented 
 cluster was an upper or lower case character, a digit, or a 
 punctuation symbol\cite{ho2001}.
-%
+
 Recently, Huang et al. have used an entropy based approach to decode the
 sequence of cluster identifiers representing individual words\cite{huang2006}.  
 Confident mappings (those for which the distribution over character labels is 
@@ -122,10 +122,10 @@ first and used to narrow down the mappings for subsequent clusters.
 
 In this paper we also pursue an approach to character recognition that 
 makes no use of a priori character shape or font, instead relying entirely on 
-contextual and statistical language cues to recognize character sequences.  However, unlike 
-several of the aforementioned attempts, we do not limit ourselves to the 
-lowercase alphabetic characters of the English language. @@briefly outline 
-what we do differently@@
+contextual and statistical language cues to recognize character sequences.  
+However, unlike several of the aforementioned attempts, we do not limit 
+ourselves to the lowercase alphabetic characters of the English language. 
+%@@briefly outline what we do differently@@
 
 
 % CLUSTERING APPROACH %
@@ -159,6 +159,18 @@ is accomplished by looking for separate components that belong to the same
 line, are separated by a relatively small vertical distance (set manually), and
 have one of the components completely overlapping the other horizontally.
 
+Figure \ref{inimg_fig} displays a small region of input from a single document
+page (top), for which the procedures described above have been run.
+
+\begin{figure*}[ht]
+  \centering
+  \includegraphics[scale=1]{figures/input_lines}
+  \includegraphics[scale=1]{figures/line_comps}
+  \caption{Sample input image region and corresponding components, baselines,
+           and x-heights found}
+  \label{inimg_fig}
+\end{figure*}
+
 Each connected component image is initially assigned to its own cluster, then
 clusters are merged in an agglomerative fashion.  First a simple Euclidean
 distance measurement is taken between cluster centroid images, and those whose
@@ -175,7 +187,7 @@ different symbols.
 
 \begin{figure}[ht]
   \centering
-  %@@\includegraphics[]{figures/euc_dist_comparisons} @@
+  \includegraphics[scale=0.3]{figures/euc_dist_comparisons}
   \caption{Euclidean distance as calculated between a regular and italicized
   {\em e} versus the regular {\em e} and an {\em o} in the same font}
   \label{eucdist_fig}
@@ -223,7 +235,7 @@ shows this calculation between a few individual characters.
 
 \begin{figure}[ht]
   \centering
-  %@@\includegraphics[]{figures/haus_dist_comparisons} @@
+  \includegraphics[scale=.5]{figures/haus_dist_comparisons}
   \caption{Hausdorff distance as calculated between a regular and italicized
   {\em e} versus the regular {\em e} and an {\em o} in the same font}
   \label{hausdist_fig}
