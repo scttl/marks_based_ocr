@@ -14,10 +14,14 @@ function D = create_word_dictionary(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_word_dictionary.m,v 1.7 2007-01-13 18:20:26 scottl Exp $
+% $Id: create_word_dictionary.m,v 1.8 2007-01-25 18:50:29 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_word_dictionary.m,v $
+% Revision 1.8  2007-01-25 18:50:29  scottl
+% added ability to generate statistics for some prefix of the data instead of
+% the entire set.
+%
 % Revision 1.7  2007-01-13 18:20:26  scottl
 % ensure that words and word counts are handled correctly when
 % multiple files are used.  Speed up positional count creation.
@@ -57,25 +61,39 @@ strip_chars = [1:31,127:999];
 %when creating the positional counts, up to what word length should we include?
 max_word_len = 10;
 
+%should we limit ourselves to just some first portion of the dataset?  Set this
+%to inf, to keep the entire dataset.  Otherwise, it will specify the number of 
+%(8-bit) characters to keep
+keep_num_chars = inf;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
 tic;
+if nargin < 1
+    error('incorrect number of args specified');
+elseif nargin > 1
+    process_optional_args(varargin{:});
+end
+
 if ~iscell(Files)
     Files = {Files};
 end
 for ii=1:num_files
+    if keep_num_chars <= 0
+        break;
+    end
     fid = fopen(Files{ii});
     if fid == -1
         error('unable to open file');
     end
-    tmp = textscan(fid, '%s');
-    W = [W; tmp{:}];
-    frewind(fid);
-    C = [C; fread(fid)];
+    [tmp,count] = fread(fid, keep_num_chars);
     fclose(fid);
+    keep_num_chars = keep_num_chars - count;
+    C = [C; tmp];
+    tmp = textscan(char(tmp), '%s');
+    W = [W; tmp{:}];
 end
-
 
 fprintf('%.2fs: finished parsing files\n', toc);
 [D.word,ii,ii] = unique(W);
@@ -93,11 +111,13 @@ D.pos_count = cell(1,max_word_len);
 for ii=1:max_word_len
     this_count = zeros(length(D.char),ii);
     idx = find(D.word_len == ii);
-    words = cell2mat(D.word(idx));
-    for jj=1:length(D.char)
-        for kk=1:ii
-            this_count(jj,kk) = sum(D.word_count(idx(strcmp(words(:,kk), ...
-                                    {D.char(jj)}))));
+    if ~isempty(idx)
+        words = cell2mat(D.word(idx));
+        for jj=1:length(D.char)
+            for kk=1:ii
+                this_count(jj,kk) = sum(D.word_count(idx(strcmp(words(:,kk), ...
+                                        {D.char(jj)}))));
+            end
         end
     end
     D.pos_count{ii} = this_count;
