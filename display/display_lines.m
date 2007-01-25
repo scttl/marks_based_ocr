@@ -14,10 +14,14 @@ function display_lines(Lines, idx, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_lines.m,v 1.2 2006-11-07 02:52:41 scottl Exp $
+% $Id: display_lines.m,v 1.3 2007-01-25 18:42:10 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_lines.m,v $
+% Revision 1.3  2007-01-25 18:42:10  scottl
+% added ability to draw component bounding boxes, reverse the output colours,
+% and removed an unneeded subfunction.
+%
 % Revision 1.2  2006-11-07 02:52:41  scottl
 % small bugfix for displaying x-height line.
 %
@@ -40,12 +44,21 @@ base_col = reshape([0,0,255],1,1,3);  % this is blue
 draw_xheight = true;
 xheight_col = reshape([0,255,0],1,1,3);  %this is green
 
+%should we draw component bounding boxes? (this requires Comps to be passed)
+Comps = [];
+draw_comps = false;
+exclude_comps = [];  %input component numbers to exclude.  Like spaces
+comps_col = reshape([255,0,0],1,1,3);  %this is red
+
 %set save_lines to true to write the line images to disk based on the params
 %below it
 save_lines = false;
 global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
 img_prefix = [MOCR_PATH, '/results/line_image'];
 img_format = 'png';
+
+%should we reverse the display?  black ink on white background
+reverse_display = false;
 
 
 % CODE START %
@@ -81,6 +94,9 @@ end
 for ii=1:num_lines
     [h,w] = size(M{ii});
     M{ii} = [M{ii}, zeros(h, max_width - w); zeros(row_spacing, max_width)];
+    if reverse_display
+        M{ii} = 1 - M{ii};
+    end
 end
 
 if draw_baseline || draw_xheight
@@ -91,6 +107,25 @@ if draw_baseline || draw_xheight
         end
         if draw_xheight
             M{ii}(1+Lines.xheight(idx(ii)),:,:)=repmat(xheight_col,1,max_width);
+        end
+        if draw_comps && ~isempty(Comps)
+            comp_idcs = find(Comps.line == idx(ii));
+            if ~isempty(exclude_comps)
+                comp_idcs = setdiff(comp_idcs, exclude_comps);
+            end
+            line_l = Lines.pos(idx(ii),1);
+            line_t = Lines.pos(idx(ii),2);
+            for jj=comp_idcs'
+                l = Comps.pos(jj,1); t = Comps.pos(jj,2);
+                r = Comps.pos(jj,3); b = Comps.pos(jj,4);
+                l = l-line_l+1; t = t-line_t+1;
+                r = r-line_l+1; b = b-line_t+1;
+    
+                M{ii}(t,l:r,:) = repmat(comps_col,1,r-l+1);
+                M{ii}(t:b,l,:) = repmat(comps_col,b-t+1,1);
+                M{ii}(t:b,r,:) = repmat(comps_col,b-t+1,1);
+                M{ii}(b,l:r,:) = repmat(comps_col,1,r-l+1);
+            end
         end
     end
 end
@@ -109,182 +144,3 @@ fprintf('Elapsed time: %f\n', toc);
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function M = write_nums(M, X, Y, Txt)
-% helper function to convert strings of digits in Txt to images and place them
-% centered about the corresponding X, and Y offsets in M which is an image
-% matrix.
-% This is meant to be a crude replacement for Matlab's 'text' function that 
-% will be resized with the image, saved to disk, and work with imview
-%
-% Each digit image is sized to be about 9 pixels, so row_pix_border should be
-% set larger than this to prevent overlap
-%
-% we also assume that all X, Y co-ordinates fall within the range of the number
-% of rows and columns of M (no sanity checking done)
-if length(X) ~= length(Y) || length(X) ~= length(Txt)
-    error('X, Y, and Txt must all contain the same number of items');
-end
-
-%these represent each digit.  We assume 0 for background, and 1 for foreground
-one = [0 0 0 1 1 0 0;
-       0 0 1 0 1 0 0;
-       0 1 0 0 1 0 0;
-       0 0 0 0 1 0 0;
-       0 0 0 0 1 0 0;
-       0 0 0 0 1 0 0;
-       0 0 0 0 1 0 0;
-       0 0 0 0 1 0 0;
-       0 1 1 1 1 1 1];
-
-two = [0 1 1 1 1 1 0;
-       1 0 0 0 0 0 1;
-       0 0 0 0 0 0 1;
-       0 0 0 0 0 1 0;
-       0 0 0 1 1 0 0;
-       0 0 1 1 0 0 0;
-       0 0 1 0 0 0 0;
-       0 1 0 0 0 0 0;
-       0 1 1 1 1 1 1];
-
-three = [0 0 1 1 1 1 0;
-         0 1 0 0 0 0 1;
-         0 0 0 0 0 0 1;
-         0 0 0 0 0 0 1;
-         0 0 0 1 1 1 0;
-         0 0 0 0 0 0 1;
-         0 0 0 0 0 0 1;
-         0 1 0 0 0 0 1;
-         0 0 1 1 1 1 0];
-
-four = [0 0 0 0 0 1 0;
-        0 0 0 1 1 1 0;
-        0 0 1 0 0 1 0;
-        0 1 0 0 0 1 0;
-        1 0 0 0 0 1 0;
-        1 1 1 1 1 1 1;
-        0 0 0 0 0 1 0;
-        0 0 0 0 0 1 0;
-        0 0 0 0 0 1 0];
-
-five = [0 1 1 1 1 1 1;
-        0 1 0 0 0 0 0;
-        0 1 0 0 0 0 0;
-        0 1 1 1 1 1 0;
-        0 0 0 0 0 0 1;
-        0 0 0 0 0 0 1;
-        0 0 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 0 1 1 1 1 0];
-
-six =[0 0 0 1 1 0 0;
-      0 0 1 0 0 0 0;
-      0 1 0 0 0 0 0;
-      0 1 1 1 1 0 0;
-      0 1 0 0 0 1 0;
-      0 1 0 0 0 1 1;
-      0 1 0 0 0 1 1;
-      0 1 0 0 0 1 0;
-      0 0 1 1 1 0 0];
-
-seven =[0 1 1 1 1 1 1;
-        0 0 0 0 0 0 1;
-        0 0 0 0 0 1 0;
-        0 0 0 0 0 1 0;
-        0 0 0 1 1 0 0;
-        0 0 0 1 1 0 0;
-        0 0 1 0 0 0 0;
-        0 0 1 0 0 0 0;
-        0 0 1 0 0 0 0];
-
-eight =[0 0 1 1 1 1 0;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 0 1 1 1 1 0;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 0 1 1 1 1 0];
-
-nine = [0 0 1 1 1 1 0;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 0 1 1 1 1 1;
-        0 0 0 0 0 0 1;
-        0 0 0 0 1 1 0;
-        0 0 0 0 1 1 0;
-        0 0 1 1 0 0 0];
-
-zero = [0 0 1 1 1 1 0;
-        0 1 0 0 0 0 1;
-        0 1 0 0 1 1 1;
-        0 1 0 1 0 0 1;
-        0 1 0 1 0 0 1;
-        0 1 1 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 1 0 0 0 0 1;
-        0 0 1 1 1 1 0];
-
-sz = size(M);
-for ii=1:length(X)
-    %convert the string into a large image matrix
-    img = [];
-    for cc=1:length(Txt{ii})
-        switch Txt{ii}(cc)
-        case '1'
-            img = [img, one];
-        case '2'
-            img = [img, two];
-        case '3'
-            img = [img, three];
-        case '4'
-            img = [img, four];
-        case '5'
-            img = [img, five];
-        case '6'
-            img = [img, six];
-        case '7'
-            img = [img, seven];
-        case '8'
-            img = [img, eight];
-        case '9'
-            img = [img, nine];
-        case '0'
-            img = [img, zero];
-        otherwise
-            warning('MBOCR:charIgnored', ...
-                    'this method only displays digits 0-9, character ignored');
-        end
-    end
-
-    %overlay img centered about the X,Y position.  We may have to truncate/
-    %overwrite other parts of M
-    [h,w] = size(img);
-    x = X(ii) - ceil(w/2) + 1;
-    if x < 1
-        diff = -x + 1;
-        img = img(:,1+diff:end);
-        w = w - diff;
-        x = 1;
-    end
-    if x+w-1 > sz(2)
-        diff = x+w-1 - sz(2);
-        img = img(:,1:end-diff);
-        w = w - diff;
-    end
-    y = Y(ii) - ceil(h/2) + 1;
-    if y < 1
-        diff = -y + 1;
-        img = img(1+diff:end,:);
-        h = h - diff;
-        y = 1;
-    end
-    if y+h-1 > sz(1)
-        diff = y+h-1 - sz(1);
-        img = img(1:end-diff,:);
-        h = h - diff;
-    end
-    M(y:y+h-1, x:x+w-1) = img;
-end
