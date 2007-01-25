@@ -57,10 +57,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.6 2007-01-08 22:11:35 scottl Exp $
+% $Id: create_alphabet.m,v 1.7 2007-01-25 18:49:09 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.7  2007-01-25 18:49:09  scottl
+% changed normalization value.
+%
 % Revision 1.6  2007-01-08 22:11:35  scottl
 % added positional count information to each symbol.
 %
@@ -252,10 +255,10 @@ if ~isempty(corpora_files)
         Syms.count(idx) = D.char_count;
     
         %count the total number of occurences of each char in each position
-        %for ii=1:length(D.pos_count)
-        %    Syms.pos_total = Syms.pos_total + sum(D.pos_count{ii}(:));
-        %end
-        Syms.pos_total = sum(Syms.count);
+        for ii=1:length(D.pos_count)
+            Syms.pos_total = Syms.pos_total + sum(D.pos_count{ii}(:));
+        end
+        %Syms.pos_total = sum(Syms.count);
 
         %now add the normalized positional counts
         for ii=1:length(D.pos_count)

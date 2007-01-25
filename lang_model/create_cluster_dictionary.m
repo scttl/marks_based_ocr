@@ -16,10 +16,13 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.11 2007-01-13 18:16:55 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.12 2007-01-25 18:51:03 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
+% Revision 1.12  2007-01-25 18:51:03  scottl
+% changed normalization value.
+%
 % Revision 1.11  2007-01-13 18:16:55  scottl
 % just check if the line field exists, instead of checking for related fields.
 %
@@ -151,7 +154,6 @@ if ~model_spaces
             'no positional counts can be taken.  Spaces not found');
 end
 Clust.pos_count = cell(1,max_word_len);
-Clust.pos_total = Comps.max_comp;
 for ii=unique(Comps.line)'
     m = find(Comps.line == ii);
     [idx,idx] = min(Comps.pos(m,1));  %find left-most component on this line
@@ -192,12 +194,18 @@ for ii=unique(Comps.line)'
 end
 fprintf('%.2fs: finished creating cluster word lists for pos counts\n', toc);
 %now go through the cluster "word" lists created above, and update the counts
+Clust.pos_total = 0;
 for ii=1:max_word_len
     w = Clust.pos_count{ii};
     Clust.pos_count{ii} = zeros(Clust.num,ii);
     for jj=1:Clust.num
-        Clust.pos_count{ii}(jj,:) = sum(w == jj) ./ Clust.pos_total;
+        Clust.pos_count{ii}(jj,:) = sum(w == jj);
     end
+    Clust.pos_total = Clust.pos_total + sum(Clust.pos_count{ii}(:));
+end
+
+%now normalize the positional counts by the total number of counts
+for ii=1:max_word_len
+    Clust.pos_count{ii} = Clust.pos_count{ii} ./ Clust.pos_total;
 end
 fprintf('%.2fs: finished counting positions of components\n', toc);
-
