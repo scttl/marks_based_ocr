@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.6 2007-01-24 23:28:06 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.7 2007-01-26 17:57:00 roweis Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -158,11 +158,11 @@ connected components of ink on each page are identified and their bounding box
 positions on the page are stored.  For each component, the nearest neighbouring
 component in each of the four principal directions (top, bottom, left, and
 right), as well as its pixel offset distance is also stored.  Individual lines
-are then identified by following the chain of neighbouring components in
+of text are then identified by following the chain of neighbouring components in
 reading order.  The bounding box for a line is expanded as neighbour
 component positions are read, and checks are made of neighbours in non-reading
 order directions to determine if a line should be extended perpendicularly.
-
+%
 Since some symbols like {\em i, j, \'{e}, :, !} are made up of more than one
 connected component, attempts are made to merge their constituent parts.  This
 is accomplished by looking for separate components that belong to the same
