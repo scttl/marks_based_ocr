@@ -25,10 +25,15 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.4 2007-01-19 19:53:43 scottl Exp $
+% $Id: word_lookup_map.m,v 1.5 2007-01-26 23:25:40 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.5  2007-01-26 23:25:40  scottl
+% rewrote vp ratio calculations to constrain wildcards (if they refer
+% to the same cluster).  This currently makes things slower, but perhaps
+% profiling can find a few places to tweak things.
+%
 % Revision 1.4  2007-01-19 19:53:43  scottl
 % ensure that punctuation symbols are compared correctly now that strmatch
 % is used.  Use ISRI's expected reject symbol if no matching mapping
@@ -168,7 +173,7 @@ while ~isempty(idx)
         %if we reach this point, no valid mapping has been found.
         map(idx(1)) = this_order(max_idx);
         fprintf('unable to find valid mapping for: %d\n', idx(1));
-        fprintf('Using: Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
+        fprintf('Using: Score %f, sym: %s\n', max_score, Syms.val{map(idx(1))});
         sym_map{idx(1)} = max_sym;
         idx = idx(2:end);
     end
@@ -191,30 +196,61 @@ end
 
 for ii=1:num_pat
     this_len = length(pattern_list{ii});
-    idx = clust_map(pattern_list{ii}) ~= 0;
-    if all(idx == 0)
-        if ~isempty(word_list{this_len})
-            match_count = match_count + 1;
-        end
+    word_len = length(word_list);
+    if this_len > word_len + 1
         continue;
-    end
-    str = char(sym_map(pattern_list{ii}(idx)))';
-    if idx(1) == 1 && 65 <= str(1) && str(1) <= 90
-        %since a lot of words will have capital letters at the start of the 
-        %sentence, this will probably be missed by the lexicon, so convert 
-        %this character to lower-case before attempting to match
-        str(1) = str(1) + 32;
-    end
-    if this_len <= length(word_list) && ...
-       any(strmatch(str, word_list{this_len}(:,idx), 'exact'))
-        match_count = match_count + 1;
-    elseif idx(end) == 0 && length(idx) > 1 && this_len > 1 && ...
-           this_len-1 <= length(word_list)
-        %since most of the lexicon will be missing words that end in punctuation
-        %also try matching on words with the last cluster symbol missing.
-        idx = idx(1:end-1);
-        str = char(sym_map(pattern_list{ii}(idx)))';
-        if any(strmatch(str, word_list{this_len-1}(:,idx), 'exact'))
+    else
+        idx = clust_map(pattern_list{ii}) ~= 0;
+        this_pat = pattern_list{ii};
+        str = char(sym_map(this_pat(idx)))';
+        if idx(1) == 1 && 65 <= str(1) && str(1) <= 90
+            %since a lot of words will have capital letters at the start of 
+            %the sentence, this will probably be missed by the lexicon, so 
+            %convert this character to lower-case before attempting to match
+            str(1) = str(1) + 32;
+        end
+        found_match = false;
+        check_lengths = [];
+        if this_len <= word_len
+            check_lengths = 0;
+        end
+        %since most of the lexicon will be missing words that end in 
+        %punctuation also try matching on words with the last cluster 
+        %symbol missing.
+        if this_len <= word_len-1 && idx(end) == 0 && length(idx) > 1 && ...
+           this_len > 1
+            check_lengths = [check_lengths, 1];
+        end
+        while ~found_match && ~isempty(check_lengths)
+            twl = word_list{this_len - check_lengths(1)};
+            idx = idx(1:end - check_lengths(1));
+            this_pat = this_pat(1:end - check_lengths(1));
+            match_rows = 1:size(twl,1);
+            wild = find(idx == 0);
+            while length(wild) >= 2
+                %look for constraints amongst these columns
+                match_cols = this_pat(wild(1)) == this_pat(wild);
+                mc = wild(match_cols);
+                while length(mc) > 1
+                    mr = twl(match_rows,mc(1)) == twl(match_rows,mc(end));
+                    match_rows = match_rows(mr);
+                    mc = mc(1:end-1);
+                end
+                wild = wild(~match_cols);
+            end
+            
+            if all(idx == 0)
+                if ~isempty(twl(match_rows,:))
+                    found_match = true;
+                    continue;
+                end
+            end
+            if any(strmatch(str, twl(match_rows,idx), 'exact'))
+                found_match = true;
+            end
+            check_lengths = check_lengths(2:end);
+        end
+        if found_match
             match_count = match_count + 1;
         end
     end
