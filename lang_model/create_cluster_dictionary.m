@@ -16,10 +16,13 @@ function [Clust, Comps] = create_cluster_dictionary(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_cluster_dictionary.m,v 1.12 2007-01-25 18:51:03 scottl Exp $
+% $Id: create_cluster_dictionary.m,v 1.13 2007-01-30 01:28:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_cluster_dictionary.m,v $
+% Revision 1.13  2007-01-30 01:28:23  scottl
+% small change for effeciency purposes
+%
 % Revision 1.12  2007-01-25 18:51:03  scottl
 % changed normalization value.
 %
@@ -198,10 +201,12 @@ Clust.pos_total = 0;
 for ii=1:max_word_len
     w = Clust.pos_count{ii};
     Clust.pos_count{ii} = zeros(Clust.num,ii);
-    for jj=1:Clust.num
-        Clust.pos_count{ii}(jj,:) = sum(w == jj);
+    if size(w,1) > 0
+        for jj=1:Clust.num
+            Clust.pos_count{ii}(jj,:) = sum(w == jj,1);
+        end
+        Clust.pos_total = Clust.pos_total + sum(Clust.pos_count{ii}(:));
     end
-    Clust.pos_total = Clust.pos_total + sum(Clust.pos_count{ii}(:));
 end
 
 %now normalize the positional counts by the total number of counts
