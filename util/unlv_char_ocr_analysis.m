@@ -1,19 +1,30 @@
-function unlv_char_ocr_analysis(files, varargin)
+function [tot_a low_a upp_a dig_a sym_a spc_a] = ...
+         unlv_char_ocr_analysis(files, varargin)
 % UNLV_CHAR_OCR_ANALYSIS    Collect statistics and plot average char accuracy
 %
+%     [TOTALS LOWER UPPER DIGITS SYMBOLS SPACES] = ...
 %     unlv_char_ocr_analysis(FILE_LIST, [VAR1, VAL1]...)
 %
 % FILE_LIST should be either a listing of accuracy reports to process and 
 % collect statistics from, or it can be a directory to be searched for accuracy 
 % reports to process
 %
+% TOTALS, LOWER, UPPER, DIGITS, SYMBOLS, SPACES represent matrcies specifying 
+% the accuracy for each report broken up by symbol type.  The first column gives
+% the total number of characters appearing, the second the number incorrectly 
+% identified, and the third the accuracy
+%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_char_ocr_analysis.m,v 1.2 2007-01-18 19:16:36 scottl Exp $
+% $Id: unlv_char_ocr_analysis.m,v 1.3 2007-01-30 01:30:31 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_char_ocr_analysis.m,v $
+% Revision 1.3  2007-01-30 01:30:31  scottl
+% added display of lower, upper, digit, and other symbol accuracy to the
+% overall accuracy plot.
+%
 % Revision 1.2  2007-01-18 19:16:36  scottl
 % updates to display more digits of accuracies and other stats
 %
@@ -33,6 +44,30 @@ ft_size = 18;
 
 %to compare with other results, we can choose to only take a best subset
 take_best_pct = 1.0;
+
+%what if anything should we display a plot of
+plot_total=true;
+total_style = '*:';
+total_legend = 'Combined Total';
+plot_lowlet=true;
+lowlet_style = 'x:';
+lowlet_legend = 'Lowercase Letters';
+plot_upplet=true;
+upplet_style = '+:';
+upplet_legend = 'Uppercase Letters';
+plot_digits=true;
+digits_style = 'o:';
+digits_legend = 'Digits';
+plot_other=true;
+other_style = 's:';
+other_legend = 'Other Symbols';
+plot_spaces=false;
+spaces_style = 'd:';
+spaces_legend = 'Space Symbols';
+
+%by default we plot accuracy relative to the total number of occurences of 
+%symbols in the document.  Set to false to plot relative to the number of occurences of that type of symbol.
+renorm_by_total = true;
 
 
 % CODE START %
@@ -110,18 +145,76 @@ for ii=1:num_rprts
 end
 
 %sort them in descending order, and chop those if not generating stats over the
-%full subset
+%full set
 if take_best_pct < 1
     [idx,idx] = sort(tot_a(:,3), 'descend');
     tot_a = tot_a(idx,:);
     tot_a = tot_a(1:num_best_rprts,:);
+    [idx,idx] = sort(low_a(:,3), 'descend');
+    low_a = low_a(idx,:);
+    low_a = low_a(1:num_best_rprts,:);
+    [idx,idx] = sort(upp_a(:,3), 'descend');
+    upp_a = upp_a(idx,:);
+    upp_a = upp_a(1:num_best_rprts,:);
+    [idx,idx] = sort(sym_a(:,3), 'descend');
+    sym_a = sym_a(idx,:);
+    sym_a = sym_a(1:num_best_rprts,:);
+    [idx,idx] = sort(dig_a(:,3), 'descend');
+    dig_a = dig_a(idx,:);
+    dig_a = dig_a(1:num_best_rprts,:);
+    [idx,idx] = sort(spc_a(:,3), 'descend');
+    spc_a = spc_a(idx,:);
+    spc_a = spc_a(1:num_best_rprts,:);
 end
 
-%create a scatter plot of character accuracy versus size
-scatter(tot_a(:,1), tot_a(:,3)*100, 100, 'filled');
-xlabel('number of characters in document', 'FontSize', ft_size);
-ylabel('percentage of characters correctly identified', 'FontSize', ft_size);
-set(gca, 'FontSize', ft_size);
+%renormalizing kludge
+if renorm_by_total
+    low_a(:,1) = tot_a(:,1);
+    upp_a(:,1) = tot_a(:,1);
+    dig_a(:,1) = tot_a(:,1);
+    sym_a(:,1) = tot_a(:,1);
+end
+
+%create a plot of character accuracy versus size
+plot_str = 'plot(';
+legend_str = 'legend(';
+if plot_total
+    plot_str = [plot_str, 'tot_a(:,1), tot_a(:,3)*100, total_style, '];
+    legend_str = [legend_str, 'total_legend, '];
+end
+if plot_lowlet
+    plot_str = [plot_str, 'low_a(:,1), low_a(:,3), lowlet_style, '];
+    legend_str = [legend_str, 'lowlet_legend, '];
+end
+if plot_upplet
+    plot_str = [plot_str, 'upp_a(:,1), upp_a(:,3), upplet_style, '];
+    legend_str = [legend_str, 'upplet_legend, '];
+end
+if plot_digits
+    plot_str = [plot_str, 'dig_a(:,1), dig_a(:,3), digits_style, '];
+    legend_str = [legend_str, 'digits_legend, '];
+end
+if plot_other
+    plot_str = [plot_str, 'sym_a(:,1), sym_a(:,3), other_style, '];
+    legend_str = [legend_str, 'other_legend, '];
+end
+if plot_spaces
+    plot_str = [plot_str, 'spc_a(:,1), spc_a(:,3), spaces_style, '];
+    legend_str = [legend_str, 'spaces_legend, '];
+end
+
+if plot_str(end) == ' '
+    %plotting at least one type of data
+    plot_str = plot_str(1:end-2);  %remove the ', '
+    plot_str = [plot_str, ');'];
+    legend_str = [legend_str, '''Location'', ''Best'');'];
+    eval(plot_str);
+    eval(legend_str);
+    xlabel('number of characters in document', 'FontSize', ft_size);
+    ylabel('% of characters correctly identified', 'FontSize', ft_size);
+    set(gca, 'FontSize', ft_size);
+end
+
 fprintf('average number of characters per document: %.4f\n', mean(tot_a(:,1)));
 fprintf('average num of incorrectly identified chars: %.4f\n',mean(tot_a(:,2)));
 fprintf('average character accuracy per document: %.4f\n', mean(tot_a(:,3)));
@@ -131,6 +224,13 @@ fprintf('median document length (chars): %d\n', median(tot_a(:,1)));
 fprintf('minimum character accuracy: %.4f\n', min(tot_a(:,3)));
 fprintf('maximum character accuracy: %.4f\n', max(tot_a(:,3)));
 fprintf('median character accuracy: %.4f\n', median(tot_a(:,3)));
+
+%normalize the non-total accuracies
+spc_a(:,3) = spc_a(:,3) ./ 100;
+low_a(:,3) = low_a(:,3) ./ 100;
+upp_a(:,3) = upp_a(:,3) ./ 100;
+dig_a(:,3) = dig_a(:,3) ./ 100;
+sym_a(:,3) = sym_a(:,3) ./ 100;
 
 
 % SUBFUNCTION DECLARATIONS %
