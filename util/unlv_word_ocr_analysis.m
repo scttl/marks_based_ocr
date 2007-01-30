@@ -1,19 +1,27 @@
-function unlv_word_ocr_analysis(files, varargin)
+function tot_a = unlv_word_ocr_analysis(files, varargin)
 % UNLV_WORD_OCR_ANALYSIS    Collect statistics and plot average word accuracy
 %
-%     unlv_word_ocr_analysis(FILE_LIST, [VAR1, VAL1]...)
+%     TOTALS = unlv_word_ocr_analysis(FILE_LIST, [VAR1, VAL1]...)
 %
 % FILE_LIST should be either a listing of accuracy reports to process and 
 % collect statistics from, or it can be a directory to be searched for accuracy 
 % reports to process
 %
+% TOTALS represents a matrix specifying the accuracy for each report.
+% The first column gives the total number of words appearing, the second 
+% the number incorrectly identified, and the third the accuracy
+%
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_word_ocr_analysis.m,v 1.2 2007-01-18 19:16:36 scottl Exp $
+% $Id: unlv_word_ocr_analysis.m,v 1.3 2007-01-30 01:31:33 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_word_ocr_analysis.m,v $
+% Revision 1.3  2007-01-30 01:31:33  scottl
+% don't read the entire file since this could be large, instead we now
+% just read the first portion when looking for accuracy info
+%
 % Revision 1.2  2007-01-18 19:16:36  scottl
 % updates to display more digits of accuracies and other stats
 %
@@ -33,6 +41,10 @@ ft_size = 18;
 
 %to compare with other results, we can choose to only take a best subset
 take_best_pct = 1.0;
+
+%what if anything should we display a plot of
+plot_total=true;
+total_style = '*:';
 
 
 % CODE START %
@@ -77,7 +89,9 @@ for ii=1:num_rprts
     if fid == -1
         error('problems reading file: %s', rprt_list{ii});
     end
-    data = char(fread(fid))';
+    %only need to process first 175 bytes of file since the accuracy is written
+    %near the start of the file
+    data = char(fread(fid, 175))';
     fclose(fid);
     data = convert_to_cell(data);
 
@@ -98,11 +112,14 @@ if take_best_pct < 1
     tot_a = tot_a(1:num_best_rprts,:);
 end
 
-%create a scatter plot of accuracy accuracy versus size
-scatter(tot_a(:,1), tot_a(:,3)*100, 100, 'filled');
-xlabel('number of words in document', 'FontSize', ft_size);
-ylabel('percentage of words correctly identified', 'FontSize', ft_size);
-set(gca, 'FontSize', ft_size);
+if plot_total
+    %create a plot of accuracy accuracy versus document size
+    plot(tot_a(:,1), tot_a(:,3)*100, total_style);
+    xlabel('number of words in document', 'FontSize', ft_size);
+    ylabel('% of words correctly identified', 'FontSize', ft_size);
+    set(gca, 'FontSize', ft_size);
+end
+
 fprintf('average number of words per document: %.4f\n', mean(tot_a(:,1)));
 fprintf('average num of incorrectly identified words: %.4f\n',mean(tot_a(:,2)));
 fprintf('average word accuracy per document: %.4f\n', mean(tot_a(:,3)));
