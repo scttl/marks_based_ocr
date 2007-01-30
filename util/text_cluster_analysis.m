@@ -10,10 +10,13 @@ function text_cluster_analysis(Syms, files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: text_cluster_analysis.m,v 1.1 2007-01-13 18:36:46 scottl Exp $
+% $Id: text_cluster_analysis.m,v 1.2 2007-01-30 01:29:35 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: text_cluster_analysis.m,v $
+% Revision 1.2  2007-01-30 01:29:35  scottl
+% removed old debugging code
+%
 % Revision 1.1  2007-01-13 18:36:46  scottl
 % initial check-in.
 %
@@ -83,9 +86,6 @@ for ii=1:num_docs
     tot_a(ii,2) = sum(Clust.char_count(~strcmp(clust_chars, ...
                       Syms.val(order(:,1)))));
     tot_a(ii,3) = 1 - (tot_a(ii,2) / tot_a(ii,1));
-    if ii == 191
-        break;
-    end
 end
 
 %create a scatter plot of character accuracy versus size
