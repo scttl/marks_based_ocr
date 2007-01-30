@@ -10,10 +10,13 @@ function pos_feature_plot(counts, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: pos_feature_plot.m,v 1.1 2007-01-26 16:57:45 scottl Exp $
+% $Id: pos_feature_plot.m,v 1.2 2007-01-30 01:29:13 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: pos_feature_plot.m,v $
+% Revision 1.2  2007-01-30 01:29:13  scottl
+% added optional legend display, reset axes to be tight to the data
+%
 % Revision 1.1  2007-01-26 16:57:45  scottl
 % initial check-in.
 %
@@ -27,6 +30,9 @@ plot_marker_string = '+';  %type help plot for choices
 plot_xlabel = 'position and word';
 plot_ylabel = 'probability';
 plot_title = 'Plot of probability vs position in words of various length';
+%no legend is used by default.  If overriding this should be a cell array of 
+%strings to name each vector
+plot_legend_strings = '';  
 
 %should we draw word length delimeter lines?
 draw_word_dividers = true;
@@ -52,6 +58,10 @@ plot(1:sz(2), counts, plot_marker_string);
 xlabel(plot_xlabel);
 ylabel(plot_ylabel);
 title(plot_title);
+if ~isempty(plot_legend_strings)
+    legend(plot_legend_strings);
+end
+axis tight;
 
 if draw_word_dividers
     %positive root of quadratic equation used to caculate number of words
