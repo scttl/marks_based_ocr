@@ -53,14 +53,25 @@ function Syms = create_alphabet(file, varargin)
 %                  corpora
 %     srilm_file - if use_srilm is set to true, we estimate our n-gram counts
 %                  and save them on disk in srilm_file
+%     asc_idx - lists the index of symbols found to belong to the ascender
+%               symbol class.  (Upper case letters, digits, etc.)
+%     dsc_idx - lists the index of symbols found to belong to the descender
+%               symbol class.  (lower case letters like g, j, p, etc.)
+%     sml_idx - lists the index of symbols found to belong to the small
+%               symbol class.  (small punctuation like ., ,, _)
+%     bse_idx - lists the index of symbols found to belong to the main or base
+%               symbol class.  (lower case ltters like a,c,e and some symbols)
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.7 2007-01-25 18:49:09 scottl Exp $
+% $Id: create_alphabet.m,v 1.8 2007-01-30 01:37:49 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.8  2007-01-30 01:37:49  scottl
+% added grouping based on ascender and descender offsets.
+%
 % Revision 1.7  2007-01-25 18:49:09  scottl
 % changed normalization value.
 %
@@ -137,6 +148,15 @@ fc_bg_pseudo = 1;
 %character in line appearance?
 fc_pseudo = 1;
 
+%when creating positional counts, up to what length word should be included?
+max_word_len = 10;
+
+%what symbols belong to which classes?
+asc_syms = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZbdfhkl?![](){}@%$#/"^<>';
+dsc_syms = 'gjpqy';
+sml_syms = '.,_';
+bse_syms = ' aceimnorstuvwxz:;&-=*+~'; %all remainder that don't match above
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -165,7 +185,7 @@ Syms.val = sym_list;
 Syms.num = length(Syms.val);
 
 if ~isempty(template_font)
-    fprintf('%.2fs: generating template images\n');
+    fprintf('%.2fs: generating template images\n', toc);
 
     if ~isempty(regexp(template_font, pk_pattern))
         %attempt to generate templates using pk2bm
@@ -195,7 +215,7 @@ if ~isempty(template_font)
 end
 
 if ~isempty(corpora_files)
-    fprintf('%.2fs: reading text corpus\n');
+    fprintf('%.2fs: reading text corpus\n', toc);
     if use_srilm
         Syms.use_srilm = true;
         %first create the temporary input vocab file and convert any spaces to 
@@ -224,7 +244,7 @@ if ~isempty(corpora_files)
         %cleanup the temp vocab file
         delete(srilm_vocab_file);
     else
-        D = create_word_dictionary(corpora_files);
+        D = create_word_dictionary(corpora_files, 'max_word_len', max_word_len);
     
         if length(D.char) > Syms.num
             error('more symbols in corpus than in specified symbol files');
@@ -285,7 +305,21 @@ if ~isempty(corpora_files)
     Syms.corpus_files = corpora_files;
 end
 
-fprintf('%.2fs: Symbols initialized\n');
+%now assign each value to the appropriate class
+fprintf('%.2fs: assigning symbols to their respective classes\n', toc);
+for ii=1:Syms.num
+    if any(Syms.val{ii} == asc_syms)
+        Syms.asc_idx = [Syms.asc_idx; ii];
+    elseif any(Syms.val{ii} == dsc_syms)
+        Syms.dsc_idx = [Syms.dsc_idx; ii];
+    elseif any(Syms.val{ii} == sml_syms)
+        Syms.sml_idx = [Syms.sml_idx; ii];
+    else
+        Syms.bse_idx = [Syms.bse_idx; ii];
+    end
+end
+
+fprintf('%.2fs: Symbols initialized\n', toc);
 
 
 % SUBFUNCTION DECLARATIONS %
@@ -311,3 +345,7 @@ Syms.first_count = uint32([]);
 Syms.words = cell(0);
 Syms.word_count = uint32([]);
 Syms.srilm_file = '';
+Syms.asc_idx = [];
+Syms.dsc_idx = [];
+Syms.sml_idx = [];
+Syms.bse_idx = [];
