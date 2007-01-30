@@ -24,7 +24,7 @@ run_syms=true;
 sym_in_file = [MOCR_PATH, '/data/input_utf8_syms.txt'];
 
 %this should give the path to where results will be kept
-res_symfile = [MOCR_PATH, '/results/reuters_syms.mat'];
+res_symfile = [MOCR_PATH, '/data/reuters_syms.mat'];
 
 %these point at the files containing the actual text of the corpus
 corpus_files = {[MOCR_PATH, '/data/reuters/000.body.txt']};
