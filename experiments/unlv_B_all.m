@@ -25,7 +25,7 @@ run_ocr_analysis=true;
 
 %if attempting to determine mappings, this should list the file containing the
 %Syms corpora struct
-syms_struct_file = [MOCR_PATH, '/data/reuters_syms.mat'];
+syms_struct_file = [MOCR_PATH, '/data/reuters_pos_15_syms.mat'];
 
 %this file should point at a file containing the list of pages to run
 pg_file = [MOCR_PATH, '/data/unlv_ocr/B/PAGES'];
@@ -117,7 +117,8 @@ for ii=1:num_docs
 
     %now create a language model from the same dataset
     if run_dictionary
-        [Clust, Comps] = create_cluster_dictionary(Clust, Comps);
+        [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
+                         'max_word_len', 15);
 
         fprintf('dictionary complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
@@ -128,7 +129,7 @@ for ii=1:num_docs
     %now attempt to infer mappings based on positional information
     if run_pos_map
         [order, score] = positional_learn_mappings(Clust, Syms, ...
-                         'dist_metric', 'manhattan');
+                         'dist_metric', 'euc', 'weight_proportion', .5);
         fprintf('position based ordering complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
     end
