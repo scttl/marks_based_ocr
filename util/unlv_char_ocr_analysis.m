@@ -17,10 +17,14 @@ function [tot_a low_a upp_a dig_a sym_a spc_a] = ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_char_ocr_analysis.m,v 1.3 2007-01-30 01:30:31 scottl Exp $
+% $Id: unlv_char_ocr_analysis.m,v 1.4 2007-02-01 17:57:57 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_char_ocr_analysis.m,v $
+% Revision 1.4  2007-02-01 17:57:57  scottl
+% added ability to limit number of docs reports are calculated over,
+% removed dashed lines between points when plotting (by default)
+%
 % Revision 1.3  2007-01-30 01:30:31  scottl
 % added display of lower, upper, digit, and other symbol accuracy to the
 % overall accuracy plot.
@@ -45,24 +49,30 @@ ft_size = 18;
 %to compare with other results, we can choose to only take a best subset
 take_best_pct = 1.0;
 
+%we can limit to processing only some of the reports found.  Only really useful
+%if processing dictionaries and you know in advance how many you want to proces
+%Leave empty to include all reports found
+take_first_num = [];
+
+
 %what if anything should we display a plot of
 plot_total=true;
-total_style = '*:';
+total_style = '*';
 total_legend = 'Combined Total';
 plot_lowlet=true;
-lowlet_style = 'x:';
+lowlet_style = 'x';
 lowlet_legend = 'Lowercase Letters';
 plot_upplet=true;
-upplet_style = '+:';
+upplet_style = '+';
 upplet_legend = 'Uppercase Letters';
 plot_digits=true;
-digits_style = 'o:';
+digits_style = 'o';
 digits_legend = 'Digits';
 plot_other=true;
-other_style = 's:';
+other_style = 's';
 other_legend = 'Other Symbols';
 plot_spaces=false;
-spaces_style = 'd:';
+spaces_style = 'd';
 spaces_legend = 'Space Symbols';
 
 %by default we plot accuracy relative to the total number of occurences of 
@@ -101,6 +111,10 @@ end
 
 %collect statistics by reading each of the report files
 num_rprts = length(rprt_list);
+if ~isempty(take_first_num) && take_first_num > 0 && take_first_num <= num_rprts
+    num_rprts = take_first_num;
+end
+
 num_best_rprts = floor(take_best_pct * num_rprts);
 fprintf('GENERATING STATISTICS FOR %d CHAR REPORTS\n', num_best_rprts);
 fprintf('------------------------------------------\n');
