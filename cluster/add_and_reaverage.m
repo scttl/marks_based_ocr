@@ -26,10 +26,13 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.9 2006-12-19 22:13:42 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.10 2007-02-01 18:10:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
+% Revision 1.10  2007-02-01 18:10:12  scottl
+% added new class field that is assigned based on offset information
+%
 % Revision 1.9  2006-12-19 22:13:42  scottl
 % added pos_count field.  Implemented ability to return clusters
 % without refining.
@@ -144,6 +147,7 @@ Clust.changed = Clust.changed(keep_list);
 if Clust.found_offsets
     Clust.descender_off = Clust.descender_off(keep_list);
     Clust.ascender_off = Clust.ascender_off(keep_list);
+    Clust.class = Clust.class(keep_list);
 end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(keep_list, keep_list);

@@ -61,14 +61,19 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                   symbols this cluster blob of ink refers to.
 %     model_spaces - this boolean will be set to true if spaces have been
 %                    modelled and counts taken.  See add_space_model()
+%     class - this vector lists the different symbol type classes each entry is
+%             assigned to (based on its descender and ascender offset info)
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.14 2007-01-05 17:06:55 scottl Exp $
+% $Id: cluster_comps.m,v 1.15 2007-02-01 18:10:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.15  2007-02-01 18:10:12  scottl
+% added new class field that is assigned based on offset information
+%
 % Revision 1.14  2007-01-05 17:06:55  scottl
 % added pos_total field initalization.  Made the straight-match sweep optional.
 %
@@ -232,6 +237,11 @@ for pp=1:length(Comps.files)
         Clust.found_offsets = true;
         Clust.descender_off(clust_idcs,1) = Comps.descender_off(comp_idcs);
         Clust.ascender_off(clust_idcs,1) = Comps.ascender_off(comp_idcs);
+
+        %assign each cluster to its corresponding class
+        Clust.class(clust_idcs,1) = ...
+                  assign_class(Clust.descender_off(clust_idcs), ...
+                  Clust.ascender_off(clust_idcs));
     end
 
     %update the avg and norm_sq fields
@@ -350,6 +360,7 @@ end
 %finally, sort the clusters
 [Clust, Comps] = sort_clusters(Clust, Comps);
 
+
 %if warnings have been turned off, turn them back on
 if strcmp(override_display, 'OFF')
     warning('ON', 'MBOCR:override');
@@ -383,3 +394,4 @@ Clust.pos_total = 0;
 Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;
+Clust.class = uint16([]);

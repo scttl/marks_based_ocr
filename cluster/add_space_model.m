@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.6 2007-01-08 22:02:48 scottl Exp $
+% $Id: add_space_model.m,v 1.7 2007-02-01 18:10:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.7  2007-02-01 18:10:12  scottl
+% added new class field that is assigned based on offset information
+%
 % Revision 1.6  2007-01-08 22:02:48  scottl
 % small fix for pages that don't contain enough spaces to estimate
 % modes properly.
@@ -206,6 +209,7 @@ Clust.changed(Clust.num) = 0;
 if Clust.found_offsets
     Clust.descender_off(Clust.num) = 0;
     Clust.ascender_off(Clust.num) = 0;
+    Clust.class(Clust.num) = assign_class({' '});
 end
 if isfield(Clust, 'truth_label')
     Clust.truth_label{Clust.num} = ' ';
