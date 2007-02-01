@@ -20,10 +20,13 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: positional_learn_mappings.m,v 1.3 2007-01-29 03:23:39 scottl Exp $
+% $Id: positional_learn_mappings.m,v 1.4 2007-02-01 18:26:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: positional_learn_mappings.m,v $
+% Revision 1.4  2007-02-01 18:26:41  scottl
+% updates to handle weighting.
+%
 % Revision 1.3  2007-01-29 03:23:39  scottl
 % added optional weighting component based on word frequency.
 %
@@ -58,6 +61,15 @@ keep_best = 0;
 %uniformly amongst all word lonegths)
 weight_proportion = 0;
 
+%if assigning a weight matrix, should each symbol be adjusted by its particular
+%word-length frequency, or by the overall word-length frequencies found in the
+%document?
+weight_per_symbol = false;
+
+%how many prior counts should we add to each cluster before estimating the
+%closest match?
+prior_counts = 0;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -83,6 +95,11 @@ sym_pts = cell2mat(Syms.pos_count);
 err_dist = zeros(Clust.num, Syms.num);
 max_word_len = length(Syms.pos_count);
 num_cols = size(sym_pts,2);
+
+if prior_counts > 0
+    %@@@to implement
+end
+
 if keep_best == 0 || keep_best > Syms.num
     keep_best = Syms.num;
 end
@@ -90,21 +107,30 @@ if weight_proportion > 0
     weights = sym_pts .* cell2mat(Syms.pos_norms);
     e_idx = cumsum(1:length(Syms.pos_norms));
     s_idx = [1, e_idx(1:end-1) + 1];
-    norms = sum(weights,2);
-    %to prevent division by 0 and ensure uniformly distributed weights where no
-    %counts are seen, we adjust these weights appropriately
-    zero_idx = norms == 0;
-    weights(zero_idx,s_idx) = 1;
-    norms(zero_idx) = max_word_len; 
-    for ii=1:length(s_idx)
-        this_sum = sum(weights(:,s_idx(ii):e_idx(ii)),2);
-        weights(:,s_idx(ii):e_idx(ii)) = repmat(this_sum ./ norms, 1, ...
-                                         e_idx(ii)-s_idx(ii)+1);
+    if weight_per_symbol
+        norms = sum(weights,2);
+        %to prevent division by 0 and ensure uniformly distributed weights 
+        %where no counts are seen, we adjust these weights appropriately
+        zero_idx = norms == 0;
+        weights(zero_idx,s_idx) = 1;
+        norms(zero_idx) = max_word_len; 
+        for ii=1:length(s_idx)
+            this_sum = sum(weights(:,s_idx(ii):e_idx(ii)),2);
+            weights(:,s_idx(ii):e_idx(ii)) = repmat(this_sum ./ norms, 1, ...
+                                             e_idx(ii)-s_idx(ii)+1);
+        end
+    else
+        norm = sum(weights(:));
+        freq_vector = sum(weights,1);
+        for ii=1:length(s_idx)
+            this_sum = sum(freq_vector(s_idx(ii):e_idx(ii)));
+            weights(:,s_idx(ii):e_idx(ii)) = this_sum ./ norm;
+        end
     end
 else
-    weights = ones(size(sym_pts));
+    weights = 0;
 end
-%mix the weighted distribution with a uniform accordingto proportions
+%mix the weighted distribution with a uniform according to proportions
 W = (weight_proportion .* weights) + ...
     ((1-weight_proportion) .* (max_word_len / num_cols) .* ones(size(sym_pts)));
 
