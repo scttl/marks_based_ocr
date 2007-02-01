@@ -1,4 +1,4 @@
-function map = word_lookup_map(Clust, Comps, Syms, varargin)
+function [map, valid_acc] = word_lookup_map(Clust, Comps, Syms, varargin)
 % WORD_LOOKUP_MAP  Determine best cluster mappings using word match ratios
 %
 %   MAP = word_lookup_map(CLUST, COMPS, SYMS, [var1,val1]...)
@@ -17,6 +17,13 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 %   MAP returned will be a vector of length CLUST.num, each entry of which lists
 %   the index into SYMS that this cluster represents.
 %
+%   VALID_ACC is only returned if truth label information is available
+%   for the clusters and calc_valid_acc is set below.  It allows us to
+%   define an alternate measure of accuracy, dictating what portion of the time
+%   clusters are correctly identified when restricting ourselves to those that 
+%   either appear in words in the dictionary, or that are made up entirely of 
+%   clusters that also appear in the dictionary
+%
 %   NOTE that the mappings are determined in order starting from the first 
 %   cluster, and checking symbols in order from first to last, unless the local 
 %   variable 'order' is overridden.
@@ -25,10 +32,16 @@ function map = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.5 2007-01-26 23:25:40 scottl Exp $
+% $Id: word_lookup_map.m,v 1.6 2007-02-01 19:08:57 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.6  2007-02-01 19:08:57  scottl
+% added ability to restrict ordering to those matching a particular offset
+% class.  Implemented alternate accuracy calculation based on words
+% either being in the dictionary, or composed entirely of clusters that belong
+% to dictionary words.
+%
 % Revision 1.5  2007-01-26 23:25:40  scottl
 % rewrote vp ratio calculations to constrain wildcards (if they refer
 % to the same cluster).  This currently makes things slower, but perhaps
@@ -63,6 +76,14 @@ acceptance_thresh = .75;
 %1:Clust.num)
 order = {};
 
+%setting this to true restricts the ordering to just those symbols estimated to
+%be in the same class as the cluster currently being mapped
+restrict_order_to_class = false;
+
+%setting this to true enables us to return which clusters are valid as well as
+%which were predicted correctly (but requires ground truth information)
+calc_valid_acc = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -94,6 +115,7 @@ end
 seq = get_cluster_seq(Comps, unique(Comps.line));
 sym_map = cell(Clust.num,1);
 map = zeros(Clust.num,1);
+valid_acc = NaN;
 sym_map{space_idx} = ' ';
 map(space_idx) = space_sym_idx;
 clust_words = cell(Clust.num,1);
@@ -113,7 +135,10 @@ for ii=1:length(seq)
         else
             %continue to grow the current word
             curr_word = [curr_word, curr_line(1)];
-            clust_words{curr_line(1)} = [clust_words{curr_line(1)}, word_num];
+            if all(clust_words{curr_line(1)} ~= word_num)
+                %ensure each cluster is only added once for each word
+                clust_words{curr_line(1)} =[clust_words{curr_line(1)},word_num];
+            end
         end
         curr_line = curr_line(2:end);
     end
@@ -137,6 +162,7 @@ for ii=1:length(lex_lists)
     lex_lists{ii} = cell2mat(Syms.words(find(lex_length == ii)));
 end
 
+
 %now loop through unmapped clusters, attempting to find those that end up in 
 %scores above a pre-defined threshold, using the order to guide when certain 
 %symbols are tried.
@@ -146,6 +172,9 @@ while ~isempty(idx)
     max_idx = 1;
     max_sym = '~';  %reject character
     this_order = order{idx(1)};
+    if restrict_order_to_class
+        this_order = this_order(Syms.class(this_order) == Clust.class(idx(1)));
+    end
     for ii=1:length(this_order)
         sym_map{idx(1)} = Syms.val{this_order(ii)};
         if size(sym_map{idx(1)},2) > 1
@@ -155,7 +184,7 @@ while ~isempty(idx)
         end
         map(idx(1)) = this_order(ii);
         score = calc_vp_score(sym_map, map, word_list(clust_words{idx(1)}), ...
-                              lex_lists);
+                              lex_lists,false);
         fprintf('.');
         if ii == 1 && score >= acceptance_thresh
             %valid mapping!
@@ -179,6 +208,33 @@ while ~isempty(idx)
     end
 end
 
+if calc_valid_acc
+    valid_clust = logical(zeros(Clust.num,1));
+    [dummy,valid_words] = calc_vp_score(Clust.truth_label, 1:Clust.num, ...
+                           word_list, lex_lists, false);
+    for ii=find(valid_words)'
+        valid_clust(word_list{ii}) = true;
+    end
+    %can also be valid if not in dictionary but made entirely of clusters that
+    %are valid (in dictionary)
+    for ii=find(~valid_words)'
+        if all(valid_clust(word_list{ii}))
+            valid_words(ii) = true;
+        end
+    end
+
+    correct = zeros(Clust.num,1);
+    seen = zeros(Clust.num,1);
+    for ii=find(valid_words)'
+        seq = word_list{ii};
+        seen(seq) = seen(seq) + 1;
+        actual = char(Clust.truth_label(seq));
+        pred = char(sym_map(seq));
+        match = actual == pred;
+        correct(seq(match)) = correct(seq(match)) + 1;
+    end
+    valid_acc = [seen, correct, (correct ./ seen)];
+end
 
 
 % SUBFUNCTION DECLARATIONS %
@@ -186,9 +242,11 @@ end
 
 %this function determines the vp-ratio (proportion of the patterns given that
 %match valid dictionary words using the partial mapping passed).
-function score = calc_vp_score(sym_map, clust_map, pattern_list, word_list)
+function [score, matches] = calc_vp_score(sym_map, clust_map, pattern_list, ...
+                 word_list, list_matches)
+
 num_pat = length(pattern_list);
-match_count = 0;
+matches = logical(zeros(num_pat,1));
 if num_pat == 0
     score = 0;
     return;
@@ -203,12 +261,6 @@ for ii=1:num_pat
         idx = clust_map(pattern_list{ii}) ~= 0;
         this_pat = pattern_list{ii};
         str = char(sym_map(this_pat(idx)))';
-        if idx(1) == 1 && 65 <= str(1) && str(1) <= 90
-            %since a lot of words will have capital letters at the start of 
-            %the sentence, this will probably be missed by the lexicon, so 
-            %convert this character to lower-case before attempting to match
-            str(1) = str(1) + 32;
-        end
         found_match = false;
         check_lengths = [];
         if this_len <= word_len
@@ -247,12 +299,24 @@ for ii=1:num_pat
             end
             if any(strmatch(str, twl(match_rows,idx), 'exact'))
                 found_match = true;
+            elseif idx(1) == 1 && 65 <= str(1) && str(1) <= 90
+                %since a lot of words will have capital letters at the start of 
+                %the sentence, this will probably be missed by the lexicon, so 
+                %convert this character to lower-case and attempt to match
+                tmp_str = str;
+                tmp_str(1) = tmp_str(1) + 32;
+                if any(strmatch(tmp_str, twl(match_rows,idx), 'exact'))
+                    found_match = true;
+                end
             end
             check_lengths = check_lengths(2:end);
         end
         if found_match
-            match_count = match_count + 1;
+            matches(ii) = true;
+            if list_matches
+                fprintf('%s\n', str);
+            end
         end
     end
 end
-score = match_count / num_pat;
+score = sum(matches) / num_pat;
