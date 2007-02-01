@@ -14,10 +14,14 @@ function tot_a = unlv_word_ocr_analysis(files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_word_ocr_analysis.m,v 1.3 2007-01-30 01:31:33 scottl Exp $
+% $Id: unlv_word_ocr_analysis.m,v 1.4 2007-02-01 17:58:36 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_word_ocr_analysis.m,v $
+% Revision 1.4  2007-02-01 17:58:36  scottl
+% implemented ability to limit documents considered for generating
+% statistics over, removed plot of dashed lines between points
+%
 % Revision 1.3  2007-01-30 01:31:33  scottl
 % don't read the entire file since this could be large, instead we now
 % just read the first portion when looking for accuracy info
@@ -42,9 +46,14 @@ ft_size = 18;
 %to compare with other results, we can choose to only take a best subset
 take_best_pct = 1.0;
 
+%we can limit to processing only some of the reports found.  Only really useful
+%if processing dictionaries and you know in advance how many you want to proces
+%Leave empty to include all reports found
+take_first_num = [];
+
 %what if anything should we display a plot of
 plot_total=true;
-total_style = '*:';
+total_style = '*';
 
 
 % CODE START %
@@ -78,6 +87,9 @@ end
 
 %collect statistics by reading each of the report files
 num_rprts = length(rprt_list);
+if ~isempty(take_first_num) && take_first_num > 0 && take_first_num <= num_rprts
+    num_rprts = take_first_num;
+end
 num_best_rprts = floor(take_best_pct * num_rprts);
 fprintf('GENERATING STATISTICS FOR %d WORD REPORTS\n', num_best_rprts);
 fprintf('------------------------------------------\n');
