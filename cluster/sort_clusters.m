@@ -18,10 +18,14 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.8 2007-01-13 18:15:47 scottl Exp $
+% $Id: sort_clusters.m,v 1.9 2007-02-01 18:02:15 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.9  2007-02-01 18:02:15  scottl
+% added class field, made sorting of descender lines optional (since they
+% could be empty).
+%
 % Revision 1.8  2007-01-13 18:15:47  scottl
 % update changed field when re-ordering.
 %
@@ -69,8 +73,15 @@ Clust.avg = Clust.avg(idx);
 Clust.norm_sq = Clust.norm_sq(idx);
 Clust.refined = Clust.refined(idx);
 Clust.changed = Clust.changed(idx);
-Clust.descender_off = Clust.descender_off(idx);
-Clust.ascender_off = Clust.ascender_off(idx);
+if ~isempty(Clust.descender_off)
+    Clust.descender_off = Clust.descender_off(idx);
+end
+if ~isempty(Clust.ascender_off)
+    Clust.ascender_off = Clust.ascender_off(idx);
+end
+if ~isempty(Clust.class)
+    Clust.class = Clust.class(idx);
+end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(idx,:);
 end
