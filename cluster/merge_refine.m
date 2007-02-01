@@ -17,10 +17,13 @@ function [Clust, Comps] = merge_refine(Clust,Comps,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: merge_refine.m,v 1.11 2007-01-13 18:15:23 scottl Exp $
+% $Id: merge_refine.m,v 1.12 2007-02-01 18:02:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: merge_refine.m,v $
+% Revision 1.12  2007-02-01 18:02:45  scottl
+% update assigned class after merging.
+%
 % Revision 1.11  2007-01-13 18:15:23  scottl
 % prevent self-matches from occuring.
 %
@@ -581,6 +584,8 @@ Clust.changed = Clust.changed(keep_clust);
 if Clust.found_offsets
     Clust.descender_off = Clust.descender_off(keep_clust);
     Clust.ascender_off = Clust.ascender_off(keep_clust);
+    %since offsets will have changed, re-assign them
+    Clust.class = assign_class(Clust.descender_off, Clust.ascender_off);
 end
 if Clust.found_true_labels
     Clust.truth_label = Clust.truth_label(keep_clust);
