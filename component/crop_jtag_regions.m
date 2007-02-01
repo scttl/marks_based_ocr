@@ -15,10 +15,14 @@ function [new_img,reg_num,pos] = crop_jtag_regions(jtag_file, img, ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: crop_jtag_regions.m,v 1.4 2007-01-08 22:04:20 scottl Exp $
+% $Id: crop_jtag_regions.m,v 1.5 2007-02-01 18:01:23 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: crop_jtag_regions.m,v $
+% Revision 1.5  2007-02-01 18:01:23  scottl
+% fix to handle the case where region info is selected for use, but no
+% jtag file can be found.
+%
 % Revision 1.4  2007-01-08 22:04:20  scottl
 % added region number to the list of returned parameters.
 %
@@ -56,4 +60,7 @@ if exist(jtag_file, 'file');
         new_img(pos(ii,2):pos(ii,4), pos(ii,1):pos(ii,3)) = ...
                 img(pos(ii,2):pos(ii,4), pos(ii,1):pos(ii,3));
     end
+else
+    reg_num = 1;
+    pos = [1 1 size(img)];
 end
