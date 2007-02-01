@@ -53,22 +53,19 @@ function Syms = create_alphabet(file, varargin)
 %                  corpora
 %     srilm_file - if use_srilm is set to true, we estimate our n-gram counts
 %                  and save them on disk in srilm_file
-%     asc_idx - lists the index of symbols found to belong to the ascender
-%               symbol class.  (Upper case letters, digits, etc.)
-%     dsc_idx - lists the index of symbols found to belong to the descender
-%               symbol class.  (lower case letters like g, j, p, etc.)
-%     sml_idx - lists the index of symbols found to belong to the small
-%               symbol class.  (small punctuation like ., ,, _)
-%     bse_idx - lists the index of symbols found to belong to the main or base
-%               symbol class.  (lower case ltters like a,c,e and some symbols)
+%     class - categorizes each symbol according to its type
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.8 2007-01-30 01:37:49 scottl Exp $
+% $Id: create_alphabet.m,v 1.9 2007-02-01 17:59:27 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.9  2007-02-01 17:59:27  scottl
+% replaced specific class type fields with a single general purpose
+% class field.
+%
 % Revision 1.8  2007-01-30 01:37:49  scottl
 % added grouping based on ascender and descender offsets.
 %
@@ -150,12 +147,6 @@ fc_pseudo = 1;
 
 %when creating positional counts, up to what length word should be included?
 max_word_len = 10;
-
-%what symbols belong to which classes?
-asc_syms = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZbdfhkl?![](){}@%$#/"^<>';
-dsc_syms = 'gjpqy';
-sml_syms = '.,_';
-bse_syms = ' aceimnorstuvwxz:;&-=*+~'; %all remainder that don't match above
 
 
 % CODE START %
@@ -307,17 +298,7 @@ end
 
 %now assign each value to the appropriate class
 fprintf('%.2fs: assigning symbols to their respective classes\n', toc);
-for ii=1:Syms.num
-    if any(Syms.val{ii} == asc_syms)
-        Syms.asc_idx = [Syms.asc_idx; ii];
-    elseif any(Syms.val{ii} == dsc_syms)
-        Syms.dsc_idx = [Syms.dsc_idx; ii];
-    elseif any(Syms.val{ii} == sml_syms)
-        Syms.sml_idx = [Syms.sml_idx; ii];
-    else
-        Syms.bse_idx = [Syms.bse_idx; ii];
-    end
-end
+Syms.class = assign_class(Syms.val);
 
 fprintf('%.2fs: Symbols initialized\n', toc);
 
@@ -345,7 +326,4 @@ Syms.first_count = uint32([]);
 Syms.words = cell(0);
 Syms.word_count = uint32([]);
 Syms.srilm_file = '';
-Syms.asc_idx = [];
-Syms.dsc_idx = [];
-Syms.sml_idx = [];
-Syms.bse_idx = [];
+Syms.class = uint16([]);
