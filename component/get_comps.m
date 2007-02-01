@@ -70,10 +70,14 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.9 2007-01-08 22:03:39 scottl Exp $
+% $Id: get_comps.m,v 1.10 2007-02-01 18:00:37 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.10  2007-02-01 18:00:37  scottl
+% quick implementation of page deskew processing, that is reliant on
+% having 3rd party tools installed.
+%
 % Revision 1.9  2007-01-08 22:03:39  scottl
 % added region number to the region information (so they can be associated
 % with the corect ground truth file)
@@ -140,6 +144,12 @@ keep_region_list = {'section_heading', 'subsection_heading', 'footer', ...
      'figure_caption', 'abstract', 'editor_list', 'table_caption', 'pg_number'};
 jtag_extn = 'jtag';  %file extension for jtag files
 
+%should we deskew the page?
+deskew_pages = false;
+deskew_file_suffix = 'D_';
+%should we keep the deskewed version (created in the same directory as the page)
+keep_deskew_file = true;
+
 %should we display the page image before and after processing?  This uses
 %memory and takes longer to run
 display_page = false;
@@ -193,10 +203,37 @@ for pp=1:num_pgs
     end
     Comps.pg_size(pp,:) = size(Lbl_img);
 
+    dot_pos = strfind(Comps.files{pp}, '.');
+    if deskew_pages
+        if isempty(dot_pos)
+            warning('MBOCR:noExtn', ...
+                    'file has no extension. Unable to rename deskewed file');
+        else
+            deskew_file = [Comps.files{pp}(1:dot_pos(end)), ...
+                        deskew_file_suffix,Comps.files{pp}(dot_pos(end)+1:end)];
+
+            %@@ since I haven't written the mex file yet, just use the simple
+            %@@but slow hack for now.  Only works on Ubuntu Machines!!!
+            %@@deskew_page(Comps.files{pp}, deskew_file);
+            s = unix(['deskew ' Comps.files{pp}, ' ', deskew_file]);
+            if s ~= 0
+                error('problem running deskew');
+            end
+            Lbl_img = imread(deskew_file);
+            if bg_val ~= 1
+                Lbl_img = ~Lbl_img;
+            end
+            if keep_deskew_file
+                Comps.files{pp} = deskew_file;
+            else
+                delete(deskew_file);
+            end
+            fprintf('%.2fs: done deskewing this page\n', toc);
+        end
+    end
     if crop_regions
         %keep only the regions listed based on the associated jtag file (if one
         %exists)
-        dot_pos = strfind(Comps.files{pp}, '.');
         if isempty(dot_pos)
             warning('MBOCR:noExtn', ...
                     'file has no extension. Unable to parse regions');
@@ -208,6 +245,10 @@ for pp=1:num_pgs
             fprintf('%.2fs: done cropping unwanted regions from this page\n',...
                     toc);
         end
+    end
+
+    if ndims(Lbl_img) ~= 2
+        error('we require bilevel input images with no alpha channel');
     end
 
     %determine the connected components on this page
