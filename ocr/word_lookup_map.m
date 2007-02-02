@@ -32,10 +32,13 @@ function [map, valid_acc] = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.6 2007-02-01 19:08:57 scottl Exp $
+% $Id: word_lookup_map.m,v 1.7 2007-02-02 05:51:28 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.7  2007-02-02 05:51:28  scottl
+% added density based tie breaking.
+%
 % Revision 1.6  2007-02-01 19:08:57  scottl
 % added ability to restrict ordering to those matching a particular offset
 % class.  Implemented alternate accuracy calculation based on words
@@ -84,6 +87,8 @@ restrict_order_to_class = false;
 %which were predicted correctly (but requires ground truth information)
 calc_valid_acc = false;
 
+%should we use density information to break ties?
+break_ties_via_density = false;
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -189,20 +194,41 @@ while ~isempty(idx)
         if ii == 1 && score >= acceptance_thresh
             %valid mapping!
             map(idx(1)) = this_order(ii);
-            fprintf('Score %f, sym: %s\n', score, Syms.val{map(idx(1))});
+            fprintf('Score %f, sym: %s', score, Syms.val{map(idx(1))});
+            if ~isempty(Clust.truth_label(idx(1)))
+                fprintf(' true val: %s', Clust.truth_label{idx(1)});
+            end
+            fprintf('\n');
             idx = idx(2:end);
             break;
         elseif score > max_score
             max_score = score;
             max_idx = ii;
             max_sym = sym_map{idx(1)};
+        elseif break_ties_via_density && score == max_score
+            %tie!
+            max_idx = [max_idx, ii];
+            max_sym = [max_sym, sym_map(idx(1))];
         end
     end
     if ii == length(this_order)
         %if we reach this point, no valid mapping has been found.
+        if length(max_idx) > 1
+            %a tie has occured
+            fprintf('tie between: '); fprintf('%s, ',max_sym{:}); fprintf('\n');
+            sym_idx = this_order(max_idx);
+            [best_idx,best_idx] = min(abs(Syms.density(sym_idx) - ...
+                                          Clust.density(idx(1))));
+            max_idx = max_idx(best_idx);
+            max_sym = max_sym{best_idx};
+        end
         map(idx(1)) = this_order(max_idx);
         fprintf('unable to find valid mapping for: %d\n', idx(1));
-        fprintf('Using: Score %f, sym: %s\n', max_score, Syms.val{map(idx(1))});
+        fprintf('Using: Score %f, sym: %s', max_score, Syms.val{map(idx(1))});
+        if ~isempty(Clust.truth_label(idx(1)))
+            fprintf(' true val: %s', Clust.truth_label{idx(1)});
+        end
+        fprintf('\n');
         sym_map{idx(1)} = max_sym;
         idx = idx(2:end);
     end
