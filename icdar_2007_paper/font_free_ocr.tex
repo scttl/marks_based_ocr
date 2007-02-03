@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.13 2007-02-03 22:07:53 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.14 2007-02-03 23:45:49 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -56,10 +56,10 @@ Second Author\\
 \begin{abstract}
 We introduce an approach to character recognition that does not rely on shape 
 or font information, instead decoding the sequence of clustered ink blobs by
-exploting word positional statistics, and dictionary lookup information.
+exploiting word positional statistics, and dictionary lookup information.
 Applying this procedure to a test set of 10 long documents yields an average
-character accuracy performance above 90\%, and above 88\% on a set of 159
-perfectly clustered short documents.
+character recognition accuracy performance above 90\%, and above 88\% on a set 
+of 159 perfectly clustered short documents.
 \end{abstract}
 
 
@@ -119,10 +119,6 @@ sharply peaked at just a single label, given a dictionary of lookup words the
 same length as those that the cluster to be mapped appear in) are assigned 
 first and used to narrow down the mappings for subsequent clusters.
 
-% we should cite mccallum and miller from umass here
-% do you mean something beyond their tech report (which is already cited above
-% as huang2006)?
-
 In this paper we explore the extent to which contextual and statistical sequence
 information can be exploited in character recognition without making any
 a priori use of character shape or font knowledge. We extend earlier
@@ -136,8 +132,8 @@ establish character identity.
 %as its description.
 \begin{figure*}[ht]
   \centering
-  \includegraphics[scale=1]{figures/input_lines}
-  \includegraphics[scale=1]{figures/line_comps}
+  \includegraphics[scale=.9]{figures/input_lines}
+  \includegraphics[scale=.9]{figures/line_comps}
   \caption{Sample input image region and corresponding components, baselines,
            and x-heights found}
   \label{inimg_fig}
@@ -169,7 +165,7 @@ reading order.  The bounding box for a line is expanded as neighbour
 component positions are read, and checks are made of neighbours in non-reading
 order directions to determine if a line should be extended perpendicularly.
 %
-Since some symbols like {\tt i, j, \'{e}, :, !} are made up of more than one
+Since some symbols like {\tt i, \'{e}, :, ?} are made up of more than one
 connected component, attempts are made to merge their constituent parts.  This
 is accomplished by looking for separate components that belong to the same
 line, are separated by a relatively small vertical distance (set manually), and
@@ -255,7 +251,7 @@ the original character is highlighted.
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.5]{figures/haus_dist_comparisons}
+  \includegraphics[scale=.4]{figures/haus_dist_comparisons}
   \caption{Hausdorff distance as calculated between a regular and italicized
   {\tt e} versus the regular {\tt e} and an {\tt o} in the same font}
   \label{hausdist_fig}
@@ -339,8 +335,11 @@ the Reuters-21578 news corpus\cite{lewis2004}.
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.4]{figures/e_pos_feature}
-  \caption{Reference positional feature vector for the character {\tt e}.}
+  \includegraphics[scale=.5]{figures/e_pos_feature}
+  \includegraphics[scale=.5]{figures/e_pos_feature_clust}
+  \caption{Reference positional feature vector for the character {\tt e} (top),
+           and its corresponding cluster vector when taken from a short
+           document. }
   \label{e_pos_fig}
 \end{figure}
 
@@ -446,7 +445,7 @@ upper case letters, digits, and punctuation and other symbols).  Word accuracy
 counts were also taken.  Table \ref{acc_tbl}, column 'B' shows the 
 resultant performance when accuracies are averaged across all 159 documents.
 
-To examine the effect clustering performance had on the acheived accuracy,
+To examine the effect clustering performance had on the achieved accuracy,
 tests on the business letter dataset were re-run using the ASCII codes of the
 ground truth text.  Symbols were grouped together provided they had the same
 code, allowing us to assess performance on a perfectly segmented and clustered 
@@ -505,20 +504,20 @@ results are shown in Figure \ref{acc_v_doclen_fig}.
 %%%%%%%%%%%%%%%
 \Section{Conclusions}
 
-From our experiments, we find that 
-% does well where we'd expect (those symbols which occur most frequently,
-% like lowercase letters)
-%
-% Often documents too short to get useful positional counts for infrequent
-% characters
-%
-% table 1 quantifies how much info is lost due to clustering (by
-% comparing to ascii ground truth)
-%
-% poor performance on image clustering can in part be attributed to
-% underestimating space width, leaving too many short length words (particulary
-% in B dataset)
-%  
+We have found that given an ideal segmentation and clustering of the input
+data, contextual information alone can lead to fairly strong results for lower
+case letters, even on short documents.  For the remaining symbol classes, they
+suffer both from not belonging to words in the lookup lexicon, as well as
+having skewed positional features owing to their relative infrequency in shorter
+documents.  While a large lookup dictionary may help with the former, another
+source of information will most likely be required to help with the latter.
+
+Our results also highlight the importance of an accurate segmentation and
+clustering procedure.  Significant information wa lost when multiple symbols
+were merged or broken apart, and inaccurate estimation of intra-word space
+length was shown to yield particularly poor performance as broken words would
+significantly alter word lookup scores and mapping choices.
+
 
 % REFERENCES %
 %%%%%%%%%%%%%%
