@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.8 2007-02-03 15:30:04 roweis Exp $
+% $Id: font_free_ocr.tex,v 1.9 2007-02-03 19:38:45 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -117,13 +117,14 @@ same length as those that the cluster to be mapped appear in) are assigned
 first and used to narrow down the mappings for subsequent clusters.
 
 % we should cite mccallum and miller from umass here
+% do you mean something beyond their tech report (which is already cited above
+% as huang2006)?
 
 In this paper we also pursue an approach to character recognition that 
 makes no use of a priori character shape or font, instead relying entirely on 
 contextual and statistical language cues to recognize character sequences.  
 However, unlike several of the aforementioned attempts, we do not limit 
 ourselves to the lowercase alphabetic characters of the English language. 
-%@@briefly outline what we do differently@@
 
 %unfortunately this figure has to be moved to get it to appear on the same page
 %as its description.
@@ -139,6 +140,7 @@ ourselves to the lowercase alphabetic characters of the English language.
 % CLUSTERING APPROACH %
 %%%%%%%%%%%%%%%%%%%%%%%
 \Section{Clustering Procedure}
+\label{clustering_sec}
 
 Before attempts can be made to recognize the sequence of glyphs that 
 constitute input document images, the appropriate elementary symbol regions 
@@ -323,9 +325,18 @@ as well as symbol positional frequency.  We take counts of the number of times
 each symbol appears in each position of words up to a particular length.  As
 a result of this, each symbol will then define a point in an $\frac{x
 (x+1)}{2}$ dimensional ``positional'' feature space, where $x$ defines the
-maximum word length to include (@@15@@ in our experiments).  We normalize each 
-positional count by dividing by the total number of characters seen in the 
-corpus.  @@paragraph may change since currently using a classifier approach@@
+maximum word length to include (15 in our experiments).  We normalize the
+positional counts for each symbol so that within each word length, we end up
+with a distribution over positional frequency.  Figure \ref{e_pos_fig} shows
+this resultant feature vector for the symbol `e' when estimated over part of
+the Reuters-21578 news corpus\cite{lewis2004}.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=.4]{figures/e_pos_feature}
+  \caption{Resultant positional feature vector for the symbol 'e'}
+  \label{e_pos_fig}
+\end{figure}
 
 We repeat this process on the sequence of clustered components by gathering 
 positional cluster frequency stats using the estimated components of the space 
@@ -333,18 +344,25 @@ symbol cluster to demarcate word boundaries.  By taking these counts over words
 of length $x$ or less, we have that each cluster can be described as a point in
 this ``positional'' feature space.
 
-Determining which symbol each cluster belongs to is then a matter of first
-ordering the output symbols based on their Euclidean distance to the cluster in
-the ``positional'' feature space (starting with the closest).  For frequently
-occurring symbols like lowercase vowels or common consonants, the closest
-symbol is often the correct one, however for infrequently occurring symbols
-whose feature vector could deviate wildly from that seen in a large corpus (due
-to the domain and subject of the document for instance), this may not be the
-case.
+Before comparing cluster feature vectors with those in our symbol corpus, we
+first re-weight the symbol feature vectors based on word-length.  Since most
+words in the English language are relatively short, this will help minimize
+the effect of wild positional differences in longer words 
+(since there will typically be few long cluster sequences in short documents).
+
+Determining which symbol each cluster belongs to involves ordering the output 
+symbols based on their Euclidean distance to the cluster in the ``positional'' 
+feature space (starting with the closest).  For frequently
+occurring symbols like lowercase vowels or common consonants, there is often
+enough counts that their cluster positional feature vectors closely match the 
+corresponding symbol vector, and so the closest symbol is often the correct
+one.  However for infrequently occurring symbols, their feature vectors could 
+deviate wildly from that seen in a large corpus (due to the domain and subject 
+of the document for instance), thus additional steps must be taken.
 
 To determine the final symbol mapping chosen for each cluster, the ordering
-determined by the positional distances are used.  Examining the clusters in
-order starting with that the appeared most frequently in the document, each
+determined by the positional distances are used.  Examining the clusters 
+starting with the one that appeared most frequently in the document, each
 symbol is tried in turn.  The current partially assigned mapping is applied to
 the sequence of cluster identifiers in the document, and for each one in which
 the current cluster appears, this symbol sequence is looked up for matches
@@ -356,72 +374,146 @@ next cluster is determined.
 
 Initially, most of the dictionary words will match the cluster words since there
 will only be a few clusters that have been assigned symbols.  However, these 
-are also the most likely to be the correct mappings based purely on the
-positional distances.  As more clusters are assigned symbols, it may become
+are also the most likely to be the correct mappings based purely on
+positional distance.  As more clusters are assigned symbols, it may become
 impossible for a particular cluster to find a mapping that achieves a cluster
 word to dictionary word ratio exceeding the desired threshold.  In such a case,
 the symbol that achieves the largest such ratio is taken to be the correct
-mapping.  @@discuss how ties will be broken?@@.  This process is repeated until
-each of the clusters has been assigned a symbol.
+mapping.  If multiple symbols generate the same dictionary lookup ratio, then
+ties are broken by taking the symbol that has a closer positional feature
+distance.  This process is repeated until each of the clusters has been 
+assigned a symbol.
 
 
 % EXPERIMENTS %
 %%%%%%%%%%%%%%%
 \Section{Experiments}
 
-To examine the validity of our proposed approach, we have run a series of tests
-against the @@fine fax mode quality business letter dataset from the ISRI OCR
-database\cite{nartker2005}.  Discuss the set used, no automatic zoning,
-grouping pages belonging to the same document together@@
+To examine the suitability of our proposed approach, we have completed
+experiments using the fine-mode fax quality images from the business letter, 
+and legal document ISRI OCR datasets\cite{nartker2005}.  All 159 documents from
+the business letter set, and the 10 longest documents (labelled 9460-9469) were
+taken and deskewed using the library included with the Leptonica image
+processing suite\cite{bloomberg2006}.
 
-For our word lookup dictionary and our initial gathering of positional count
-features, we made use of the first piece of the Reuters-21578 new
-corpus\cite{lewis2004}.  After removing the tags and trailing ``Reuters''
-byline from each article, we were left with 17601 unique words including many
-proper nouns, digit strings, and other non-dictionary words.  This left us with
-92 unique symbols, upon which to create positional counts from.  There were
-744522 symbols in total.
+Dictionary word lookup, and output symbol positional statistics were estimated
+from the first piece of the Reuters-21578 news corpus 
+(reut2-000.sgm)\cite{lewis2004}.  Each article's body text was extracted and the
+trailing ``Reuter'' byline was removed, leaving a total of 744,522 symbols, and
+17,601 unique words (including many proper nouns, digit strings, and words with
+punctuation symbols).  Our output alphabet consisted of 92 different symbols
+including upper and lowercase letters, the digits 0-9, punctuation, brackets, 
+and several simple arithmetic operators.
 
-After determining a final mapping from each cluster to a particular symbol, the
-results where compared with the ground-truth text to determine recognition
-accuracy.  Figure \ref{characc_fig} shows the resultant overall symbol
-recognition accuracy as compared with the document size.  The average character
-accuracy for the documents was found to be 53.19\% which is quite poor.
+%
+%As Figure \ref{acc_v_doclen_fig} clearly shows, most lower case letters can be 
+%correctly recognized fairly accurately, even with a small amount of data.  
+%Performance on upper case letters and digits is drastically worse, owing to 
+%their relative infrequency in documents.  100\% recognition accuracy was not
+%acheived until almost 600,000 characters were seen.
+%
+%\begin{figure}[ht]
+%  \centering
+%  \includegraphics[scale=.5]{figures/acc_v_doclen}
+%  \caption{Percentage of ASCII codes correctly recognized versus document
+%  length}
+%  \label{acc_v_doclen_fig}
+%\end{figure}
+%
+
+To test overall performance on short, low quality documents, the images from
+the business letter dataset were used.  These documents were typically only 1
+page in length, and contained 2010 characters on average.
+
+After grouping the pages belonging to each document together and clustering 
+the images using the procedure described in Section \ref{clustering_sec}, 
+positional features were then calculated for each cluster.  These feature 
+vectors were then compared with the feature vectors found for the output 
+symbols, which were weighted based on how frequently words of that length 
+appeared in the corpus.  The resultant distances were used to define an 
+ordering of output symbols for each cluster.
+
+To determine the final mapping for each cluster, vp-ratio scores were
+calculated for the first symbol in the order given the partially assigned
+mappings up to that point.  If it was found that this score exceeded a 
+threshold of 75\%, the mapping was deemed correct, otherwise vp-ratio scores
+were calculated for all symbols in order, and that which acheived the maximum
+was taken.  Ties amongst vp-ratio scores were broken by taking the output
+symbol with a closer positional feature distance.  This final mapping was then
+combined with the cluster sequences found to generate output text, which was
+compared against the corresponding ground truth to determine accuracy.
+
+Accuracy was established for symbols on a per-class basis (lower case letters, 
+upper case letters, digits, and punctuation and other symbols).  Word accuracy
+counts were also taken.  Table \ref{acc_tbl}, column labelled 'B' shows the 
+resultant performance when accuracies are averaged across all 159 documents.
+
+To examine the effect clustering performance had on the acheived accuracy,
+tests on the business letter dataset were re-run using the ASCII codes of the
+ground truth text.  Symbols were grouped together provided they had the same
+code, allowing us to assess performance on a perfectly segmented and clustered 
+set of data.  As in the previous test, positional feature statistics were
+computed, and compared against those from the same corpus, and vp-scores were
+used to determine final mappings.  Table \ref{acc_tbl}, column 'B (ASCII)'
+shows the resultant improvement in accuracy.
+
+To determine the impact that document length has on performance we also tested 
+our approach on the longest documents in the legal document dataset.  Each of 
+these documents was 15 pages in length, and averaged 22,959 characters.
+Results are reported when clustering the input images, and when using the ASCII
+codes, and are reported in the 'L', and 'L (ASCII)' columns of Table
+\ref{acc_tbl} respectively.
+
+\begin{table}[ht]
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    & B & B (ASCII) & L & L (ASCII)\\
+    \hline
+    \hline
+    overall & 67.84 & 88.24 & 90.72 & 96.07\\
+    \hline
+    low letters & 73.17 & 95.71 & 97.79 & 100\\
+    \hline
+    upper letters & 9.21 & 50.65 & 4.02 & 65.66\\
+    \hline
+    digits & 6.84 & 20.52 & 7.51 & 23.64\\
+    \hline
+    other sym. & 24.55 & 52.36 & 31.44 & 61.72\\
+    \hline
+    word & 50.50 & 79.91 & 92.49 & 95.30\\
+    \hline
+  \end{tabular}
+  \caption{Recognition Accuracy based on symbol type for image and ASCII code
+           clustered data}
+  \label{acc_tbl}
+\end{table}
+
+To further illustrate performance versus document length, the per class
+accuracies of each document in the business letter dataset was plotted.  The
+results are showin in Figure \ref{acc_v_doclen_fig}.
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.4]{figures/character_accuracy}
-  \caption{Scatter plot showing symbol recognition accuracy versus document
-  size}
-  \label{characc_fig}
+  \includegraphics[scale=.5]{figures/acc_v_doclen}
+  \caption{Percentage of ASCII codes correctly recognized versus document
+  length from the business letter dataset}
+  \label{acc_v_doclen_fig}
 \end{figure}
-
-To determine how much an impact the clustering procedure has on performance,
-the experiment above was repeated, but the ASCII ground truth symbols were
-grouped together, representing a perfect segmentation and clustering.  Figure
-\ref{gtcharacc_fig} shows the resultant recognition accuracy as a function of
-document size.  The average character accuracy was found to be 80.17\% (with a
-median accuracy of 88.77\%).  While this is much improved, it is still not on
-par with typical recognition systems.  Most of the errors were not made on
-lowercase characters, instead digits, punctuation symbols, and to a lesser
-extent, upper case characters accounted for the majority of errors.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[scale=.4]{figures/gt_character_accuracy}
-  \caption{Scatter plot showing ground-truth clustered symbol recognition 
-  accuracy versus document size}
-  \label{gtcharacc_fig}
-\end{figure}
-
-@@other experiments to be written@@
 
 
 % CONCLUSIONS %
 %%%%%%%%%%%%%%%
 \Section{Conclusions}
-@@to be written@@
-
+% does well where we'd expect (those symbols which occur most frequently,
+% like lowercase letters)
+%
+% Often documents too short to get useful positional counts for infrequent
+% characters
+%
+% poor performance on image clustering can in part be attributed to
+% underestimating space width, leaving too many short length words (particulary
+% in B dataset)
+%  
 
 % REFERENCES %
 %%%%%%%%%%%%%%
