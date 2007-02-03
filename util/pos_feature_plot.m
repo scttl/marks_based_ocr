@@ -10,10 +10,13 @@ function pos_feature_plot(counts, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: pos_feature_plot.m,v 1.2 2007-01-30 01:29:13 scottl Exp $
+% $Id: pos_feature_plot.m,v 1.3 2007-02-03 21:06:11 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: pos_feature_plot.m,v $
+% Revision 1.3  2007-02-03 21:06:11  scottl
+% default font changes
+%
 % Revision 1.2  2007-01-30 01:29:13  scottl
 % added optional legend display, reset axes to be tight to the data
 %
@@ -26,13 +29,19 @@ function pos_feature_plot(counts, varargin)
 %%%%%%%%%%%%%%
 
 %how should we set markers, lines, and color?
-plot_marker_string = '+';  %type help plot for choices
-plot_xlabel = 'position and word';
-plot_ylabel = 'probability';
-plot_title = 'Plot of probability vs position in words of various length';
+plot_marker_string = 'o';  %type help plot for choices
+plot_marker_color = 'b';
+plot_marker_size = 8;
+plot_xlabel = 'Position and word length';
+plot_ylabel = 'Probability';
+%plot_title = 'Plot of probability vs position in words of various length';
+plot_title = '';
 %no legend is used by default.  If overriding this should be a cell array of 
 %strings to name each vector
 plot_legend_strings = '';  
+
+%set the font size of the axis labels and units
+ft_size = 18;
 
 %should we draw word length delimeter lines?
 draw_word_dividers = true;
@@ -54,9 +63,12 @@ if iscell(counts)
 end
 
 sz = size(counts);
-plot(1:sz(2), counts, plot_marker_string);
-xlabel(plot_xlabel);
-ylabel(plot_ylabel);
+plot(1:sz(2), counts, plot_marker_string, ...
+    'MarkerFaceColor', plot_marker_color, ...
+    'MarkerEdgeColor', plot_marker_color, ...
+    'MarkerSize', plot_marker_size);
+xlabel(plot_xlabel, 'FontSize', ft_size);
+ylabel(plot_ylabel, 'FontSize', ft_size);
 title(plot_title);
 if ~isempty(plot_legend_strings)
     legend(plot_legend_strings);
