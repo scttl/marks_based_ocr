@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.10 2007-02-03 20:04:29 roweis Exp $
+% $Id: font_free_ocr.tex,v 1.11 2007-02-03 20:52:18 roweis Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -63,7 +63,7 @@ Second Author\\
 \Section{Introduction}
 
 Traditional approaches to optical character recognition (OCR) have typically
-been reliant on font-specific shape information to convert bitmap
+relied on font-specific shape information to convert bitmap
 images of glyphs into corresponding sequences of (ASCII or Unicode encoded)
 characters.  Some of the earliest systems were heavily restricted, only
 able to recognize images that happened to closely match a template culled from
@@ -313,13 +313,13 @@ Sample 3 OCR dataset created by UNLV's ISRI group\cite{nartker2005}.
 
 % CONTEXTUAL RECOGNITION APPROACH %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\Section{Contextual Recognition}
+\Section{Contextual Recognition Based on Position}
 
 With a reasonable clustering complete, the labels belonging to each cluster are
 ready to be recognized.  Our contextual recognition approach has only been
 tested on documents written in English, but should also be amenable to other
 writing systems whose atomic symbols are roughly phonetic.  In our experiments
-we have also assumed that we know in advance the script and language of the
+we have also assumed that we know in advance the language of the
 input document, however previous research has shown it possible to infer this
 automatically with relatively good accuracy\cite{sibun1994},\cite{hochberg1997}.
 
@@ -337,62 +337,68 @@ the Reuters-21578 news corpus\cite{lewis2004}.
 \begin{figure}[ht]
   \centering
   \includegraphics[scale=.4]{figures/e_pos_feature}
-  \caption{Resultant positional feature vector for the symbol 'e'}
+  \caption{Reference positional feature vector for the character 'e'.}
   \label{e_pos_fig}
 \end{figure}
 
-We repeat this process on the sequence of clustered components by gathering 
-positional cluster frequency stats using the estimated components of the space 
-symbol cluster to demarcate word boundaries.  By taking these counts over words
-of length $x$ or less, we have that each cluster can be described as a point in
-this ``positional'' feature space.
+We repeat this process on the sequence of clustered components by
+gathering positional cluster frequency stats using the estimated
+components of the space symbol cluster to demarcate word boundaries.
+By taking these counts over words of length $x$ or less, we have that
+each cluster can be described as a point in this ``positional''
+feature space.
 
-Before comparing cluster feature vectors with those in our symbol corpus, we
-first re-weight the symbol feature vectors based on word-length.  Since most
-words in the English language are relatively short, this will help minimize
-the effect of wild positional differences in longer words 
-(since there will typically be few long cluster sequences in short documents).
+Before comparing cluster feature vectors with those in our symbol
+corpus, we first re-weight the symbol feature vectors based on
+word-length.  Since most words in the English language are relatively
+short, this will help minimize the effect of wild positional
+differences in longer words (since there will typically be few long
+cluster sequences in short documents).
 
-Determining which symbol each cluster belongs to involves ordering the output 
-symbols based on their Euclidean distance to the cluster in the ``positional'' 
-feature space (starting with the closest).  For frequently
-occurring symbols like lowercase vowels or common consonants, there is often
-enough counts that their cluster positional feature vectors closely match the 
-corresponding symbol vector, and so the closest symbol is often the correct
-one.  However for infrequently occurring symbols, their feature vectors could 
-deviate wildly from that seen in a large corpus (due to the domain and subject 
-of the document for instance), thus additional steps must be taken.
+Determining which symbol each cluster belongs to involves ordering the
+observed frequency vector of each cluster in the ``positional''
+feature space with the feature vectors for the known characters, as
+estimated on a large reference corpus. When the match is almost exact
+(in our experiments we use Euclidean distance, but a weighted
+cross-entropy could also be applied), we can make an assignment
+directly.  For frequently occurring symbols like lowercase vowels or
+common consonants, there are often enough counts that the cluster
+positional feature vectors closely match the corresponding reference
+vector, and so such a match is almost always correct.  However for
+infrequently occurring symbols, feature vectors exhibit high variance
+(due to the domain and subject of the document for instance), thus
+additional steps must be taken.
 
-To determine the final symbol mapping chosen for each cluster, the ordering
-determined by the positional distances are used.  Examining the clusters 
-starting with the one that appeared most frequently in the document, each
-symbol is tried in turn.  The current partially assigned mapping is applied to
-the sequence of cluster identifiers in the document, and for each one in which
-the current cluster appears, this symbol sequence is looked up for matches
-against a large word corpus.  This ratio of the number of matches, to the total
-number of cluster words in the input document is calculated, and provided that
-it exceeds a particular threshold (75\% in our experiments), then that symbol
-is permanently assigned to that particular cluster, and the mapping for the
-next cluster is determined.
+We take a greedy approach in which we assign clusters to characters
+one at a time, starting with the clusters appearing most frequently in
+the document. For each cluster, we consider the top matching
+characters candidates according to the positional feature vector.  For
+each candidate, we use the partially assigned mapping so far to match
+words containing the current cluster symbol against a large word
+corpus from a dictionary. The fraction of total words in the input
+document containing the cluster which are matched is calculated and
+provided that it exceeds a particular threshold (75\% in our
+experiments), then the character candidate under consdieration is
+permanently assigned to the cluster, and we move on to determine the
+mapping for the next cluster.
 
-Initially, most of the dictionary words will match the cluster words since there
-will only be a few clusters that have been assigned symbols.  However, these 
-are also the most likely to be the correct mappings based purely on
-positional distance.  As more clusters are assigned symbols, it may become
-impossible for a particular cluster to find a mapping that achieves a cluster
-word to dictionary word ratio exceeding the desired threshold.  In such a case,
-the symbol that achieves the largest such ratio is taken to be the correct
-mapping.  If multiple symbols generate the same dictionary lookup ratio, then
-ties are broken by taking the symbol that has a closer positional feature
-distance.  This process is repeated until each of the clusters has been 
-assigned a symbol.
+Initially, when few symbols have been matched, many dictionary words
+are potential matches for when considering the next cluster. As more
+clusters are assigned symbols, it may eventually become impossible for
+a particular cluster to find a character mapping that achieves a
+matching word ratio exceeding the desired threshold.  In such a case,
+the symbol that achieves the largest such ratio is taken to be the
+correct mapping.  If multiple symbols generate the same dictionary
+lookup ratio, then ties are broken by taking the symbol that has a
+closer positional feature distance.  This process is repeated until
+each of the clusters has been assigned a symbol.
 
 
 % EXPERIMENTS %
 %%%%%%%%%%%%%%%
 \Section{Experiments}
 
-To examine the suitability of our proposed approach, we have completed
+To examine the information present in positional statistics, we have completed
 experiments using the fine-mode fax quality images from the business letter, 
 and legal document ISRI OCR datasets\cite{nartker2005}.  All 159 documents from
 the business letter set, and the 10 longest documents (labelled 9460-9469) were
@@ -512,6 +518,9 @@ results are showin in Figure \ref{acc_v_doclen_fig}.
 %
 % Often documents too short to get useful positional counts for infrequent
 % characters
+%
+% table 1 quantifies how much info is lost due to clustering (by
+% comparing to ascii ground truth)
 %
 % poor performance on image clustering can in part be attributed to
 % underestimating space width, leaving too many short length words (particulary
