@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.9 2007-02-03 19:38:45 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.10 2007-02-03 20:04:29 roweis Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -23,7 +23,7 @@
 
 % TITLE %
 %%%%%%%%%
-\title{Shape-Free Character Identification for Optical Character Recognition}
+\title{Shape-Free Statistical Information in Optical Character Recognition}
 
 % AUTHOUR INFO %
 %%%%%%%%%%%%%%%%
@@ -77,8 +77,8 @@ in documents containing unusual typefaces or fonts sizes.
 As electronic publishing becomes increasingly common (including the
 ability for ordinary users to create their own custom fonts), the enormous
 variety of fonts seen in printed and online documents continues to grow rapidly.
-This creates an ongoing motivation to pursue {\em font and shape
-independent} approaches to  optical character recognition.
+This creates an ongoing motivation to pursue sources of {\em font and shape
+independent} information useful for optical character recognition.
 
 Many previous attempts at ``font free'' character recognition share
 the same general structure. Each page of ink is segmented into components
@@ -120,11 +120,14 @@ first and used to narrow down the mappings for subsequent clusters.
 % do you mean something beyond their tech report (which is already cited above
 % as huang2006)?
 
-In this paper we also pursue an approach to character recognition that 
-makes no use of a priori character shape or font, instead relying entirely on 
-contextual and statistical language cues to recognize character sequences.  
-However, unlike several of the aforementioned attempts, we do not limit 
-ourselves to the lowercase alphabetic characters of the English language. 
+In this paper we explore the extent to which contextual and statistical sequence
+information can be exploited in character recognition without making any
+a priori use of character shape or font knowledge. We extend earlier
+investigations by reporting results on all character types, not just
+lowercase alphabetic characters. As well, we provide an analysis of
+cases in which purely contextual information is not sufficient to
+establish character identity.
+
 
 %unfortunately this figure has to be moved to get it to appear on the same page
 %as its description.
