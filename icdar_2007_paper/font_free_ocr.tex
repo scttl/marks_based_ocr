@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.7 2007-01-26 17:57:00 roweis Exp $
+% $Id: font_free_ocr.tex,v 1.8 2007-02-03 15:30:04 roweis Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -64,37 +64,33 @@ Second Author\\
 
 Traditional approaches to optical character recognition (OCR) have typically
 been reliant on font-specific shape information to convert bitmap
-images of glyphs into corresponding sequences of ASCII or Unicode encoded
+images of glyphs into corresponding sequences of (ASCII or Unicode encoded)
 characters.  Some of the earliest systems were heavily restricted, only
 able to recognize images that happened to closely match a template culled from
 a database containing a handful of common typefaces in typical point
-sizes.  Fortunately, modern systems have improved, and are now able to recognize
+sizes.  Modern systems have improved, and are now able to recognize
 symbols from a much larger collection of varying fonts and character shapes.  
 This has often been accomplished by using images or features of images from a 
 wide array of font faces, styles, and sizes as labelled training data for 
-character classifiers.  Even with this improved robustness, these systems 
-still typically show degraded performance when presented with a document 
-containing characters written in an unseen typeface or size.  
+training character classifiers.  Nonetheless, performance still degrades
+in documents containing unusual typefaces or fonts sizes.  
 As electronic publishing becomes increasingly common (including the
 ability for ordinary users to create their own custom fonts), the enormous
 variety of fonts seen in printed and online documents continues to grow rapidly.
-solely the domain of professional typographers, and as a result the number and 
-variability of fonts seen in documents continues to rise.  
-This creates an ongoing motivation to pursue font and shape
-independent approaches to  optical character recognition.
+This creates an ongoing motivation to pursue {\em font and shape
+independent} approaches to  optical character recognition.
 
-Many previous attempts to ``font free'' character recognition share
+Many previous attempts at ``font free'' character recognition share
 the same general structure. Each page of ink is segmented into components
 roughly corresponding to individual graphemes of the 
 underlying document language. These components are clustered together in an 
-unsupervised fashion based only on visual similarity.  For a language like 
+unsupervised fashion based only on visual similarity.  (For a language like 
 English, the ideal result of this step would be a set of clusters such that
-each one contains all occurrences of a particular 
+each one contains only occurrences of a particular 
 character, digit, or punctuation symbol found in the document.
 Of course, such exact clusterings are rarely achievable in practice, and 
 trade-offs must be made between the final number of clusters and the 
-consistency of the component members within a cluster.
-
+consistency of the component members within a cluster.)
 In one of the earliest shape-free recognition approaches, Nagy et al. treated
 the clustered sequence of components as the input cipher-text of a 
 cryptogram\cite{nagy1987}.  Clusters were then assigned plain-text labels, 
@@ -107,7 +103,7 @@ Building on this, Ho and Nagy attempted to infer cluster labels using a series
 of simple statistical modules\cite{ho2000}.  Each module scores potential 
 assignments using what they call a ``v/p ratio'', which counts the number of 
 valid dictionary words that match the partially assigned word patterns that 
-contain the cluster to be mapped.  In subsequent work, Ho and Nagy used 
+contain the cluster to be mapped.  In subsequent work, they used 
 several n-gram, frequency, and word-positional features to construct a 
 classifier able to reliably determine whether an appropriately segmented 
 cluster was an upper or lower case character, a digit, or a 
@@ -119,6 +115,8 @@ Confident mappings (those for which the distribution over character labels is
 sharply peaked at just a single label, given a dictionary of lookup words the 
 same length as those that the cluster to be mapped appear in) are assigned 
 first and used to narrow down the mappings for subsequent clusters.
+
+% we should cite mccallum and miller from umass here
 
 In this paper we also pursue an approach to character recognition that 
 makes no use of a priori character shape or font, instead relying entirely on 
@@ -151,7 +149,7 @@ store a single template image and the offset locations of each
 appearance of that particular shape, even grouping together
 those shapes that are slightly varied.  For input document images that
 have been compressed in this way (via a JBIG2 compliant encoder 
-for instance), a clustering procedure is often not necessary.}
+or parsing a PDF file for instance), a clustering procedure is often not necessary.}
 After typical page image preprocessing steps like layout analysis, textual
 region identification, deskewing, and noise removal are performed, the
 connected components of ink on each page are identified and their bounding box
@@ -181,60 +179,64 @@ distance measurement is taken between cluster centroid images, and those whose
 value falls below a conservatively set threshold are merged together.  For near
 noiseless documents with consistent symbol shapes, this has the effect of 
 greatly reducing the number of clusters in a fairly efficient manner.
-
-As Figure \ref{eucdist_fig} shows, one of the problems in calculating the 
-Euclidean distance between two images is that each pixel difference is weighted 
-equally regardless of where it occurs (the bottom middle and right panes show
-the residual mismatched pixels for the corresponding binary input images above
-them).  As a result two images of the same symbol that are either noisy or 
-written in a slightly different font style or size could end up having a larger 
-distance than that between images of different symbols.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[scale=0.3]{figures/euc_dist_comparisons}
-  \caption{Euclidean distance as calculated between a regular and italicized
-  {\em e} versus the regular {\em e} and an {\em o} in the same font}
-  \label{eucdist_fig}
-\end{figure}
-
-To attempt to combat the problems inherent in using Euclidean or other
-unweighted distance metrics, the clusters are subsequently refined using the
-Hausdorff distance\cite{rucklidge1996}.  The Hausdorff distance between two 
-binary images $A$ and $B$ is typically defined as
-\begin{eqnarray}
-H(A,B) & = & \max(h(A,B), h(B,A))
-\end{eqnarray}
-where
-\begin{eqnarray}
-h(A,B) & = & \max_{a \in A} \min_{b \in B} || a - b ||
-\end{eqnarray}
-and $|| \cdot ||$ will be the $L_2$ (Euclidean) norm.
-
-$h(A,B)$ can be interpreted as the directed Hausdorff distance from image $A$ to
-image $B$, and means that for each foreground pixel in $A$ there is a foreground
-pixel in $B$ that is no farther than $h(A,B)$ away, when the two images are 
-laid over top one another.  Because the cluster average images may not be
-binary, they are first thresholded so that they can be compared using this
-metric.
-
-To speed up processing, the Hausdorff distance is only calculated at the most
-correlated position between each cluster average image.  This is found by
-convolving the comparison image with a long image created by combining the
-other cluster averages.  A Euclidean distance transform is then calculated on
-this long image, with copies of the comparison image laid on top at the
-appropriate positions, and the values at the 'on' pixels of the comparison 
-image read off.  The maximum such value read on the pixels of each
-comparison image defines the directed Hausdorff distance from the comparison 
-image to that particular image.  The Euclidean distance transform is then
-calculated on the comparison image, and a large tiled version is constructed
-with appropriate padding to ensure that the previous long image can be laid on
-top at the maximally correlated positions of each copy of the comparison image.
-The underlying values at the 'on' pixels of each of the other images is then
-read and the maximum taken to define the directed distance from the other
-images to the comparison image.  Finally, the overall Hausdorff distance is
-calculated by taking the maximum of these two directed distances for each
-image.  Those that fall within a particular threshold ($\sqrt 2$ in our
+%
+%As Figure \ref{eucdist_fig} shows, one of the problems in calculating the 
+%Euclidean distance between two images is that each pixel difference is weighted 
+%equally regardless of where it occurs (the bottom middle and right panes show
+%the residual mismatched pixels for the corresponding binary input images above
+%them).  As a result two images of the same symbol that are either noisy or 
+%written in a slightly different font style or size could end up having a larger 
+%distance than that between images of different symbols.
+%
+%\begin{figure}[ht]
+%  \centering
+%  \includegraphics[scale=0.3]{figures/euc_dist_comparisons}
+%  \caption{Euclidean distance as calculated between a regular and italicized
+%  {\em e} versus the regular {\em e} and an {\em o} in the same font}
+%  \label{eucdist_fig}
+%\end{figure}
+%
+%To attempt to combat the problems inherent in using Euclidean or other
+%unweighted distance metrics, 
+The clusters are subsequently refined using the
+Hausdorff distance\cite{rucklidge1996}.  
+%The Hausdorff distance between two 
+%binary images $A$ and $B$ is typically defined as
+%\begin{eqnarray}
+%H(A,B) & = & \max(h(A,B), h(B,A))
+%\end{eqnarray}
+%where
+%\begin{eqnarray}
+%h(A,B) & = & \max_{a \in A} \min_{b \in B} || a - b ||
+%\end{eqnarray}
+%and $|| \cdot ||$ will be the $L_2$ (Euclidean) norm.
+%
+%$h(A,B)$ can be interpreted as the directed Hausdorff distance from image $A$ to
+%image $B$, and means that for each foreground pixel in $A$ there is a foreground
+%pixel in $B$ that is no farther than $h(A,B)$ away, when the two images are 
+%laid over top one another.  
+Because the cluster average images may not be 
+binary, they are first thresholded so that they can be compared using
+this metric.
+%
+%To speed up processing, the Hausdorff distance is only calculated at the most
+%correlated position between each cluster average image.  This is found by
+%convolving the comparison image with a long image created by combining the
+%other cluster averages.  A Euclidean distance transform is then calculated on
+%this long image, with copies of the comparison image laid on top at the
+%appropriate positions, and the values at the 'on' pixels of the comparison 
+%image read off.  The maximum such value read on the pixels of each
+%comparison image defines the directed Hausdorff distance from the comparison 
+%image to that particular image.  The Euclidean distance transform is then
+%calculated on the comparison image, and a large tiled version is constructed
+%with appropriate padding to ensure that the previous long image can be laid on
+%top at the maximally correlated positions of each copy of the comparison image.
+%The underlying values at the 'on' pixels of each of the other images is then
+%read and the maximum taken to define the directed distance from the other
+%images to the comparison image.  Finally, the overall Hausdorff distance is
+%calculated by taking the maximum of these two directed distances for each
+%image. 
+Those that fall within a particular threshold ($\sqrt 2$ in our
 experiments) are then clustered together.  Figure \ref{hausdist_fig}
 shows this calculation between a lower case `e' and a lower case 'o', and
 between the `e' and an italicized version of the same character.  The Euclidean
@@ -262,7 +264,7 @@ Depending on the font face, amount of kerning employed, and the quality of the
 input document image, some glyphs may be broken into two or more pieces, or
 they may end up touching one another resulting in a single component containing
 multiple symbols.
-
+%
 To handle glyphs that have been broken apart, we attempt to recombine them by
 examining the clusters that they belong to.  If components belonging to a
 particular cluster tend to always lie adjacent to components in a second
