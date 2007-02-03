@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.11 2007-02-03 20:52:18 roweis Exp $
+% $Id: font_free_ocr.tex,v 1.12 2007-02-03 21:25:30 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -97,8 +97,6 @@ cryptogram\cite{nagy1987}.  Clusters were then assigned plain-text labels,
 with the assignment guided by the frequency of matches to words looked up in a 
 small dictionary.
 
-%@@@ Talk about Lee and Hull HMM approach too?  perhaps
-
 Building on this, Ho and Nagy attempted to infer cluster labels using a series 
 of simple statistical modules\cite{ho2000}.  Each module scores potential 
 assignments using what they call a ``v/p ratio'', which counts the number of 
@@ -166,7 +164,7 @@ reading order.  The bounding box for a line is expanded as neighbour
 component positions are read, and checks are made of neighbours in non-reading
 order directions to determine if a line should be extended perpendicularly.
 %
-Since some symbols like {\em i, j, \'{e}, :, !} are made up of more than one
+Since some symbols like {\tt i, j, \'{e}, :, !} are made up of more than one
 connected component, attempts are made to merge their constituent parts.  This
 is accomplished by looking for separate components that belong to the same
 line, are separated by a relatively small vertical distance (set manually), and
@@ -243,18 +241,18 @@ this metric.
 %image. 
 Those that fall within a particular threshold ($\sqrt 2$ in our
 experiments) are then clustered together.  Figure \ref{hausdist_fig}
-shows this calculation between a lower case `e' and a lower case 'o', and
-between the `e' and an italicized version of the same character.  The Euclidean
-distance transform is calculated with the resultant values listed for each
-pixel, and an image of the character to be compared is laid overtop.  The on 
-pixel of the comparison character which lies farthest from any on pixel in the
-original character is highlighted. 
+shows this calculation between a lower case {\tt e} and a lower case {\tt o}, 
+and between the {\tt e} and an italicized version of the same character.  The 
+Euclidean distance transform is calculated with the resultant values listed for 
+each pixel, and an image of the character to be compared is laid overtop.  The 
+on pixel of the comparison character which lies farthest from any on pixel in 
+the original character is highlighted. 
 
 \begin{figure}[ht]
   \centering
   \includegraphics[scale=.5]{figures/haus_dist_comparisons}
   \caption{Hausdorff distance as calculated between a regular and italicized
-  {\em e} versus the regular {\em e} and an {\em o} in the same font}
+  {\tt e} versus the regular {\tt e} and an {\tt o} in the same font}
   \label{hausdist_fig}
 \end{figure}
 
@@ -306,7 +304,7 @@ Sample 3 OCR dataset created by UNLV's ISRI group\cite{nartker2005}.
 \begin{figure}[ht]
   \centering
   \includegraphics[scale=.5]{figures/cluster_averages}
-  \caption{Typical cluster averages for a single document}
+  \caption{Typical cluster averages for a single short document}
   \label{clavg_fig}
 \end{figure}
 
@@ -331,13 +329,13 @@ a result of this, each symbol will then define a point in an $\frac{x
 maximum word length to include (15 in our experiments).  We normalize the
 positional counts for each symbol so that within each word length, we end up
 with a distribution over positional frequency.  Figure \ref{e_pos_fig} shows
-this resultant feature vector for the symbol `e' when estimated over part of
+this resultant feature vector for the symbol {\tt e} when estimated over part of
 the Reuters-21578 news corpus\cite{lewis2004}.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[scale=.4]{figures/e_pos_feature}
-  \caption{Reference positional feature vector for the character 'e'.}
+  \caption{Reference positional feature vector for the character {\tt e}.}
   \label{e_pos_fig}
 \end{figure}
 
@@ -414,25 +412,11 @@ punctuation symbols).  Our output alphabet consisted of 92 different symbols
 including upper and lowercase letters, the digits 0-9, punctuation, brackets, 
 and several simple arithmetic operators.
 
-%
-%As Figure \ref{acc_v_doclen_fig} clearly shows, most lower case letters can be 
-%correctly recognized fairly accurately, even with a small amount of data.  
-%Performance on upper case letters and digits is drastically worse, owing to 
-%their relative infrequency in documents.  100\% recognition accuracy was not
-%acheived until almost 600,000 characters were seen.
-%
-%\begin{figure}[ht]
-%  \centering
-%  \includegraphics[scale=.5]{figures/acc_v_doclen}
-%  \caption{Percentage of ASCII codes correctly recognized versus document
-%  length}
-%  \label{acc_v_doclen_fig}
-%\end{figure}
-%
-
 To test overall performance on short, low quality documents, the images from
 the business letter dataset were used.  These documents were typically only 1
-page in length, and contained 2010 characters on average.
+page in length, and contained 2010 characters on average.  84.2\% of all
+characters were lower case letters, 8.52\% were upper case letters, 3.29\% were
+digits, and the remaining 3.99\% were punctuation or other symbols.
 
 After grouping the pages belonging to each document together and clustering 
 the images using the procedure described in Section \ref{clustering_sec}, 
@@ -454,7 +438,7 @@ compared against the corresponding ground truth to determine accuracy.
 
 Accuracy was established for symbols on a per-class basis (lower case letters, 
 upper case letters, digits, and punctuation and other symbols).  Word accuracy
-counts were also taken.  Table \ref{acc_tbl}, column labelled 'B' shows the 
+counts were also taken.  Table \ref{acc_tbl}, column 'B' shows the 
 resultant performance when accuracies are averaged across all 159 documents.
 
 To examine the effect clustering performance had on the acheived accuracy,
@@ -469,9 +453,11 @@ shows the resultant improvement in accuracy.
 To determine the impact that document length has on performance we also tested 
 our approach on the longest documents in the legal document dataset.  Each of 
 these documents was 15 pages in length, and averaged 22,959 characters.
-Results are reported when clustering the input images, and when using the ASCII
-codes, and are reported in the 'L', and 'L (ASCII)' columns of Table
-\ref{acc_tbl} respectively.
+90.74\% of all characters were lower case letters, 4.55\% were upper case 
+letters, 1.68\% were digits, and the remaining 3.03\% were punctuation or 
+other symbols.  Results are reported when clustering the input images, and 
+when using the ASCII codes, and are reported in the 'L', and 'L (ASCII)' 
+columns of Table \ref{acc_tbl} respectively.
 
 \begin{table}[ht]
   \begin{tabular}{|c|c|c|c|c|}
@@ -499,7 +485,7 @@ codes, and are reported in the 'L', and 'L (ASCII)' columns of Table
 
 To further illustrate performance versus document length, the per class
 accuracies of each document in the business letter dataset was plotted.  The
-results are showin in Figure \ref{acc_v_doclen_fig}.
+results are shown in Figure \ref{acc_v_doclen_fig}.
 
 \begin{figure}[ht]
   \centering
@@ -513,6 +499,8 @@ results are showin in Figure \ref{acc_v_doclen_fig}.
 % CONCLUSIONS %
 %%%%%%%%%%%%%%%
 \Section{Conclusions}
+
+From our experiments, we find that 
 % does well where we'd expect (those symbols which occur most frequently,
 % like lowercase letters)
 %
