@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.16 2007-02-04 01:20:43 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.17 2007-02-04 01:40:48 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -337,7 +337,7 @@ correct mapping.  If multiple symbols generate the same dictionary
 lookup ratio, then ties are broken by first using line offset information 
 to reduce the number of symbols.  Each symbol and cluster is classified as
 one of 4 types based on its ascender and descender offsets.  If multiple
-symbols from the same class match, then the symbol with a closer positional
+symbols from the same class match, then the symbol with closer positional
 feature distance is chosen.  This process is repeated until each cluster has 
 been assigned a symbol.
 
@@ -376,12 +376,12 @@ symbols, which were weighted based on how frequently words of that length
 appeared in the corpus.  The resultant distances were used to define an 
 ordering of output symbols for each cluster.
 
-To determine the final mapping for each cluster, vp-ratio scores were
+To determine the final mapping for each cluster, word lookup ratios were
 calculated for the first symbol in the order given the partially assigned
 mappings up to that point.  If it was found that this score exceeded a 
-threshold of 75\%, the mapping was deemed correct, otherwise vp-ratio scores
+threshold of 75\%, the mapping was deemed correct, otherwise ratio scores
 were calculated for all symbols in order, and that which acheived the maximum
-was taken.  Ties amongst vp-ratio scores were broken by taking the output
+was taken.  Ties amongst these scores were broken by taking the output
 symbol with a closer positional feature distance.  This final mapping was then
 combined with the cluster sequences found to generate output text, which was
 compared against the corresponding ground truth to determine accuracy.
@@ -396,7 +396,7 @@ tests on the business letter dataset were re-run using the ASCII codes of the
 ground truth text.  Symbols were grouped together provided they had the same
 code, allowing us to assess performance on a perfectly segmented and clustered 
 set of data.  As in the previous test, positional feature statistics were
-computed, and compared against those from the same corpus, and vp-scores were
+computed, and compared against those from the same corpus, and ratio scores were
 used to determine final mappings.  Table \ref{acc_tbl}, column 'B (ASCII)'
 shows the resultant improvement in accuracy.
 
