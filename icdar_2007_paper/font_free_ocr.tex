@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.15 2007-02-04 00:58:24 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.16 2007-02-04 01:20:43 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -132,8 +132,8 @@ establish character identity.
 %as its description.
 \begin{figure*}[ht]
   \centering
-  \includegraphics[scale=.8]{figures/input_lines}
-  \includegraphics[scale=.8]{figures/line_comps}
+  \includegraphics[scale=.7]{figures/input_lines}
+  \includegraphics[scale=.7]{figures/line_comps}
   \caption{Sample input image region and corresponding components, baselines,
            and x-heights found}
   \label{inimg_fig}
@@ -155,11 +155,11 @@ those shapes that are slightly varied.  For input document images that
 have been compressed in this way (via a JBIG2 compliant encoder 
 or parsing a PDF file for instance), a clustering procedure is often not necessary.}
 After typical page image preprocessing steps like layout analysis, textual
-region identification, deskewing, and noise removal are performed, the
-connected components of ink on each page are identified and their bounding box
+region identification, and deskewing, are performed, the
+connected components of ink are identified and their bounding box
 positions on the page are stored.  For each component, the nearest neighbouring
 component in each of the four principal directions (top, bottom, left, and
-right), as well as its pixel offset distance is also stored.  Individual lines
+right), as well as pixel offset distance are also stored.  Individual lines
 of text are then identified by following the chain of neighbouring components in
 reading order.  The bounding box for a line is expanded as neighbour
 component positions are read, and checks are made of neighbours in non-reading
@@ -183,64 +183,10 @@ distance measurement is taken between cluster centroid images, and those whose
 value falls below a conservatively set threshold are merged together.  For near
 noiseless documents with consistent symbol shapes, this has the effect of 
 greatly reducing the number of clusters in a fairly efficient manner.
-%
-%As Figure \ref{eucdist_fig} shows, one of the problems in calculating the 
-%Euclidean distance between two images is that each pixel difference is weighted 
-%equally regardless of where it occurs (the bottom middle and right panes show
-%the residual mismatched pixels for the corresponding binary input images above
-%them).  As a result two images of the same symbol that are either noisy or 
-%written in a slightly different font style or size could end up having a larger 
-%distance than that between images of different symbols.
-%
-%\begin{figure}[ht]
-%  \centering
-%  \includegraphics[scale=0.3]{figures/euc_dist_comparisons}
-%  \caption{Euclidean distance as calculated between a regular and italicized
-%  {\em e} versus the regular {\em e} and an {\em o} in the same font}
-%  \label{eucdist_fig}
-%\end{figure}
-%
-%To attempt to combat the problems inherent in using Euclidean or other
-%unweighted distance metrics, 
 The clusters are subsequently refined using the
-Hausdorff distance\cite{rucklidge1996}.  
-%The Hausdorff distance between two 
-%binary images $A$ and $B$ is typically defined as
-%\begin{eqnarray}
-%H(A,B) & = & \max(h(A,B), h(B,A))
-%\end{eqnarray}
-%where
-%\begin{eqnarray}
-%h(A,B) & = & \max_{a \in A} \min_{b \in B} || a - b ||
-%\end{eqnarray}
-%and $|| \cdot ||$ will be the $L_2$ (Euclidean) norm.
-%
-%$h(A,B)$ can be interpreted as the directed Hausdorff distance from image $A$ to
-%image $B$, and means that for each foreground pixel in $A$ there is a foreground
-%pixel in $B$ that is no farther than $h(A,B)$ away, when the two images are 
-%laid over top one another.  
-Because the cluster average images may not be 
-binary, they are first thresholded so that they can be compared using
-this metric.
-%
-%To speed up processing, the Hausdorff distance is only calculated at the most
-%correlated position between each cluster average image.  This is found by
-%convolving the comparison image with a long image created by combining the
-%other cluster averages.  A Euclidean distance transform is then calculated on
-%this long image, with copies of the comparison image laid on top at the
-%appropriate positions, and the values at the 'on' pixels of the comparison 
-%image read off.  The maximum such value read on the pixels of each
-%comparison image defines the directed Hausdorff distance from the comparison 
-%image to that particular image.  The Euclidean distance transform is then
-%calculated on the comparison image, and a large tiled version is constructed
-%with appropriate padding to ensure that the previous long image can be laid on
-%top at the maximally correlated positions of each copy of the comparison image.
-%The underlying values at the 'on' pixels of each of the other images is then
-%read and the maximum taken to define the directed distance from the other
-%images to the comparison image.  Finally, the overall Hausdorff distance is
-%calculated by taking the maximum of these two directed distances for each
-%image. 
-Those that fall within a particular threshold ($\sqrt 2$ in our
+Hausdorff distance\cite{rucklidge1996}.  Because the cluster average images 
+may not be binary, they are first thresholded so that they can be compared using
+this metric.  Those that fall within a particular threshold ($\sqrt 2$ in our
 experiments) are then clustered together.  Figure \ref{hausdist_fig}
 shows this calculation between a lower case {\tt e} and a lower case {\tt o}, 
 and between the {\tt e} and an italicized version of the same character.  The 
@@ -253,7 +199,7 @@ the original character is highlighted.
   \centering
   \includegraphics[scale=.4]{figures/haus_dist_comparisons}
   \caption{Hausdorff distance as calculated between a regular and italicized
-  {\tt e} versus the regular {\tt e} and an {\tt o} in the same font}
+  {\tt e} versus a regular {\tt e} and an {\tt o} in the same font}
   \label{hausdist_fig}
 \end{figure}
 
@@ -268,7 +214,6 @@ Depending on the font face, amount of kerning employed, and the quality of the
 input document image, some glyphs may be broken into two or more pieces, or
 they may end up touching one another resulting in a single component containing
 multiple symbols.
-%
 To handle glyphs that have been broken apart, we attempt to recombine them by
 examining the clusters that they belong to.  If components belonging to a
 particular cluster tend to always lie adjacent to components in a second
@@ -299,13 +244,13 @@ actual inter-word spaces are missed.  New components are created representing
 each of these spaces, and neighbours are updated appropriately.
 
 Figure \ref{clavg_fig} shows the resulting cluster averages after this
-procedure has been run on a single document taken from the Department of Energy
-Sample 3 OCR dataset created by UNLV's ISRI group\cite{nartker2005}.
+procedure has been run on a single document taken from the DOE 3 OCR dataset 
+created by ISRI\cite{nartker2005}.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[scale=.4]{figures/cluster_averages}
-  \caption{Typical cluster averages for a single short document}
+  \caption{Typical document cluster averages}
   \label{clavg_fig}
 \end{figure}
 
@@ -365,7 +310,7 @@ be taken.
   \centering
   \includegraphics[scale=.5]{figures/e_pos_feature}
   \includegraphics[scale=.5]{figures/e_pos_feature_clust}
-  \caption{Reference positional feature vector for the character {\tt e} (top),
+  \caption{Reference feature vector for the character {\tt e} (top),
            and its corresponding cluster vector when taken from a short
            document. }
   \label{e_pos_fig}
@@ -507,13 +452,13 @@ results are shown in Figure \ref{acc_v_doclen_fig}.
 We have found that given an ideal segmentation and clustering of the input
 data, contextual information alone can lead to fairly strong results for lower
 case letters, even on short documents.  For the remaining symbol classes, they
-suffer both from not belonging to words in the lookup lexicon, as well as
+suffer from not belonging to words in the lookup lexicon, as well as
 having skewed positional features owing to their relative infrequency in shorter
 documents.  While a large lookup dictionary may help with the former, another
 source of information will most likely be required to help with the latter.
 
 Our results also highlight the importance of an accurate segmentation and
-clustering procedure.  Significant information wa lost when multiple symbols
+clustering procedure.  Significant information was lost when multiple symbols
 were merged or broken apart, and inaccurate estimation of intra-word space
 length was shown to yield particularly poor performance as broken words would
 significantly alter word lookup scores and mapping choices.
