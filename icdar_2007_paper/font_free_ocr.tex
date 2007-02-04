@@ -5,7 +5,7 @@
 % DESCRIPTION: LaTeX source file of ICDAR 2007 paper submission
 %
 % CVS:
-% $Id: font_free_ocr.tex,v 1.14 2007-02-03 23:45:49 scottl Exp $
+% $Id: font_free_ocr.tex,v 1.15 2007-02-04 00:58:24 scottl Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -67,7 +67,7 @@ of 159 perfectly clustered short documents.
 %%%%%%%%%%%%%%%%
 \Section{Introduction}
 
-Traditional approaches to optical character recognition (OCR) have typically
+Traditional approaches to optical character recognition have typically
 relied on font-specific shape information to convert bitmap
 images of glyphs into corresponding sequences of (ASCII or Unicode encoded)
 characters.  Some of the earliest systems were heavily restricted, only
@@ -86,7 +86,7 @@ This creates an ongoing motivation to pursue sources of {\em font and shape
 independent} information useful for optical character recognition.
 
 Many previous attempts at ``font free'' character recognition share
-the same general structure. Each page of ink is segmented into components
+the same general structure.  Each page of ink is segmented into components
 roughly corresponding to individual graphemes of the 
 underlying document language. These components are clustered together in an 
 unsupervised fashion based only on visual similarity.  (For a language like 
@@ -132,8 +132,8 @@ establish character identity.
 %as its description.
 \begin{figure*}[ht]
   \centering
-  \includegraphics[scale=.9]{figures/input_lines}
-  \includegraphics[scale=.9]{figures/line_comps}
+  \includegraphics[scale=.8]{figures/input_lines}
+  \includegraphics[scale=.8]{figures/line_comps}
   \caption{Sample input image region and corresponding components, baselines,
            and x-heights found}
   \label{inimg_fig}
@@ -304,7 +304,7 @@ Sample 3 OCR dataset created by UNLV's ISRI group\cite{nartker2005}.
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.5]{figures/cluster_averages}
+  \includegraphics[scale=.4]{figures/cluster_averages}
   \caption{Typical cluster averages for a single short document}
   \label{clavg_fig}
 \end{figure}
@@ -320,7 +320,7 @@ tested on documents written in English, but should also be amenable to other
 writing systems whose atomic symbols are roughly phonetic.  In our experiments
 we have also assumed that we know in advance the language of the
 input document, however previous research has shown it possible to infer this
-automatically with relatively good accuracy\cite{sibun1994},\cite{hochberg1997}.
+automatically with relatively good accuracy\cite{sibun1994}.
 
 First a large text corpus is used to estimate overall word and symbol frequency,
 as well as symbol positional frequency.  We take counts of the number of times
@@ -332,16 +332,6 @@ positional counts for each symbol so that within each word length, we end up
 with a distribution over positional frequency.  Figure \ref{e_pos_fig} shows
 this resultant feature vector for the symbol {\tt e} when estimated over part of
 the Reuters-21578 news corpus\cite{lewis2004}.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[scale=.5]{figures/e_pos_feature}
-  \includegraphics[scale=.5]{figures/e_pos_feature_clust}
-  \caption{Reference positional feature vector for the character {\tt e} (top),
-           and its corresponding cluster vector when taken from a short
-           document. }
-  \label{e_pos_fig}
-\end{figure}
 
 We repeat this process on the sequence of clustered components by
 gathering positional cluster frequency stats using the estimated
@@ -366,14 +356,24 @@ cross-entropy could also be applied), we can make an assignment
 directly.  For frequently occurring symbols like lowercase vowels or
 common consonants, there are often enough counts that the cluster
 positional feature vectors closely match the corresponding reference
-vector, and so such a match is almost always correct.  However for
+vector, and so such a match is reliable.  However for
 infrequently occurring symbols, feature vectors exhibit high variance
-(due to the domain and subject of the document for instance), thus
-additional steps must be taken.
+(due to the subject of the document for instance), thus additional steps must 
+be taken.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=.5]{figures/e_pos_feature}
+  \includegraphics[scale=.5]{figures/e_pos_feature_clust}
+  \caption{Reference positional feature vector for the character {\tt e} (top),
+           and its corresponding cluster vector when taken from a short
+           document. }
+  \label{e_pos_fig}
+\end{figure}
 
 We take a greedy approach in which we assign clusters to characters
 one at a time, starting with the clusters appearing most frequently in
-the document. For each cluster, we consider the top matching
+the document.  For each cluster, we consider the top matching
 characters candidates according to the positional feature vector.  For
 each candidate, we use the partially assigned mapping so far to match
 words containing the current cluster symbol against a large word
@@ -382,18 +382,19 @@ document containing the cluster which are matched is calculated and
 provided that it exceeds a particular threshold (75\% in our
 experiments), then the character candidate under consdieration is
 permanently assigned to the cluster, and we move on to determine the
-mapping for the next cluster.
-
-Initially, when few symbols have been matched, many dictionary words
-are potential matches for when considering the next cluster. As more
-clusters are assigned symbols, it may eventually become impossible for
+mapping for the next cluster.  Initially, when few symbols have been 
+matched, many dictionary words are potential matches for the next cluster. 
+As more clusters are assigned symbols, it eventually becomes impossible for
 a particular cluster to find a character mapping that achieves a
 matching word ratio exceeding the desired threshold.  In such a case,
 the symbol that achieves the largest such ratio is taken to be the
 correct mapping.  If multiple symbols generate the same dictionary
-lookup ratio, then ties are broken by taking the symbol that has a
-closer positional feature distance.  This process is repeated until
-each of the clusters has been assigned a symbol.
+lookup ratio, then ties are broken by first using line offset information 
+to reduce the number of symbols.  Each symbol and cluster is classified as
+one of 4 types based on its ascender and descender offsets.  If multiple
+symbols from the same class match, then the symbol with a closer positional
+feature distance is chosen.  This process is repeated until each cluster has 
+been assigned a symbol.
 
 
 % EXPERIMENTS %
@@ -425,7 +426,7 @@ digits, and the remaining 3.99\% were punctuation or other symbols.
 After grouping the pages belonging to each document together and clustering 
 the images using the procedure described in Section \ref{clustering_sec}, 
 positional features were then calculated for each cluster.  These feature 
-vectors were then compared with the feature vectors found for the output 
+vectors were compared with the feature vectors found for the output 
 symbols, which were weighted based on how frequently words of that length 
 appeared in the corpus.  The resultant distances were used to define an 
 ordering of output symbols for each cluster.
@@ -493,12 +494,11 @@ results are shown in Figure \ref{acc_v_doclen_fig}.
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[scale=.5]{figures/acc_v_doclen}
+  \includegraphics[scale=.4]{figures/acc_v_doclen}
   \caption{Percentage of ASCII codes correctly recognized versus document
   length from the business letter dataset}
   \label{acc_v_doclen_fig}
 \end{figure}
-
 
 % CONCLUSIONS %
 %%%%%%%%%%%%%%%
