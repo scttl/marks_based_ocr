@@ -20,10 +20,13 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: positional_learn_mappings.m,v 1.4 2007-02-01 18:26:41 scottl Exp $
+% $Id: positional_learn_mappings.m,v 1.5 2007-02-05 22:13:58 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: positional_learn_mappings.m,v $
+% Revision 1.5  2007-02-05 22:13:58  scottl
+% implemented prior counts.
+%
 % Revision 1.4  2007-02-01 18:26:41  scottl
 % updates to handle weighting.
 %
@@ -95,9 +98,30 @@ sym_pts = cell2mat(Syms.pos_count);
 err_dist = zeros(Clust.num, Syms.num);
 max_word_len = length(Syms.pos_count);
 num_cols = size(sym_pts,2);
+e_idx = cumsum(1:max_word_len);
+s_idx = [1, e_idx(1:end-1) + 1];
 
 if prior_counts > 0
-    %@@@to implement
+    clust_pts = clust_pts .* cell2mat(Clust.pos_norms);
+    raw_sym_pts = sym_pts .* cell2mat(Syms.pos_norms);
+    for ii=unique(Clust.class)'
+        sym_idx = find(Syms.class == ii);
+        clust_idx = find(Clust.class == ii);
+        for jj=1:max_word_len
+            pri_pts = sum(raw_sym_pts(sym_idx,s_idx(jj):e_idx(jj)),1);
+            norm = sum(pri_pts);
+            norm(norm == 0) = 1;  %prevent divide by 0
+            clp = clust_pts(clust_idx,s_idx(jj):e_idx(jj)) + ...
+                  repmat((prior_counts .* (pri_pts ./ norm)), ...
+                         length(clust_idx),1);
+
+            %renormalize the now smoothed counts
+            norms = sum(clp,2);
+            norms(norms == 0) = 1;  %to prevent dividing by 0
+            clust_pts(clust_idx,s_idx(jj):e_idx(jj)) = clp ./ ...
+                                repmat(norms, 1, size(clp,2));
+        end
+    end
 end
 
 if keep_best == 0 || keep_best > Syms.num
@@ -105,8 +129,6 @@ if keep_best == 0 || keep_best > Syms.num
 end
 if weight_proportion > 0
     weights = sym_pts .* cell2mat(Syms.pos_norms);
-    e_idx = cumsum(1:length(Syms.pos_norms));
-    s_idx = [1, e_idx(1:end-1) + 1];
     if weight_per_symbol
         norms = sum(weights,2);
         %to prevent division by 0 and ensure uniformly distributed weights 
@@ -122,7 +144,7 @@ if weight_proportion > 0
     else
         norm = sum(weights(:));
         freq_vector = sum(weights,1);
-        for ii=1:length(s_idx)
+        for ii=1:max_word_len
             this_sum = sum(freq_vector(s_idx(ii):e_idx(ii)));
             weights(:,s_idx(ii):e_idx(ii)) = this_sum ./ norm;
         end
