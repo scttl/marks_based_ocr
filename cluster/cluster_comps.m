@@ -63,14 +63,19 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                    modelled and counts taken.  See add_space_model()
 %     class - this vector lists the different symbol type classes each entry is
 %             assigned to (based on its descender and ascender offset info)
+%     density - this vector lists the pixel density of each symbol
+%
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.15 2007-02-01 18:10:12 scottl Exp $
+% $Id: cluster_comps.m,v 1.16 2007-02-05 20:34:35 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.16  2007-02-05 20:34:35  scottl
+% added density field.
+%
 % Revision 1.15  2007-02-01 18:10:12  scottl
 % added new class field that is assigned based on offset information
 %
@@ -357,6 +362,9 @@ while true
     end
 end
 
+%add density information
+Clust.density = assign_density(Clust.avg);
+
 %finally, sort the clusters
 [Clust, Comps] = sort_clusters(Clust, Comps);
 
@@ -395,3 +403,4 @@ Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;
 Clust.class = uint16([]);
+Clust.density = [];
