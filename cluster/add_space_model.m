@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.7 2007-02-01 18:10:12 scottl Exp $
+% $Id: add_space_model.m,v 1.8 2007-02-05 20:34:19 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.8  2007-02-05 20:34:19  scottl
+% added density field estimation.
+%
 % Revision 1.7  2007-02-01 18:10:12  scottl
 % added new class field that is assigned based on offset information
 %
@@ -203,6 +206,7 @@ Clust.num_comps(Clust.num) = tot_num_spaces;
 Clust.mode_num(Clust.num) = Clust.num_comps(Clust.num);
 Clust.comps{Clust.num} = space_comps;
 Clust.avg{Clust.num} = bg_val + zeros(space_height, space_width);
+Clust.density(Clust.num) = 0;
 Clust.norm_sq(Clust.num) = 0;
 Clust.refined(Clust.num) = 1;
 Clust.changed(Clust.num) = 0;
