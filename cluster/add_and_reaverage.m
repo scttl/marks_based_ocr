@@ -26,10 +26,13 @@ function [Clust,Comps,newid1] = add_and_reaverage(Clust,Comps,id1,id2,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_and_reaverage.m,v 1.10 2007-02-01 18:10:12 scottl Exp $
+% $Id: add_and_reaverage.m,v 1.11 2007-02-05 20:34:02 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_and_reaverage.m,v $
+% Revision 1.11  2007-02-05 20:34:02  scottl
+% added recalculation of density to new cluster.
+%
 % Revision 1.10  2007-02-01 18:10:12  scottl
 % added new class field that is assigned based on offset information
 %
@@ -133,6 +136,7 @@ else
 end
 %update the squared norm based on this new average.
 Clust.norm_sq(id1) = sum(Clust.avg{id1}(:) .^2);
+Clust.density(id1) = assign_density(Clust.avg(id1));
 
 %remove the second list of clusters
 keep_list = setdiff(1:Clust.num, id2);
