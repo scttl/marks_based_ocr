@@ -120,7 +120,14 @@ for ii=1:num_docs
     if run_dictionary
         [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
                          'max_word_len', 15);
-
+        %now renormalize positional counts
+        for jj=1:length(Clust.pos_count);
+            val = Clust.pos_count{jj} .* Clust.pos_total;
+            norms = sum(val,2);
+            norms(norms == 0) = 1;  %to prevent dividing by 0
+            Clust.pos_norms{jj} = repmat(norms, 1, size(val,2));
+            Clust.pos_count{jj} = val ./ Clust.pos_norms{jj};
+        end
         fprintf('dictionary complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
     end
