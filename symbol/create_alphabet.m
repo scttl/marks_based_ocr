@@ -58,10 +58,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.9 2007-02-01 17:59:27 scottl Exp $
+% $Id: create_alphabet.m,v 1.10 2007-02-05 22:16:57 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.10  2007-02-05 22:16:57  scottl
+% added density field.
+%
 % Revision 1.9  2007-02-01 17:59:27  scottl
 % replaced specific class type fields with a single general purpose
 % class field.
@@ -144,6 +147,10 @@ fc_bg_pseudo = 1;
 %if processing corpora, how many pseudocounts should we add to each first
 %character in line appearance?
 fc_pseudo = 1;
+
+%what font and size should we use for creating densities?
+density_font = 'helvetica';
+density_font_size = '36';
 
 %when creating positional counts, up to what length word should be included?
 max_word_len = 10;
@@ -300,6 +307,10 @@ end
 fprintf('%.2fs: assigning symbols to their respective classes\n', toc);
 Syms.class = assign_class(Syms.val);
 
+%now calculate densitys for each symbol
+Syms.density = assign_density(char(Syms.val), 'img_font', density_font, ...
+               'img_font_sz', density_font_size);
+
 fprintf('%.2fs: Symbols initialized\n', toc);
 
 
@@ -327,3 +338,4 @@ Syms.words = cell(0);
 Syms.word_count = uint32([]);
 Syms.srilm_file = '';
 Syms.class = uint16([]);
+Syms.density = [];
