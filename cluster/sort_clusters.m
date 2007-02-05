@@ -18,10 +18,13 @@ function [Clust, Comps] = sort_clusters(Clust, Comps)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: sort_clusters.m,v 1.9 2007-02-01 18:02:15 scottl Exp $
+% $Id: sort_clusters.m,v 1.10 2007-02-05 21:49:38 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: sort_clusters.m,v $
+% Revision 1.10  2007-02-05 21:49:38  scottl
+% added density field.
+%
 % Revision 1.9  2007-02-01 18:02:15  scottl
 % added class field, made sorting of descender lines optional (since they
 % could be empty).
@@ -81,6 +84,9 @@ if ~isempty(Clust.ascender_off)
 end
 if ~isempty(Clust.class)
     Clust.class = Clust.class(idx);
+end
+if ~isempty(Clust.density)
+    Clust.density = Clust.density(idx);
 end
 if ~isempty(Clust.bigram)
     Clust.bigram = Clust.bigram(idx,:);

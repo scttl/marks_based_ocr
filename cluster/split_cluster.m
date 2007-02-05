@@ -23,10 +23,13 @@ function [Clust,Comps] = split_cluster(Clust,Comps,idx,pos,varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: split_cluster.m,v 1.1 2007-02-01 18:09:45 scottl Exp $
+% $Id: split_cluster.m,v 1.2 2007-02-05 21:49:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: split_cluster.m,v $
+% Revision 1.2  2007-02-05 21:49:54  scottl
+% added density field.
+%
 % Revision 1.1  2007-02-01 18:09:45  scottl
 % initial revision.
 %
@@ -77,6 +80,8 @@ Clust.num_comps(new_idx) = Clust.num_comps(idx);
 Clust.mode_num(new_idx) = Clust.mode_num(idx);
 Clust.norm_sq(idx) = sum(Clust.avg{idx}(:).^2);
 Clust.norm_sq(new_idx) = sum(Clust.avg{new_idx}(:).^2);
+Clust.density(idx) = assign_density(Clust.avg(idx));
+Clust.density(new_idx) = assign_density(Clust.avg(new_idx));
 Clust.refined(new_idx) = false;
 Clust.changed(new_idx) = Clust.changed(idx);
 
