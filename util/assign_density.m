@@ -20,10 +20,13 @@ function d = assign_density(imgs, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: assign_density.m,v 1.1 2007-02-02 05:51:56 scottl Exp $
+% $Id: assign_density.m,v 1.2 2007-02-05 22:14:43 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: assign_density.m,v $
+% Revision 1.2  2007-02-05 22:14:43  scottl
+% ignore extended ASCII or other Unicode symbols.
+%
 % Revision 1.1  2007-02-02 05:51:56  scottl
 % initial revision.
 %
@@ -54,7 +57,8 @@ if ~iscell(imgs)
     tmp = cell(num,1);
     for ii=1:num
         fprintf('creating image of symbol %s\n', imgs(ii));
-        if imgs(ii) == 32 || imgs(ii) == 39 || imgs(ii) == 34
+        if imgs(ii) < 32 || imgs(ii) == 32 || imgs(ii) == 39 || ...
+           imgs(ii) == 34 || imgs(ii) > 126
             %have to handle spaces and ' separately since convert doesn't like 
             %them
             tmp{ii} = zeros(12);
