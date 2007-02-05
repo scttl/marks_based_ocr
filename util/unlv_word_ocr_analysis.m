@@ -14,10 +14,13 @@ function tot_a = unlv_word_ocr_analysis(files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_word_ocr_analysis.m,v 1.4 2007-02-01 17:58:36 scottl Exp $
+% $Id: unlv_word_ocr_analysis.m,v 1.5 2007-02-05 22:16:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_word_ocr_analysis.m,v $
+% Revision 1.5  2007-02-05 22:16:21  scottl
+% fixed handling of multiple directories.
+%
 % Revision 1.4  2007-02-01 17:58:36  scottl
 % implemented ability to limit documents considered for generating
 % statistics over, removed plot of dashed lines between points
@@ -79,7 +82,7 @@ for ii=1:length(files)
             error('problems running cmd: %s', cmd);
         end
         new_rprts = convert_to_cell(w);
-        rprt_list = [rprt_list, new_rprts(:)];
+        rprt_list = [rprt_list(:); new_rprts(:)]';
     elseif exist(files{ii}, 'file')
         rprt_list{end+1} = files{ii}
     end
