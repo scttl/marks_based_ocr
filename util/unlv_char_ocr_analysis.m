@@ -17,10 +17,13 @@ function [tot_a low_a upp_a dig_a sym_a spc_a] = ...
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_char_ocr_analysis.m,v 1.4 2007-02-01 17:57:57 scottl Exp $
+% $Id: unlv_char_ocr_analysis.m,v 1.5 2007-02-05 22:15:34 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_char_ocr_analysis.m,v $
+% Revision 1.5  2007-02-05 22:15:34  scottl
+% fixed multiple directory handling, added display of other averages.
+%
 % Revision 1.4  2007-02-01 17:57:57  scottl
 % added ability to limit number of docs reports are calculated over,
 % removed dashed lines between points when plotting (by default)
@@ -46,6 +49,9 @@ rprt_pattern = '*.chartot_rprt';
 %set the font size of the axis labels and units
 ft_size = 18;
 
+%set the size of the plotted points
+marker_size = 12;
+
 %to compare with other results, we can choose to only take a best subset
 take_best_pct = 1.0;
 
@@ -58,22 +64,22 @@ take_first_num = [];
 %what if anything should we display a plot of
 plot_total=true;
 total_style = '*';
-total_legend = 'Combined Total';
+total_legend = 'Combined';
 plot_lowlet=true;
 lowlet_style = 'x';
-lowlet_legend = 'Lowercase Letters';
+lowlet_legend = 'Low';
 plot_upplet=true;
 upplet_style = '+';
-upplet_legend = 'Uppercase Letters';
+upplet_legend = 'Upper';
 plot_digits=true;
 digits_style = 'o';
 digits_legend = 'Digits';
 plot_other=true;
 other_style = 's';
-other_legend = 'Other Symbols';
+other_legend = 'Other';
 plot_spaces=false;
 spaces_style = 'd';
-spaces_legend = 'Space Symbols';
+spaces_legend = 'Spaces';
 
 %by default we plot accuracy relative to the total number of occurences of 
 %symbols in the document.  Set to false to plot relative to the number of occurences of that type of symbol.
@@ -103,7 +109,7 @@ for ii=1:length(files)
             error('problems running cmd: %s', cmd);
         end
         new_rprts = convert_to_cell(w);
-        rprt_list = [rprt_list, new_rprts(:)];
+        rprt_list = [rprt_list(:); new_rprts(:)]';
     elseif exist(files{ii}, 'file')
         rprt_list{end+1} = files{ii}
     end
@@ -219,8 +225,7 @@ end
 
 if plot_str(end) == ' '
     %plotting at least one type of data
-    plot_str = plot_str(1:end-2);  %remove the ', '
-    plot_str = [plot_str, ');'];
+    plot_str = [plot_str, ' ''MarkerSize'', ', num2str(marker_size), ');'];
     legend_str = [legend_str, '''Location'', ''Best'');'];
     eval(plot_str);
     eval(legend_str);
@@ -233,11 +238,11 @@ fprintf('average number of characters per document: %.4f\n', mean(tot_a(:,1)));
 fprintf('average num of incorrectly identified chars: %.4f\n',mean(tot_a(:,2)));
 fprintf('average character accuracy per document: %.4f\n', mean(tot_a(:,3)));
 fprintf('minimum document length (chars): %d\n', min(tot_a(:,1)));
-fprintf('maximum document length (chars): %d\n', max(tot_a(:,1)));
 fprintf('median document length (chars): %d\n', median(tot_a(:,1)));
+fprintf('maximum document length (chars): %d\n', max(tot_a(:,1)));
 fprintf('minimum character accuracy: %.4f\n', min(tot_a(:,3)));
-fprintf('maximum character accuracy: %.4f\n', max(tot_a(:,3)));
 fprintf('median character accuracy: %.4f\n', median(tot_a(:,3)));
+fprintf('maximum character accuracy: %.4f\n', max(tot_a(:,3)));
 
 %normalize the non-total accuracies
 spc_a(:,3) = spc_a(:,3) ./ 100;
@@ -245,6 +250,26 @@ low_a(:,3) = low_a(:,3) ./ 100;
 upp_a(:,3) = upp_a(:,3) ./ 100;
 dig_a(:,3) = dig_a(:,3) ./ 100;
 sym_a(:,3) = sym_a(:,3) ./ 100;
+
+fprintf('mean lowercase letter accuracy: %.4f\n', mean(low_a(:,3)));
+fprintf('minimum lowercase letter accuracy: %.4f\n', min(low_a(:,3)));
+fprintf('median lowercase letter accuracy: %.4f\n', median(low_a(:,3)));
+fprintf('maximum lowercase letter accuracy: %.4f\n', max(low_a(:,3)));
+fprintf('mean upper letter accuracy: %.4f\n', mean(upp_a(:,3)));
+fprintf('minimum upper letter accuracy: %.4f\n', min(upp_a(:,3)));
+fprintf('median upper letter accuracy: %.4f\n', median(upp_a(:,3)));
+fprintf('maximum upper letter accuracy: %.4f\n', max(upp_a(:,3)));
+fprintf('mean digit accuracy: %.4f\n', mean(dig_a(:,3)));
+fprintf('minimum digit accuracy: %.4f\n', min(dig_a(:,3)));
+fprintf('median digit accuracy: %.4f\n', median(dig_a(:,3)));
+fprintf('maximum digit accuracy: %.4f\n', max(dig_a(:,3)));
+fprintf('mean other symbol accuracy: %.4f\n', mean(sym_a(:,3)));
+fprintf('minimum other symbol accuracy: %.4f\n', min(sym_a(:,3)));
+fprintf('median other symbol accuracy: %.4f\n', median(sym_a(:,3)));
+fprintf('maximum other symbol accuracy: %.4f\n', max(sym_a(:,3)));
+fprintf('mean space symbol accuracy: %.4f\n', mean(spc_a(:,3)));
+fprintf('median space symbol accuracy: %.4f\n', median(spc_a(:,3)));
+fprintf('maximum space symbol accuracy: %.4f\n', max(spc_a(:,3)));
 
 
 % SUBFUNCTION DECLARATIONS %
