@@ -18,10 +18,13 @@ function [Clust, Comps, Lines] = create_text_clusters(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_text_clusters.m,v 1.1 2007-02-01 18:04:48 scottl Exp $
+% $Id: create_text_clusters.m,v 1.2 2007-02-05 21:33:45 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_text_clusters.m,v $
+% Revision 1.2  2007-02-05 21:33:45  scottl
+% added density field.
+%
 % Revision 1.1  2007-02-01 18:04:48  scottl
 % initial revision
 %
@@ -36,6 +39,11 @@ override_display = 'OFF';   %other legal value is 'ON'
 
 %up to what word length should positional counts be taken?
 max_word_len = 10;
+
+%default font and size to use for density calculations
+density_img_font = 'times-roman';
+density_img_font_size = '36';
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -135,6 +143,8 @@ if any(strcmp(Clust.truth_label, ' '))
     Comps.model_spaces = true;
 end
 Clust.class = assign_class(Clust.truth_label);
+Clust.density = assign_density(char(Clust.truth_label), 'img_font', ...
+                density_img_font, 'img_font_sz', density_img_font_size);
 
 %add cluster position counts
 [Clust, Comps] = create_cluster_dictionary(Clust, Comps, 'max_word_len', ...
@@ -177,6 +187,7 @@ Clust.found_true_labels = true;
 Clust.truth_label = {};
 Clust.model_spaces = false;
 Clust.class = uint16([]);
+Clust.density = [];
 
 %this function creates an empty component stucture
 function Comps = init_comps(Files)
