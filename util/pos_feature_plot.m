@@ -10,10 +10,13 @@ function pos_feature_plot(counts, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: pos_feature_plot.m,v 1.3 2007-02-03 21:06:11 scottl Exp $
+% $Id: pos_feature_plot.m,v 1.4 2007-02-08 19:22:20 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: pos_feature_plot.m,v $
+% Revision 1.4  2007-02-08 19:22:20  scottl
+% added bar graph, relabelled axes according to Sam's suggestions.
+%
 % Revision 1.3  2007-02-03 21:06:11  scottl
 % default font changes
 %
@@ -28,12 +31,18 @@ function pos_feature_plot(counts, varargin)
 % LOCAL VARS %
 %%%%%%%%%%%%%%
 
+%should we draw the plot half-height?
+half_height = true;
+
+%should we draw a bar plot instead? (only works when passing a single vector
+draw_bar = true;
+
 %how should we set markers, lines, and color?
 plot_marker_string = 'o';  %type help plot for choices
 plot_marker_color = 'b';
 plot_marker_size = 8;
-plot_xlabel = 'Position and word length';
-plot_ylabel = 'Probability';
+plot_xlabel = 'Word Length';
+plot_ylabel = 'Positional Probability';
 %plot_title = 'Plot of probability vs position in words of various length';
 plot_title = '';
 %no legend is used by default.  If overriding this should be a cell array of 
@@ -62,24 +71,37 @@ if iscell(counts)
     counts = cell2mat(counts);
 end
 
+if half_height
+    figure(1); clf; set(gcf, 'PaperPosition', [0 0 7 2.5]);
+    hold on;
+end
+
 sz = size(counts);
-plot(1:sz(2), counts, plot_marker_string, ...
-    'MarkerFaceColor', plot_marker_color, ...
-    'MarkerEdgeColor', plot_marker_color, ...
-    'MarkerSize', plot_marker_size);
+if sz(1) == 1 && draw_bar
+    bar(counts, 'FaceColor', plot_marker_color)
+else
+    plot(1:sz(2), counts, plot_marker_string, ...
+         'MarkerFaceColor', plot_marker_color, ...
+         'MarkerEdgeColor', plot_marker_color, ...
+         'MarkerSize', plot_marker_size);
+end
 xlabel(plot_xlabel, 'FontSize', ft_size);
 ylabel(plot_ylabel, 'FontSize', ft_size);
 title(plot_title);
 if ~isempty(plot_legend_strings)
     legend(plot_legend_strings);
 end
-axis tight;
+axis([-2 sz(2)+1 0 1]);
+set(gca, 'YTick', [0 .2 .4 .6 .8 1.0]);
 
 if draw_word_dividers
     %positive root of quadratic equation used to caculate number of words
     num_words = floor((sqrt(1 + 8*sz(2)) -1)/2);
-    X = repmat(cumsum(1:num_words)+.5,2,1);
-    Y = repmat([1;0], 1, num_words);
-    line(X,Y, 'LineStyle', word_line_style, 'Color', word_line_color);
+    dividers=[0,cumsum(1:num_words)+.5];
+    centres=dividers(1:num_words)+diff(dividers)/2;
+    line([1;1]*dividers,[0;1]*ones(1,16), 'LineWidth',1, 'LineStyle', ...
+         word_line_style, 'Color', word_line_color);
+    set(gca, 'XTick', centres);
+    set(gca, 'XTickLabel', num2str((1:num_words)'));
 end
 
