@@ -58,10 +58,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.10 2007-02-05 22:16:57 scottl Exp $
+% $Id: create_alphabet.m,v 1.11 2007-04-10 15:57:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.11  2007-04-10 15:57:41  scottl
+% improve generation of TeX symbols.
+%
 % Revision 1.10  2007-02-05 22:16:57  scottl
 % added density field.
 %
@@ -197,9 +200,33 @@ if ~isempty(template_font)
             if strcmp(Syms.val{ii}, ' ')
                 %just build a dummy blank image
                 Syms.img{ii} = zeros(font_ptsize);
-            elseif ~isempty(regexp(Syms.val{ii}, '[\{\}\%&\$#_\^~\\]'))
-                %have to treat these characters, since they are special in TeX
-                %use \char and the number (need to get numbers)
+            elseif strcmp(Syms.val{ii}, '\')
+                Syms.img{ii} = build_tex_image('$\backslash$', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '_')
+                Syms.img{ii} = build_tex_image('\char22', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '{') 
+                Syms.img{ii} = build_tex_image('$\{$', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '}')
+                Syms.img{ii} = build_tex_image('$\}$', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '[')
+                Syms.img{ii} = build_tex_image('\char91', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, ']')
+                Syms.img{ii} = build_tex_image('\char93', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '^')
+                Syms.img{ii} = build_tex_image('\char94', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif strcmp(Syms.val{ii}, '~')
+                Syms.img{ii} = build_tex_image('\char126', 'png_dpi', ...
+                               font_ptsize*10);
+            elseif ~isempty(regexp(Syms.val{ii}, '[\%&\$#]'))
+                Syms.img{ii} = build_tex_image(['\', Syms.val{ii}], ...
+                               'png_dpi', font_ptsize*10);
             else
                 Syms.img{ii} = build_tex_image(Syms.val{ii}, 'png_dpi', ...
                                font_ptsize*10);
@@ -307,9 +334,13 @@ end
 fprintf('%.2fs: assigning symbols to their respective classes\n', toc);
 Syms.class = assign_class(Syms.val);
 
-%now calculate densitys for each symbol
-Syms.density = assign_density(char(Syms.val), 'img_font', density_font, ...
-               'img_font_sz', density_font_size);
+%now calculate densities for each symbol
+if isempty(template_font)
+    Syms.density = assign_density(char(Syms.val), 'img_font', density_font, ...
+                  'img_font_sz', density_font_size);
+else
+    Syms.density = assign_density(Syms.img);
+end
 
 fprintf('%.2fs: Symbols initialized\n', toc);
 
