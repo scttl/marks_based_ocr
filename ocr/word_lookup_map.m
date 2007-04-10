@@ -32,10 +32,13 @@ function [map, valid_acc] = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.7 2007-02-02 05:51:28 scottl Exp $
+% $Id: word_lookup_map.m,v 1.8 2007-04-10 15:49:53 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.8  2007-04-10 15:49:53  scottl
+% implemented ability to use simple shape information as a tie breaking procedure
+%
 % Revision 1.7  2007-02-02 05:51:28  scottl
 % added density based tie breaking.
 %
@@ -89,6 +92,17 @@ calc_valid_acc = false;
 
 %should we use density information to break ties?
 break_ties_via_density = false;
+
+%should we break ties via shape information from the symbols?
+break_ties_via_shape = false;
+%if shape information used to break ties, what method should be used to
+%normalize symbol image
+resize_method = 'nearest';
+
+%should we use the truth label to break ties?  Only works if we have the truth 
+%label information, and it happens to be amongst the tied mappings.
+break_ties_via_truth = false;
+
 
 % CODE START %
 %%%%%%%%%%%%%%
@@ -205,10 +219,17 @@ while ~isempty(idx)
             max_score = score;
             max_idx = ii;
             max_sym = sym_map{idx(1)};
-        elseif break_ties_via_density && score == max_score
+        elseif (break_ties_via_density || break_ties_via_shape) && ...
+               score == max_score
             %tie!
             max_idx = [max_idx, ii];
             max_sym = [max_sym, sym_map(idx(1))];
+        elseif break_ties_via_truth && score == max_score
+            true_val = Clust.truth_label(idx(1));
+            if ~isempty(true_val) && strcmp(true_val, sym_map{idx(1)})
+                max_idx = ii;
+                max_sym = sym_map{idx(1)};
+            end
         end
     end
     if ii == length(this_order)
@@ -217,8 +238,27 @@ while ~isempty(idx)
             %a tie has occured
             fprintf('tie between: '); fprintf('%s, ',max_sym{:}); fprintf('\n');
             sym_idx = this_order(max_idx);
-            [best_idx,best_idx] = min(abs(Syms.density(sym_idx) - ...
-                                          Clust.density(idx(1))));
+            if break_ties_via_density
+                [best_idx,best_idx] = min(abs(Syms.density(sym_idx) - ...
+                                      Clust.density(idx(1))));
+            else
+                %use shape to break ties, after normalizing candidates aspect
+                %ratios
+                rsz_syms = cell(length(sym_idx),1);
+                clust_height = size(Clust.avg{idx(1)},1);
+                for jj=1:length(sym_idx)
+                    if sum(sum(Syms.img{sym_idx(jj)})) == 0
+                        %trying to resize a blank image
+                        rsz_syms{jj} = Syms.img{sym_idx(jj)};
+                    else
+                        scale = clust_height / size(Syms.img{sym_idx(jj)},1);
+                        rsz_syms{jj} = imresize(Syms.img{sym_idx(jj)}, ...
+                                                scale, resize_method);
+                    end
+                end
+                [best_idx,best_idx] = min(hausdorff_dist(Clust.avg{idx(1)}, ...
+                                          rsz_syms));
+            end
             max_idx = max_idx(best_idx);
             max_sym = max_sym{best_idx};
         end
