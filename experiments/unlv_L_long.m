@@ -6,7 +6,8 @@ global MOCR_PATH;  %used to determine where to save results
 %set the following line to true to record process
 create_diary = true;
 if create_diary
-    diary_file = [MOCR_PATH, '/results/unlv_L_deskew_15_simword_85_all.diary'];
+    diary_file = [MOCR_PATH, ...
+    '/results/unlv_L_deskew_15_simword_85_poisson_all.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -38,7 +39,7 @@ pg_suffix = '.FF';  %use fine-mode fax to compare with Nagy paper
 gt_prefix = [MOCR_PATH, '/data/unlv_ocr/L/L_GT/'];
 
 %this should give the path to the base part of where results will be kept
-res_base = [MOCR_PATH, '/results/L_long_deskew_15_simword_85'];
+res_base = [MOCR_PATH, '/results/L_long_deskew_15_simword_85_poisson'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
@@ -108,7 +109,7 @@ for ii=1:num_docs
       'avg_splits',false, 'avg_matches',true, 'resize_imgs',false, ...
       'resize_method','nearest', 'use_thinned_imgs',false);
         [Clust, Comps] = add_space_model(Clust, Comps, 'space_width', [], ...
-                         'space_height', []);
+                         'space_height', [], 'use_poisson_mix_model', true);
         [Clust, Comps] = sort_clusters(Clust, Comps);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
         fprintf('clustering complete: %f\n', toc);
@@ -147,7 +148,9 @@ for ii=1:num_docs
 
     if run_word_map
         map = word_lookup_map(Clust, Comps, Syms, 'order', order, ...
-                              'restrict_order_to_class', false);
+                              'restrict_order_to_class', false, ...
+                              'break_ties_via_shape', false, ...
+                              'resize_method', 'nearest');
         fprintf('word lookup mapping complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
