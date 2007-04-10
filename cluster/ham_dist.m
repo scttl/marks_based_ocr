@@ -1,18 +1,21 @@
 function d = ham_dist(img1, other_imgs)
 %  HAM_DIST  Calculate the normalized Hamming distance from 1 image to others.
 %
-% img1 is an image intensity matrices, typically the average of
+% img1 is an image intensity matrix, typically the average of
 % all items in a cluster.  other_imgs is either an individual image intensity
 % matrix, or it is a cell array of image intensity matrices.
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: ham_dist.m,v 1.2 2006-07-06 17:53:14 scottl Exp $
+% $Id: ham_dist.m,v 1.3 2007-04-10 15:35:04 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: ham_dist.m,v $
-% Revision 1.2  2006-07-06 17:53:14  scottl
+% Revision 1.3  2007-04-10 15:35:04  scottl
+% fix spelling typo
+%
+% Revision 1.2  2006/07/06 17:53:14  scottl
 % rewritten to compute distances (after rename).  Vectorized to compute
 % multiple distances in a single call.
 %
