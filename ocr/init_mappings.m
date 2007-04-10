@@ -17,10 +17,13 @@ function map = init_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: init_mappings.m,v 1.3 2006-11-25 20:13:34 scottl Exp $
+% $Id: init_mappings.m,v 1.4 2007-04-10 15:48:21 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: init_mappings.m,v $
+% Revision 1.4  2007-04-10 15:48:21  scottl
+% small spelling typo
+%
 % Revision 1.3  2006-11-25 20:13:34  scottl
 % change to ensure that we don't double count template matches when
 % including true labels that also appear in the short-list.
@@ -91,7 +94,7 @@ for ii=1:Clust.num
             if isempty(match_idx)
                 warning('MBOCR:NoMatch','No truth label match for: %d\n',ii);
             end
-            %prevent counting the truth label twice if it includes in the
+            %prevent counting the truth label twice if it is included in the
             %closest template matches
             keep_idx = idx(1:num-length(match_idx));
             for jj=1:length(match_idx)
