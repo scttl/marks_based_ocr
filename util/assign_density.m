@@ -1,5 +1,5 @@
 function d = assign_density(imgs, varargin)
-% ASSIGN_DENSITY   Computer normalized densities for the images passed
+% ASSIGN_DENSITY   Compute normalized densities for the images passed
 %
 %   D = ASSIGN_DENSITY(IMGS, [VAR1, VAL1]...)
 %
@@ -20,10 +20,13 @@ function d = assign_density(imgs, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: assign_density.m,v 1.2 2007-02-05 22:14:43 scottl Exp $
+% $Id: assign_density.m,v 1.3 2007-04-10 15:34:31 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: assign_density.m,v $
+% Revision 1.3  2007-04-10 15:34:31  scottl
+% fix to handle images with identical densities.
+%
 % Revision 1.2  2007-02-05 22:14:43  scottl
 % ignore extended ASCII or other Unicode symbols.
 %
@@ -92,5 +95,10 @@ for ii=1:num
     d(ii) = double(sum(imgs{ii}(:))) / prod(size(imgs{ii}));
 end
 
-%now normalize the images
-d = (d - mean(d)) ./ std(d);
+%now normalize the images.  Since this won't work correctly if all images
+%have the same density (or there is only 1 image), leave these images 
+%un-normalized
+st_dev = std(d);
+if num > 1 && st_dev ~= 0
+    d = (d - mean(d)) ./ st_dev;
+end
