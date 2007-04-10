@@ -6,7 +6,8 @@ global MOCR_PATH;  %used to determine where to save results
 %set the following line to true to record process
 create_diary = true;
 if create_diary
-    diary_file = [MOCR_PATH, '/results/unlv_B_all.diary'];
+    diary_file = [MOCR_PATH, ...
+    '/results/unlv_B_deskew_15_simword_85_poisson_all.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -38,7 +39,7 @@ pg_suffix = '.FF';  %use fine-mode fax to compare with Nagy paper
 gt_prefix = [MOCR_PATH, '/data/unlv_ocr/B/B_GT/'];
 
 %this should give the path to the base part of where results will be kept
-res_base = [MOCR_PATH, '/results/B'];
+res_base = [MOCR_PATH, '/results/B_deskew_15_simword_85_poisson'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
@@ -78,7 +79,8 @@ for ii=1:num_docs
     %get the components
     if run_comps
         Comps = get_comps(Files, 'min_elem_width',2, 'min_elem_height',2, ...
-                'max_elem_width',100, 'max_elem_height',100);
+                'max_elem_width',100, 'max_elem_height',100, 'deskew_pages',...
+                true);
         fprintf('components complete: %f\n', toc);
         save(res_datafile, 'Comps');
     end
@@ -107,7 +109,7 @@ for ii=1:num_docs
       'avg_splits',false, 'avg_matches',true, 'resize_imgs',false, ...
       'resize_method','nearest', 'use_thinned_imgs',false);
         [Clust, Comps] = add_space_model(Clust, Comps, 'space_width', [], ...
-                         'space_height', []);
+                         'space_height', [], 'use_poisson_mix_model', true);
         [Clust, Comps] = sort_clusters(Clust, Comps);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
         fprintf('clustering complete: %f\n', toc);
@@ -119,7 +121,14 @@ for ii=1:num_docs
     if run_dictionary
         [Clust, Comps] = create_cluster_dictionary(Clust, Comps, ...
                          'max_word_len', 15);
-
+        %now renormalize positional counts
+        for jj=1:length(Clust.pos_count);
+            val = Clust.pos_count{jj} .* Clust.pos_total;
+            norms = sum(val,2);
+            norms(norms == 0) = 1;  %to prevent dividing by 0
+            Clust.pos_norms{jj} = repmat(norms, 1, size(val,2));
+            Clust.pos_count{jj} = val ./ Clust.pos_norms{jj};
+        end
         fprintf('dictionary complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
     end
@@ -129,7 +138,8 @@ for ii=1:num_docs
     %now attempt to infer mappings based on positional information
     if run_pos_map
         [order, score] = positional_learn_mappings(Clust, Syms, ...
-                         'dist_metric', 'euc', 'weight_proportion', .5);
+                         'dist_metric', 'euc', 'weight_proportion', .85, ...
+                         'prior_counts', 0, 'weight_per_symbol', false);
         fprintf('position based ordering complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
     end
@@ -137,7 +147,10 @@ for ii=1:num_docs
     load(res_datafile);
 
     if run_word_map
-        map = word_lookup_map(Clust, Comps, Syms, 'order', order);
+        map = word_lookup_map(Clust, Comps, Syms, 'order', order, ...
+                              'restrict_order_to_class', false, ...
+                              'break_ties_via_shape', false, ...
+                              'resize_method', 'nearest');
         fprintf('word lookup mapping complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
