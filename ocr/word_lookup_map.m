@@ -32,10 +32,13 @@ function [map, valid_acc] = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.8 2007-04-10 15:49:53 scottl Exp $
+% $Id: word_lookup_map.m,v 1.9 2007-04-10 19:38:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.9  2007-04-10 19:38:41  scottl
+% removed calculation of cluster word sequence to separate file
+%
 % Revision 1.8  2007-04-10 15:49:53  scottl
 % implemented ability to use simple shape information as a tie breaking procedure
 %
@@ -131,42 +134,12 @@ if isempty(order)
 end
 
 %determine the sequence of cluster words
-seq = get_cluster_seq(Comps, unique(Comps.line));
+valid_acc = NaN;
 sym_map = cell(Clust.num,1);
 map = zeros(Clust.num,1);
-valid_acc = NaN;
 sym_map{space_idx} = ' ';
 map(space_idx) = space_sym_idx;
-clust_words = cell(Clust.num,1);
-word_list = cell(0);
-word_num = 1;
-for ii=1:length(seq)
-    curr_word = [];
-    curr_line = seq{ii};
-    while ~isempty(curr_line)
-        if curr_line(1) == space_idx
-            %end of a word.  Update counts if not empty.
-            if ~isempty(curr_word)
-                word_list{word_num} = curr_word;
-                curr_word = [];
-                word_num = word_num + 1;
-            end
-        else
-            %continue to grow the current word
-            curr_word = [curr_word, curr_line(1)];
-            if all(clust_words{curr_line(1)} ~= word_num)
-                %ensure each cluster is only added once for each word
-                clust_words{curr_line(1)} =[clust_words{curr_line(1)},word_num];
-            end
-        end
-        curr_line = curr_line(2:end);
-    end
-    if ~isempty(curr_word)
-        word_list{word_num} = curr_word;
-        curr_word = [];
-        word_num = word_num + 1;
-    end
-end
+[word_list, clust_words] = get_cluster_word_seq(Comps, space_idx);
 
 %group lexicon words by length, and order by frequency to improve matching speed
 lex_num_words = length(Syms.words);
