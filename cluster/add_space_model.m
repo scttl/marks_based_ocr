@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.8 2007-02-05 20:34:19 scottl Exp $
+% $Id: add_space_model.m,v 1.9 2007-04-10 15:46:20 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.9  2007-04-10 15:46:20  scottl
+% working implementation of Hunag space model implemented.
+%
 % Revision 1.8  2007-02-05 20:34:19  scottl
 % added density field estimation.
 %
@@ -60,8 +63,27 @@ space_width = [];
 %overridden by specifying a value for the height below
 space_height = [];
 
+%if estimating space width, should we use the Poisson mixture model as described
+%in the Huang paper?  If set to false, we will use a weak mode hunting method.
+use_poisson_mix_model = true;
+
+%if using the Poisson mixture model, we need initial guesses of the parameters
+%that we attempt to infer
+init_l1 = log(4);  %lambda for the first Poisson
+init_l2 = log(15); %lambda for the second Poisson
+%note, initial space width is estimated below.
+init_params = [init_l1 init_l2 init_l2]';
+
+%if using the Poisson mixture and inferring space width via minimize(), how
+%many iterations (if -ve), or line searches (if +ve) should we allow
+num_iters = -1000;
+
+%if using the Poisson mixture, how many restarts should we attempt before 
+%giving up?
+max_restarts = 10;
+
 %when attempting to infer the width of a space character, what is the maximum
-%possible number of pixels wide we should check.
+%possible number of pixels wide we should check or allow
 max_wordspace = 70;
 
 
@@ -77,10 +99,14 @@ end
 %get the distances between left-right neighbours
 idx = find(Comps.nb(:,3) ~= 0);
 trans_dist = double(Comps.nb_dist(idx,3));
+min_char_space = mode(trans_dist);
+
     
 if isempty(space_width)
-    %calculate space_width manually.  First peak should be interchar spacing but
-    %second should be interword (approximately)
+    %calculate space_width manually.
+    %coarsely estimate spaces by mode hunting in the space width histogram.
+    %First peak should be interchar spacing but second should be interword 
+    %(approximately)
     space_counts = hist(trans_dist, 1:max_wordspace);
     peaks_found = 0;
     increasing = false;
@@ -104,6 +130,49 @@ if isempty(space_width)
         %only 1 word of components.  Just estimate space width at some value 
         %larger than the largest component
         space_width = max(trans_dist) + 1;
+    end
+    if use_poisson_mix_model
+        %determine space width threshold using a mixture of 2 Poisson's model
+        %must trim spaces that are smaller are than 1 or are very large (since 
+        %factorial taken)
+        num_restarts = 0;
+        init_params(3) = log(space_width);
+        [T,ft,ii] = minimize(init_params, 'poisson_mix', num_iters, trans_dist);
+        est_width = round(exp(T(3)));
+        while num_restarts < max_restarts && (est_width < min_char_space || ...
+              est_width > max_wordspace)
+            fprintf('restart %d, l1= %.2f l2= %.2f c = %f\n', num_restarts, ...
+                    exp(T(1)), exp(T(2)), est_width);
+            num_restarts = num_restarts+1;
+            if rem(est_width,2)
+                init_params(1) = init_l1 + num_restarts*rand;
+                init_params(2) = init_l2 + 2*num_restarts*rand;
+                init_params(3) = log(space_width+num_restarts);
+            else
+                init_params(1) = init_l1 - num_restarts*rand;
+                init_params(2) = init_l2 - 2*num_restarts*rand;
+                if init_params(1) < 0
+                    init_paras(1) = -init_params(1);
+                end
+                if init_params(2) < 0
+                    init_paras(2) = -init_params(2);
+                end
+                init_params(3) = max(log(space_width-num_restarts),1);
+            end
+            [T,ft,ii] = minimize(init_params, 'poisson_mix', num_iters, ...
+                        trans_dist);
+            est_width = round(exp(T(3)));
+        end
+        if num_restarts >= max_restarts
+            fprintf('unable to find reasonable space width\n');
+            est_width = space_width;
+        end
+        Clust.space_lambda1 = exp(T(1));
+        Clust.space_lambda2 = exp(T(2));
+        space_width = est_width;
+        Clust.space_width = space_width;
+        fprintf('minimum found after %d iters of the %d restart.\n', ii, ...
+                num_restarts);
     end
     fprintf('estimated space width at %d pixels\n', space_width);
 end

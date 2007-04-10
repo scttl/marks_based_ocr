@@ -61,6 +61,13 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                   symbols this cluster blob of ink refers to.
 %     model_spaces - this boolean will be set to true if spaces have been
 %                    modelled and counts taken.  See add_space_model()
+%     space_width - this positive integer will store the space width estimated
+%                   in add_space_model()
+%     space_lambda1 - this positive real scalar will store the estimated
+%                     parameter value for the first Poisson mixture, used to
+%                     estimate space with in add_space_model()
+%     space_lambda2 - this positive real scalar will store the estimated
+%                     parameter value for the second Poisson mixture.
 %     class - this vector lists the different symbol type classes each entry is
 %             assigned to (based on its descender and ascender offset info)
 %     density - this vector lists the pixel density of each symbol
@@ -69,10 +76,13 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.16 2007-02-05 20:34:35 scottl Exp $
+% $Id: cluster_comps.m,v 1.17 2007-04-10 15:46:20 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.17  2007-04-10 15:46:20  scottl
+% working implementation of Hunag space model implemented.
+%
 % Revision 1.16  2007-02-05 20:34:35  scottl
 % added density field.
 %
@@ -402,5 +412,8 @@ Clust.pos_total = 0;
 Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;
+Clust.space_width = NaN;
+Clust.space_lambda1 = NaN;
+Clust.space_lambda2 = NaN;
 Clust.class = uint16([]);
 Clust.density = [];

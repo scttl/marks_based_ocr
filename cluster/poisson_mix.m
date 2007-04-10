@@ -23,24 +23,29 @@ function [val, df] = poisson_mix(Theta, S, varargin)
 %
 %   we actually work with the negative log of this function for numerical ease 
 %   (still valid since monotonic), and to give us a function to minimize 
-%   (instead of maximizing the original)
+%   (instead of maximizing the original).
 %
-%   Theta should be a column vector containing the 3 parameter values: l1, l2, 
-%   and c (in that order)
+%   Theta should be a column vector containing the logarithm of the 3 
+%   parameter values (to constrain them to be positive), lnl1, lnl2, lnc, 
+%   (in that order)
 %
 %   S should be a vector of space intervals (the s_i's)
 %
 %   val, is the value of this function given the parameters
 %
-%   df is the vector of partial derivatives. ie. df = [df/dl1; df/dl2; df/dc]
+%   df is the vector of partial derivatives. ie. df = [df/dlnl1; df/dlnl2; 
+%   df/dlnc]
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: poisson_mix.m,v 1.1 2007-03-06 20:12:10 scottl Exp $
+% $Id: poisson_mix.m,v 1.2 2007-04-10 15:46:20 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: poisson_mix.m,v $
+% Revision 1.2  2007-04-10 15:46:20  scottl
+% working implementation of Hunag space model implemented.
+%
 % Revision 1.1  2007-03-06 20:12:10  scottl
 % initial revision.
 %
@@ -48,7 +53,6 @@ function [val, df] = poisson_mix(Theta, S, varargin)
 
 % LOCAL VARS %
 %%%%%%%%%%%%%%
-max_intrvl_len = 170;  %larger vals will have problems when factorial is taken
 
 
 % CODE START %
@@ -62,37 +66,54 @@ end
 if length(Theta) ~= 3
     error('Theta must contain 3 parameter values');
 end
-l1 = Theta(1);
-l2 = Theta(2);
-c = Theta(3);
+ll1 = Theta(1);
+ll2 = Theta(2);
+lc = Theta(3);
 
 %cleanup the input to ensure we have a sequence of positive integers that we
 %can take the factorial of
 S = round(S);
 S(S <= 0) = 1;
-S(S > max_intrvl_len) = max_intrvl_len;
 
 %initialize the output and precompute values required at multiple points
 num = length(S);
 df = zeros(3,1);
-ll1 = log(l1);
-ll2 = log(l2);
+
+if isinf(ll1)
+    error('lambda1 is 0');
+end
+if isinf(ll2)
+    error('lambda2 is 0');
+end
 sumS = sum(S);
+c = exp(lc);
 ecs = exp(c - S);
-ex = exp(S - c - l1 + S .* ll1 + l2 - S .* ll2);
+ex = exp(S - c - exp(ll1) + S*ll1 + exp(ll2) - S*ll2);
 ex1 = (ex + 1);
 sumsigex = sum(ex ./ ex1);
 sumsigSex = sum((S .* ex) ./ ex1);
+sumsigcex = sum((c * ex) ./ ex1);
+
+%compute the log factorial of S in a stable manner
+%easy to see that log(s_i!) = sum(log([1:s_i]))
+logfactS =  zeros(num,1);
+for ii=1:num
+    logfactS(ii) = sum(log([1:S(ii)]));
+end
+sumlogfactS = sum(logfactS);
 
 %evaluate the function
-val = num * l2 + sum(log(1 + exp(c - S))) + sum(log(factorial(S))) - ...
-      ll2 * sumS - sum(log(ex1));
+val = sumlogfactS + sum(log(1 + ecs)) - sum(log(exp(S*ll1 - exp(ll1)) + ...
+      exp(c - S + S*ll2 - exp(ll2))));
+
+
 
 %evaluate the derivative with respect to l1
-df(1) = sumsigex - 1/l1 * sumsigSex;
+df(1) = exp(ll1) * sumsigex - sumsigSex;
 
 %evaluate the derivative with respect to l2
-df(2) = num - 1/l2 * (sumS - sumsigSex) - sumsigex;
+df(2) = num * exp(ll2) - sumS - exp(ll2) * sumsigex + sumsigSex;
 
-%evaluate the derivative with repsect to c
-df(3) = sum(ecs ./ (1+ecs)) + sumsigex;
+%evaluate the derivative with respect to c
+df(3) = sum((c*ecs) ./ (1+ecs)) - sum((c*exp(c-S+S*ll2-exp(ll2)))./ ...
+        (exp(S*ll1-exp(ll1)) + exp(c-S+S*ll2-exp(ll2))));
