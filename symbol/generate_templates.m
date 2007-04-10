@@ -1,7 +1,9 @@
-function bitmaps = generate_templates(fontname, sn, varargin)
+function [bitmaps,xheights,asc_offs,dsc_offs] = generate_templates(fontname, ...
+                                                sn, varargin)
 % GENERATE_TEMPLATES  Create bitmaps of characters using the fontname passed
 %
-%   bitmaps = generate_templates(fontname, symnames, [var1, val1]...)
+%   [bitmaps,xheights,asc_offs,dsc_offs] = generate_templates(fontname, 
+%                                          symnames, [var1, val1]...)
 %   This procedure makes use of ImageMagick's convert utility to generate
 %   bitmap images of a particular font in a given size.
 %
@@ -11,16 +13,31 @@ function bitmaps = generate_templates(fontname, sn, varargin)
 %
 %   symnames should be a cell array of symbols to generate bitmaps of.
 %
+%   bitmaps will be a cell array of cropped bounding box binary images.
+%
+%   xheights, asc_offs, and dsc_offs are vectors with one value per symbol.
+%   xheights will give give the pixel length from baseline to xheight for this
+%   image.  asc_offs and dsc_offs will give a positive or negative value 
+%   listing this symbol's ascender and descender offset pixel positions.  A 
+%   value of 0 for dsc_offs means that the image starts at the baseline, a 
+%   positive value means it hangs below (and negative above).  A value of 0 
+%   for asc_off means that the top of this image is aligned with the x-height,
+%   a positive value means that it extends above this line (like for a character
+%   like 'd'), and negative below.
+%
 %   NOTE: this program makes use of the ImageMagick 'convert' utility 
 %
 
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_templates.m,v 1.6 2006-11-22 17:00:56 scottl Exp $
+% $Id: generate_templates.m,v 1.7 2007-04-10 15:51:05 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_templates.m,v $
+% Revision 1.7  2007-04-10 15:51:05  scottl
+% return offsets, don't stip dots from i and j by default.
+%
 % Revision 1.6  2006-11-22 17:00:56  scottl
 % updates to fix convert's output of specific characters.
 %
@@ -41,7 +58,7 @@ ptsize = 32; %default pointsize
 tmp_img = '/tmp/tmp_template.png';
 
 %should we remove the dots above lowercase i, and j characters?
-strip_dots = true;
+strip_dots = false;
 
 %this temp file is used to write the value of symbols like '@' that convert 
 %has problems displaying from the command line.
