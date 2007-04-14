@@ -23,10 +23,13 @@ function [words, per_clust_words] = get_cluster_word_seq(Comps, delim, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_cluster_word_seq.m,v 1.1 2007-04-10 19:39:43 scottl Exp $
+% $Id: get_cluster_word_seq.m,v 1.2 2007-04-14 20:16:00 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_cluster_word_seq.m,v $
+% Revision 1.2  2007-04-14 20:16:00  scottl
+% smal change to ensure there is one word per row.
+%
 % Revision 1.1  2007-04-10 19:39:43  scottl
 % initial check-in.  Separated from word_lookup_map
 %
@@ -65,7 +68,7 @@ for ii=1:length(seq)
                 if include_delims
                     curr_word = [curr_word, curr_line(1)];
                 end
-                words{word_num} = curr_word;
+                words{word_num,1} = curr_word;
                 curr_word = [];
                 word_num = word_num + 1;
             end
@@ -84,7 +87,7 @@ for ii=1:length(seq)
         if include_delims
             curr_word = [curr_word, curr_line(1)];
         end
-        words{word_num} = curr_word;
+        words{word_num,1} = curr_word;
         curr_word = [];
         word_num = word_num + 1;
     end
