@@ -22,10 +22,13 @@ function [order,score] = vote_learn_mappings(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: vote_learn_mappings.m,v 1.1 2007-04-14 20:16:29 scottl Exp $
+% $Id: vote_learn_mappings.m,v 1.2 2007-04-15 21:29:16 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: vote_learn_mappings.m,v $
+% Revision 1.2  2007-04-15 21:29:16  scottl
+% *** empty log message ***
+%
 % Revision 1.1  2007-04-14 20:16:29  scottl
 % initial check-in
 %
@@ -191,46 +194,3 @@ fprintf('%.2fs: ordering complete\n', toc);
 
 % SUBFUNCTION DECLARATIONS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%return a numerized representation of each string or numeric sequence passed.
-%Each occurence of the same symbol is given the same numerical value, and the
-%values are numbered starting at 1 (no two different symbols may receive the
-%same value).  ex. 'sassy' gets 12113, and [4 1 10 1 9] gets 12324
-%Inputs should list one entry per row (or cell item).  The output will be of
-%the same type and size as the input (though strings are converted to double
-%arrays), but with values changed to vectors of numerization values.  If the
-%input is not a cell array, each column must be the same length
-function out = numerize(in)
-
-if iscell(in)
-    out = cell(size(in));
-    for ii=1:length(in)
-        str = in{ii};
-        nm = zeros(size(str));
-        curr = 1;
-        for jj=1:length(nm)
-            pos = find(str(1:jj-1) == str(jj),1);
-            if isempty(pos)
-                nm(jj) = curr;
-                curr = curr+1;
-            else
-                nm(jj) = nm(pos);
-            end
-        end
-        out{ii} = nm;
-    end
-else
-    out = zeros(size(in));
-    for ii=1:size(in,1)
-        curr = 1;
-        for jj=1:size(in,2)
-            pos = find(in(ii,1:jj-1) == in(ii,jj),1);
-            if isempty(pos)
-                out(ii,jj) = curr;
-                curr = curr+1;
-            else
-                out(ii,jj) = out(ii,pos);
-            end
-        end
-    end
-end
