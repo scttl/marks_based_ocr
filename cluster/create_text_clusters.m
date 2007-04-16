@@ -18,10 +18,13 @@ function [Clust, Comps, Lines] = create_text_clusters(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_text_clusters.m,v 1.2 2007-02-05 21:33:45 scottl Exp $
+% $Id: create_text_clusters.m,v 1.3 2007-04-16 03:30:22 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_text_clusters.m,v $
+% Revision 1.3  2007-04-16 03:30:22  scottl
+% convert logical array to true or false to make things clearer
+%
 % Revision 1.2  2007-02-05 21:33:45  scottl
 % added density field.
 %
@@ -134,8 +137,8 @@ end
 Clust.mode_num = zeros(Clust.num,1);
 Clust.avg = cell(Clust.num,1);
 Clust.norm_sq = zeros(Clust.num,1);
-Clust.refined = logical(ones(Clust.num,1));
-Clust.changed = logical(zeros(Clust.num,1));
+Clust.refined = true(Clust.num,1);
+Clust.changed = false(Clust.num,1);
 Clust.ascender_off = zeros(Clust.num,1,'int16');
 Clust.descender_off = zeros(Clust.num,1,'int16');
 if any(strcmp(Clust.truth_label, ' '))
