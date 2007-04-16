@@ -20,10 +20,13 @@ function [bitmaps, offsets, charnames] = generate_pk_templates(font, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: generate_pk_templates.m,v 1.3 2006-11-22 17:01:46 scottl Exp $
+% $Id: generate_pk_templates.m,v 1.4 2007-04-16 03:30:02 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: generate_pk_templates.m,v $
+% Revision 1.4  2007-04-16 03:30:02  scottl
+% small change to declaration of logical array
+%
 % Revision 1.3  2006-11-22 17:01:46  scottl
 % small update to warn when trying to recognize multi-char symbols
 %
@@ -146,6 +149,6 @@ offsets = vals(:,3) - vals(:,2) - 1;
 %completely blank
 space_idx = find(charnames == ' ');
 if space_idx
-    bitmaps{space_idx} = logical(zeros(size(bitmaps{space_idx})));
+    bitmaps{space_idx} = false(size(bitmaps{space_idx}));
     offsets(space_idx) = 0;
 end
