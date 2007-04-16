@@ -32,10 +32,13 @@ function [map, valid_acc] = word_lookup_map(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: word_lookup_map.m,v 1.9 2007-04-10 19:38:41 scottl Exp $
+% $Id: word_lookup_map.m,v 1.10 2007-04-16 03:30:49 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: word_lookup_map.m,v $
+% Revision 1.10  2007-04-16 03:30:49  scottl
+% convert logical arrays to true or false to make things clearer.
+%
 % Revision 1.9  2007-04-10 19:38:41  scottl
 % removed calculation of cluster word sequence to separate file
 %
@@ -248,7 +251,7 @@ while ~isempty(idx)
 end
 
 if calc_valid_acc
-    valid_clust = logical(zeros(Clust.num,1));
+    valid_clust = false(Clust.num,1);
     [dummy,valid_words] = calc_vp_score(Clust.truth_label, 1:Clust.num, ...
                            word_list, lex_lists, false);
     for ii=find(valid_words)'
@@ -285,7 +288,7 @@ function [score, matches] = calc_vp_score(sym_map, clust_map, pattern_list, ...
                  word_list, list_matches)
 
 num_pat = length(pattern_list);
-matches = logical(zeros(num_pat,1));
+matches = false(num_pat,1);
 if num_pat == 0
     score = 0;
     return;
