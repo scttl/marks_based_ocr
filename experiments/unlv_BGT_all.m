@@ -18,12 +18,13 @@ end
 
 run_cluster=true;
 run_pos_map=true;
+run_vote_map=false;
 run_word_map=true;
 run_ocr_analysis=true;
 
 %if attempting to determine mappings, this should list the file containing the
 %Syms corpora struct
-syms_struct_file = [MOCR_PATH, '/data/reuters_syms.mat'];
+syms_struct_file = [MOCR_PATH, '/data/reuters_pos_15_syms.mat'];
 
 %this directory determines where to find the ASCII text pages
 pg_dir = [MOCR_PATH, '/data/unlv_ocr/B/B_GT/'];
@@ -85,10 +86,25 @@ for ii=1:num_docs
     end
 
     load(res_datafile);
+    if run_vote_map
+        [order, score] = vote_learn_mappings(Clust, Comps, Syms, ...
+                         'limit_to_map', true, 'word_count_weight_pct', 1, ...
+                         'add_first_pos_up_let', true, ...
+                         'add_last_pos_punct_syms', true, ...
+                         'valid_punct_syms', '.,:;!?');
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
+    end
+
+    load(res_datafile);
 
     if run_word_map
         map = word_lookup_map(Clust, Comps, Syms, 'order', order);
         fprintf('word lookup mapping complete: %f\n', toc);
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
+    else
+        %convert the order to a map
+        map = cell2mat(order);
+        map = map(:,1);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
     
