@@ -23,10 +23,13 @@ function text = print_ocr_text(line_nums, Comps, Syms, map, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: print_ocr_text.m,v 1.2 2007-01-05 17:16:45 scottl Exp $
+% $Id: print_ocr_text.m,v 1.3 2007-05-08 01:01:41 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: print_ocr_text.m,v $
+% Revision 1.3  2007-05-08 01:01:41  scottl
+% added additional commnets
+%
 % Revision 1.2  2007-01-05 17:16:45  scottl
 % added ability to limit printed OCR text to specific regions.
 %
@@ -56,7 +59,11 @@ add_spaces = false;
 %the format for this parameter should be a regexp pattern
 map_to_space_pattern = '[_]';
 
-%by default, don't limit the sequence returned to a particular region
+%this is used to further limit the components returned to those that lie 
+%entirely within the contained LTRB region on each page.  This is only really
+%useful if all lines to process lie on the same page (as the same regions are
+%used on each page.  Use a value of 0 to represent one of the extremities of 
+%the page
 keep_region = [0 0 0 0];
 
 
