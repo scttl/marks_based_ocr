@@ -14,10 +14,13 @@ function display_lines(Lines, idx, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: display_lines.m,v 1.3 2007-01-25 18:42:10 scottl Exp $
+% $Id: display_lines.m,v 1.4 2007-05-14 23:16:06 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: display_lines.m,v $
+% Revision 1.4  2007-05-14 23:16:06  scottl
+% modification to handle our new display connected components routine
+%
 % Revision 1.3  2007-01-25 18:42:10  scottl
 % added ability to draw component bounding boxes, reverse the output colours,
 % and removed an unneeded subfunction.
@@ -99,7 +102,7 @@ for ii=1:num_lines
     end
 end
 
-if draw_baseline || draw_xheight
+if draw_baseline || draw_xheight || (draw_comps && ~isempty(Comps))
     for ii=1:num_lines
         M{ii} = label2rgb(M{ii}, 'white', 'k');
         if draw_baseline
