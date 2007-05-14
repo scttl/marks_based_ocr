@@ -20,10 +20,13 @@ function [order,score] = positional_learn_mappings(Clust, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: positional_learn_mappings.m,v 1.5 2007-02-05 22:13:58 scottl Exp $
+% $Id: positional_learn_mappings.m,v 1.6 2007-05-14 23:17:12 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: positional_learn_mappings.m,v $
+% Revision 1.6  2007-05-14 23:17:12  scottl
+% spelling typo correction in comments.
+%
 % Revision 1.5  2007-02-05 22:13:58  scottl
 % implemented prior counts.
 %
@@ -60,8 +63,8 @@ keep_best = 0;
 %how much emphasis should we place on penalizing the distances by weighting
 %the positions of each word length based on its expected (symbol) frequency.
 %This number should be a probability (between 0 and 1) that will define the
-%mixinig proportion for the weights (the remainder will be distributed
-%uniformly amongst all word lonegths)
+%mixing proportion for the weights (the remainder will be distributed
+%uniformly amongst all word lengths)
 weight_proportion = 0;
 
 %if assigning a weight matrix, should each symbol be adjusted by its particular
