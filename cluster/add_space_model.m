@@ -14,10 +14,13 @@ function [Clust, Comps] = add_space_model(Clust, Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: add_space_model.m,v 1.9 2007-04-10 15:46:20 scottl Exp $
+% $Id: add_space_model.m,v 1.10 2007-05-14 23:13:19 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: add_space_model.m,v $
+% Revision 1.10  2007-05-14 23:13:19  scottl
+% add space distances to the clust struct
+%
 % Revision 1.9  2007-04-10 15:46:20  scottl
 % working implementation of Hunag space model implemented.
 %
@@ -291,5 +294,6 @@ end
 
 Comps.model_spaces = true;
 Clust.model_spaces = true;
+Clust.space_dists = trans_dist;
 
 fprintf('finished creating space character model\n');
