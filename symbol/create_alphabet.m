@@ -58,10 +58,13 @@ function Syms = create_alphabet(file, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: create_alphabet.m,v 1.11 2007-04-10 15:57:41 scottl Exp $
+% $Id: create_alphabet.m,v 1.12 2007-05-14 23:18:57 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: create_alphabet.m,v $
+% Revision 1.12  2007-05-14 23:18:57  scottl
+% update default word length to 15 when creating positional counts
+%
 % Revision 1.11  2007-04-10 15:57:41  scottl
 % improve generation of TeX symbols.
 %
@@ -156,7 +159,7 @@ density_font = 'helvetica';
 density_font_size = '36';
 
 %when creating positional counts, up to what length word should be included?
-max_word_len = 10;
+max_word_len = 15;
 
 
 % CODE START %
