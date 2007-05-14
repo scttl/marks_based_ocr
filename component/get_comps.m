@@ -70,10 +70,13 @@ function Comps = get_comps(Files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: get_comps.m,v 1.10 2007-02-01 18:00:37 scottl Exp $
+% $Id: get_comps.m,v 1.11 2007-05-14 23:15:00 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: get_comps.m,v $
+% Revision 1.11  2007-05-14 23:15:00  scottl
+% split display of connected components out into its own routine.
+%
 % Revision 1.10  2007-02-01 18:00:37  scottl
 % quick implementation of page deskew processing, that is reliant on
 % having 3rd party tools installed.
@@ -155,8 +158,10 @@ keep_deskew_file = true;
 display_page = false;
 
 %RGB colour values used to display updates if set to true above
-bg_col = reshape([0,0,0],1,1,3);  % this is black
 out_col = reshape([255,0,0],1,1,3);  % this is red
+
+%set this to true to invert the typical white text on black background display
+reverse_display = false;
 
 %conventional pixel value to use for background intensities
 bg_val = 0; 
@@ -164,6 +169,7 @@ bg_val = 0;
 %should we save connected component images?  This uses memory and takes longer
 %to run
 save_cc_page = false;
+
 global MOCR_PATH;
 %prefix of filename to use when saving connected component images.  If multiple
 %files are passed, the page numbers are also added to the filename
@@ -255,21 +261,6 @@ for pp=1:num_pgs
     [Lbl_img, num_new_comps] = bwlabel(Lbl_img, num_dirs);
     fprintf('%.2fs: %d connected components found on this page\n', toc, ...
             num_new_comps);
-
-    if display_page || save_cc_page
-        if num_new_comps > 0
-            %this colormap uses the black background with white letter font
-            Rgb_img = label2rgb(Lbl_img, 'white', 'k');
-        else
-            Rgb_img =  repmat(bg_col, size(Lbl_img));
-        end
-        if display_page
-            imshow(Rgb_img);
-            drawnow;
-            hold on;
-            fprintf('%.2fs: Image of connected components rendered\n', toc);
-        end
-    end
 
     %determine the positions of the components on this page
     prev_max_comp = Comps.max_comp;
@@ -450,25 +441,10 @@ for pp=1:num_pgs
 
     %show and/or save the appropriate RGB image if required.
     if display_page || save_cc_page
-        for ii=comp_idcs
-            l = Comps.pos(ii,1); t = Comps.pos(ii,2); r = Comps.pos(ii,3); ...
-            b = Comps.pos(ii,4);
-    
-            Rgb_img(t,l:r,:) = repmat(out_col,1,r-l+1);
-            Rgb_img(t:b,l,:) = repmat(out_col,b-t+1,1);
-            Rgb_img(t:b,r,:) = repmat(out_col,b-t+1,1);
-            Rgb_img(b,l:r,:) = repmat(out_col,1,r-l+1);
-        end
-        if display_page
-            imshow(Rgb_img);
-            fprintf('%.2fs: Displaying image. Press a key to continue\n', toc);
-            pause;
-        end
-        if save_cc_page
-            fprintf('%.2fs: Writing components of page %d to disk\n', toc, pp);
-            imwrite(Rgb_img, [img_prefix, num2str(pp), '.', img_format], ...
-                    img_format);
-        end
+        display_components(Comps, 'comps_idx', comp_idcs, 'save_cc_page', ...
+               save_cc_page, 'display_cc_page', display_page, 'comps_col', ...
+               out_col, 'img_prefix', img_prefix, 'img_format', img_format, ...
+               'reverse_display', reverse_display);
     end
 end
 
