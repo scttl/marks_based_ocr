@@ -22,15 +22,18 @@ function text = print_ocr_rec_acc_report(line_nums, Comps, Syms, map, ...
 %   text returned will be a cell array, with one entry per report, each of
 %   which will be a character array containing the report text.  By 
 %   default, the report is also printed to the screen (though this 
-%   can be overridden
+%   can be overridden)
 %
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: print_ocr_rec_acc_report.m,v 1.1 2007-05-08 01:00:46 scottl Exp $
+% $Id: print_ocr_rec_acc_report.m,v 1.2 2007-05-14 23:18:16 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: print_ocr_rec_acc_report.m,v $
+% Revision 1.2  2007-05-14 23:18:16  scottl
+% added ability to generate reports ignoring case of characters.
+%
 % Revision 1.1  2007-05-08 01:00:46  scottl
 % initial check-in
 %
@@ -42,6 +45,9 @@ function text = print_ocr_rec_acc_report(line_nums, Comps, Syms, map, ...
 %which reports should we generate?
 gen_char_acc_rprt = true;
 gen_word_acc_rprt = false;
+gen_per_clust_acc_rprt = false;
+gen_ig_case_char_acc_rprt = false;
+gen_ig_case_word_acc_rprt = false;
 
 %set save_results to true to write the results to disk based on the params
 %below it
@@ -50,6 +56,9 @@ global MOCR_PATH;  %make use of the globally defined MOCR_PATH variable
 save_res_prefix = [MOCR_PATH, '/results/ocr_text_res'];
 save_char_res_suffix = '.char_rprt';
 save_word_res_suffix = '.word_rprt';
+save_clust_res_suffix = '.clust_rprt';
+save_ig_case_char_res_suffix = '.ig_case_char_rprt';
+save_ig_case_word_res_suffix = '.ig_case_word_rprt';
 
 %should we save the generated text file too?
 save_gen_text = false;
@@ -83,6 +92,9 @@ mod_gt_file = '/tmp/mod_gt.txt';
 
 %where should we write the sync file temporarily?
 tmp_sync_file = '/tmp/ocr_sync.txt';
+
+tmp_ig_case_file = '/tmp/ig_case.txt';
+tmp_ig_case_gt_file = '/tmp/ig_case_gt.txt';
 
 
 % CODE START %
@@ -122,8 +134,9 @@ print_ocr_text(line_nums, Comps, Syms, map, ...
                'keep_region', keep_region, ...
                'save_file', save_gen_file);
 
-%fixup the generated text and ground-truth to remove unwanted symbols
-if ~all(keep_clust)
+%sync the generated text and ground-truth to determine per cluster accuracies, 
+%or remove unwanted symbols
+if ~all(keep_clust) || gen_per_clust_acc_rprt
     cmd = ['cp ', gt_file, ' ', mod_gt_file];
     s = unix(cmd);
     if s ~= 0
@@ -190,11 +203,16 @@ if ~all(keep_clust)
         gt_reps{ii} = strtrim(gt_reps{ii}{1}{1});
         gen_reps{ii} = regexp(S{gen_row}, '\{(.*)\}', 'tokens');
         gen_reps{ii} = strtrim(gen_reps{ii}{1}{1});
-        trunc_pos = strfind(gen_reps{ii}, delete_sym);
-        gt_reps{ii} = gt_reps{ii}(setdiff(1:length(gt_reps{ii}),trunc_pos));
-        gen_len = length(gen_reps{ii});
-        trunc_pos = trunc_pos(trunc_pos <= gen_len);
-        gen_reps{ii} = gen_reps{ii}(setdiff(1:gen_len,trunc_pos));
+        
+        if ~all(keep_clust)
+            %remove occurences of the delete_sym (and its associated ground 
+            %truth symbol to ensure that we don't count mis-alignments there)
+            trunc_pos = strfind(gen_reps{ii}, delete_sym);
+            gt_reps{ii} = gt_reps{ii}(setdiff(1:length(gt_reps{ii}),trunc_pos));
+            gen_len = length(gen_reps{ii});
+            trunc_pos = trunc_pos(trunc_pos <= gen_len);
+            gen_reps{ii} = gen_reps{ii}(setdiff(1:gen_len,trunc_pos));
+        end
     end
     %now that we have our sets of replacement text, parse the sync'ed text 
     %looking for places to insert our replacements
@@ -202,6 +220,68 @@ if ~all(keep_clust)
         new_gen_txt = [new_gen_txt, S{ii}, char(10)];
     end
     new_gt_txt = new_gen_txt;
+
+    if gen_per_clust_acc_rprt
+        clust_seq = get_cluster_seq(Comps, line_nums, 'keep_region', ...
+                    keep_region);
+        %have to be careful of empty lines returned from the cluster sequence
+        idx = true(size(clust_seq,1),1);
+        for jj=1:length(idx)
+            if isempty(clust_seq{jj})
+                idx(jj) = false;
+            end
+        end
+        clust_seq = cell2mat(clust_seq(idx));
+        clust_corr = false(size(clust_seq));
+        sync_pos = 1;
+        corr_pos = 1;
+        diff_pos = 1;
+        while sync_pos <= length(new_gen_txt) && corr_pos <= length(clust_seq)
+            val = Syms.val{map(clust_seq(corr_pos))};
+            if val == new_gen_txt(sync_pos)
+                %correct match
+                clust_corr(corr_pos) = true;
+                corr_pos = corr_pos+1;
+                sync_pos = sync_pos+1;
+            elseif double(new_gen_txt(sync_pos)) == 10 || ...
+                   new_gen_txt(sync_pos) == ' ' || new_gen_txt(sync_pos) == '^'
+                %end of line or space or suspct character found
+                sync_pos = sync_pos+1;
+            elseif val == '^' || val == ' '
+                %trim spaces and 'suspect' markers
+                clust_corr(corr_pos) = true;
+                corr_pos=corr_pos+1;
+            elseif diff_pos <= num_diffs && new_gen_txt(sync_pos) == '{'
+                %start of mismatch with ground truth (mismatch can be one-to-one
+                %many-to-one, or one-to-many and may contain additional spaces)
+                gen = gen_reps{diff_pos};
+                while ~isempty(gen)
+                    if gen(1) ~= Syms.val{map(clust_seq(corr_pos))}
+                        while corr_pos <= length(clust_seq) && ...
+                              (Syms.val{map(clust_seq(corr_pos))} == ' ' || ...
+                               Syms.val{map(clust_seq(corr_pos))} == '^')
+                            corr_pos=corr_pos+1;
+                        end
+                        while(length(gen) > 1 && (gen(1)==' ' || gen(1)=='^'))
+                            gen = gen(2:end);
+                        end
+                    end
+                    gen = gen(2:end);
+                    corr_pos=corr_pos+1;
+                end
+                diff_pos=diff_pos+1;
+                while sync_pos <= length(new_gen_txt) && ...
+                      new_gen_txt(sync_pos) ~= '}'
+                    sync_pos=sync_pos+1;
+                end
+                sync_pos=sync_pos+1;  %skip over the '}'
+            else
+                %should never reach here!
+                keyboard
+                error('problem parsing sync text');
+            end
+        end
+    end
     expr = cell(num_diffs,1);
     for ii=1:num_diffs
         expr{ii} = ['{', num2str(ii), '}'];
@@ -255,6 +335,95 @@ if gen_word_acc_rprt
     text{end+1} = char(S');
     if ~save_results
         delete([save_res_prefix, save_word_res_suffix]);
+    end
+end
+
+if gen_per_clust_acc_rprt
+    %generate a 3 column table, where the first column
+    %is the cluster number (ordered by frequency)
+    %the second is the number of occurences of that cluster
+    %and the third, the number of occurences correctly identified
+    %(note that multiple spaces may be truncated when aligned, but consecutive 
+    %spaces are all counted as correct in such a situation)
+    max_clust = max(clust_seq);
+    res = zeros(max_clust,3);
+    if ~isempty(clust_seq)
+        res(:,1) = 1:max_clust;
+        for ii=1:max_clust
+            idx = find(clust_seq == ii);
+            if ~isempty(idx)
+                res(ii,2) = length(idx);
+                res(ii,3) = sum(clust_corr(idx));
+            end
+        end
+    end
+    text{end+1} = res;
+    if save_results
+        fid = fopen([save_res_prefix, save_clust_res_suffix], 'w');
+        fprintf(fid, '%d %d %d\n', res');
+        fclose(fid);
+    end
+end
+
+if gen_ig_case_char_acc_rprt
+    %convert both the generated text and ground truth to all lowercase
+    cmd = ['tr [:upper:] [:lower:] < ', save_gen_file, ' > ', tmp_ig_case_file];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+    cmd = ['tr [:upper:] [:lower:] < ', gt_file, ' > ', tmp_ig_case_gt_file];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+
+    cmd = ['accuracy ', tmp_ig_case_gt_file, ' ', ...
+           tmp_ig_case_file, ' ', save_res_prefix,save_ig_case_char_res_suffix];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+    fid = fopen([save_res_prefix, save_ig_case_char_res_suffix]);
+    S = fread(fid);
+    if display_text
+        fprintf('%c',S);
+    end
+    fclose(fid);
+    text{end+1} = char(S');
+    if ~save_results
+        delete([save_res_prefix, save_ig_case_char_res_suffix]);
+    end
+end
+
+if gen_ig_case_word_acc_rprt
+    %convert both the generated text and ground truth to all lowercase
+    cmd = ['tr [:upper:] [:lower:] < ', save_gen_file, ' > ', tmp_ig_case_file];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+    cmd = ['tr [:upper:] [:lower:] < ', gt_file, ' > ', tmp_ig_case_gt_file];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+
+    cmd = ['wordacc ', tmp_ig_case_gt_file, ' ', ...
+           tmp_ig_case_file, ' ', save_res_prefix,save_ig_case_word_res_suffix];
+    s = unix(cmd);
+    if s ~= 0
+        error('prob running accuracy. cmd: %s', cmd);
+    end
+    fid = fopen([save_res_prefix, save_ig_case_word_res_suffix]);
+    S = fread(fid);
+    if display_text
+        fprintf('%c',S);
+    end
+    fclose(fid);
+    text{end+1} = char(S');
+    if ~save_results
+        delete([save_res_prefix, save_ig_case_word_res_suffix]);
     end
 end
 
