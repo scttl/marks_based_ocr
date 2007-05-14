@@ -61,6 +61,8 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 %                   symbols this cluster blob of ink refers to.
 %     model_spaces - this boolean will be set to true if spaces have been
 %                    modelled and counts taken.  See add_space_model()
+%     space_dists - this vector will list all the intercharacter space widths 
+%                   found
 %     space_width - this positive integer will store the space width estimated
 %                   in add_space_model()
 %     space_lambda1 - this positive real scalar will store the estimated
@@ -76,10 +78,14 @@ function [Clust, Comps] = cluster_comps(Comps, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: cluster_comps.m,v 1.17 2007-04-10 15:46:20 scottl Exp $
+% $Id: cluster_comps.m,v 1.18 2007-05-14 23:14:02 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: cluster_comps.m,v $
+% Revision 1.18  2007-05-14 23:14:02  scottl
+% add space dists, and if not performing refinement, ensure other things are
+% initialized etc.
+%
 % Revision 1.17  2007-04-10 15:46:20  scottl
 % working implementation of Hunag space model implemented.
 %
@@ -310,10 +316,6 @@ end
 %clusters remains constant.  First time through, refine all clusters.
 Clust.refined(:) = false;
 Clust.changed(:) = false;
-if ~refine_clusters
-    %skip the refinement.
-    return;
-end
 
 first_pass = true;
 while true
@@ -345,6 +347,9 @@ while true
     fprintf('%.2fs: %d clusters remain\n', toc, Clust.num);
 
     if first_pass
+        if ~refine_clusters
+            break;
+        end
         %first time through we want to attempt to split over all
         %clusters
         Clust.refined(:) = false;
@@ -412,6 +417,7 @@ Clust.pos_total = 0;
 Clust.found_true_labels = false;
 Clust.truth_label = {};
 Clust.model_spaces = false;
+Clust.space_dists = [];
 Clust.space_width = NaN;
 Clust.space_lambda1 = NaN;
 Clust.space_lambda2 = NaN;
