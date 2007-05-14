@@ -10,10 +10,13 @@ function pos_feature_plot(counts, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: pos_feature_plot.m,v 1.4 2007-02-08 19:22:20 scottl Exp $
+% $Id: pos_feature_plot.m,v 1.5 2007-05-14 23:20:56 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: pos_feature_plot.m,v $
+% Revision 1.5  2007-05-14 23:20:56  scottl
+% fixup plot colour and some other properties
+%
 % Revision 1.4  2007-02-08 19:22:20  scottl
 % added bar graph, relabelled axes according to Sam's suggestions.
 %
@@ -39,7 +42,7 @@ draw_bar = true;
 
 %how should we set markers, lines, and color?
 plot_marker_string = 'o';  %type help plot for choices
-plot_marker_color = 'b';
+plot_marker_color = [0 0 143/255];
 plot_marker_size = 8;
 plot_xlabel = 'Word Length';
 plot_ylabel = 'Positional Probability';
@@ -94,14 +97,15 @@ end
 axis([-2 sz(2)+1 0 1]);
 set(gca, 'YTick', [0 .2 .4 .6 .8 1.0]);
 
+%positive root of quadratic equation used to caculate number of words
+num_words = floor((sqrt(1 + 8*sz(2)) -1)/2);
+dividers=[0,cumsum(1:num_words)+.5];
+centres=dividers(1:num_words)+diff(dividers)/2;
+set(gca, 'XTick', centres);
+set(gca, 'XTickLabel', num2str((1:num_words)'));
+
 if draw_word_dividers
-    %positive root of quadratic equation used to caculate number of words
-    num_words = floor((sqrt(1 + 8*sz(2)) -1)/2);
-    dividers=[0,cumsum(1:num_words)+.5];
-    centres=dividers(1:num_words)+diff(dividers)/2;
     line([1;1]*dividers,[0;1]*ones(1,16), 'LineWidth',1, 'LineStyle', ...
          word_line_style, 'Color', word_line_color);
-    set(gca, 'XTick', centres);
-    set(gca, 'XTickLabel', num2str((1:num_words)'));
 end
 
