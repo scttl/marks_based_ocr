@@ -9,7 +9,7 @@ global MOCR_PATH;  %used to determine where to save results
 create_diary = true;
 if create_diary
     diary_file = [MOCR_PATH, ...
-    '/results/unlv_LGTposnorm_15_simweight_restricted_density_long.diary'];
+    '/results/unlv_LGT_simul_const_long.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -19,10 +19,12 @@ if create_diary
 end
 
 run_cluster=true;
-run_pos_map=true;
-run_word_map=true;
+run_pos_map=false;
+run_vote_map=false;
+run_word_map=false;
+run_simul_word_map=true;
 run_ocr_analysis=true;
-run_alt_acc=true;
+run_alt_acc=false;
 
 %if attempting to determine mappings, this should list the file containing the
 %Syms corpora struct
@@ -32,7 +34,7 @@ syms_struct_file = [MOCR_PATH, '/data/reuters_pos_15_syms.mat'];
 pg_dir = [MOCR_PATH, '/data/unlv_ocr/L/L_GT/'];
 
 %this should give the path to the base part of where results will be kept
-res_base = [MOCR_PATH, '/results/LGTposnorm_15_simweight_restricted_density_long'];
+res_base = [MOCR_PATH, '/results/LGT_simul_const_long'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
@@ -110,6 +112,18 @@ for ii=1:num_docs
 
     load(res_datafile);
 
+    if run_vote_map
+        [order, score] = vote_learn_mappings(Clust, Comps, Syms, ...
+                         'limit_to_map', true, 'word_count_weight_pct', 1, ...
+                         'add_first_pos_up_let', true, ...
+                         'add_last_pos_punct_syms', true, ...
+                         'valid_punct_syms', '.,:;!?');
+
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
+    end
+
+    load(res_datafile);
+
     if run_word_map
         if run_alt_acc
             [map,valid_acc] = word_lookup_map(Clust, Comps, Syms, 'order', ...
@@ -128,18 +142,28 @@ for ii=1:num_docs
             o = [o; sum(valid_acc(o_idx,2)) / sum(valid_acc(o_idx,1))];
             s = [s; sum(valid_acc(s_idx,2)) / sum(valid_acc(s_idx,1))];
         else
-            %map = word_lookup_map(Clust, Comps, Syms, 'order', order, ...
-            %      'restrict_order_to_class', true, 'calc_valid_acc', false);
-            %@@
-            map = cell2mat(order);
-            map = map(:,1);
-            %@@
+            map = word_lookup_map(Clust, Comps, Syms, 'order', order, ...
+                  'restrict_order_to_class', true, 'calc_valid_acc', false);
         end
         fprintf('word lookup mapping complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', ...
              'map');
+    else
+        map = cell2mat(order);
+        map = map(:,1);
     end
     
+    load(res_datafile);
+
+    if run_simul_word_map
+        map = simul_word_lookup_map(Clust, Comps, Syms, ...
+                              'add_first_pos_up_let', true, ...
+                              'add_last_pos_punct_syms', true, ...
+                              'valid_punct_syms', '.,:;!?');
+        fprintf('simultaneous word lookup mapping complete: %f\n', toc);
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
+    end
+
     load(res_datafile);
 
     %print out mapped ground truth to a text file, and determine accuracy stats
