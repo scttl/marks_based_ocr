@@ -7,7 +7,7 @@ global MOCR_PATH;  %used to determine where to save results
 create_diary = true;
 if create_diary
     diary_file = [MOCR_PATH, ...
-    '/results/unlv_B_deskew_15_simword_85_poisson_all.diary'];
+    '/results/unlv_B_deskew_up_punct_norm_vote_poisson_all.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -16,12 +16,14 @@ if create_diary
     fprintf('EXPERIMENT STARTED: %s\n', datestr(now));
 end
 
-run_comps=true;
-run_lines=true;
-run_cluster=true;
-run_dictionary=true;
-run_pos_map=true;
-run_word_map=true;
+run_comps=false;
+run_lines=false;
+run_cluster=false;
+run_dictionary=false;
+run_vote_map=true;
+run_pos_map=false;
+run_word_map=false;
+run_simul_word_map=false;
 run_ocr_analysis=true;
 
 %if attempting to determine mappings, this should list the file containing the
@@ -39,7 +41,7 @@ pg_suffix = '.FF';  %use fine-mode fax to compare with Nagy paper
 gt_prefix = [MOCR_PATH, '/data/unlv_ocr/B/B_GT/'];
 
 %this should give the path to the base part of where results will be kept
-res_base = [MOCR_PATH, '/results/B_deskew_15_simword_85_poisson'];
+res_base = [MOCR_PATH, '/results/B_deskew_up_punct_norm_vote_poisson'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
@@ -146,6 +148,17 @@ for ii=1:num_docs
 
     load(res_datafile);
 
+    if run_vote_map
+        [order, score] = vote_learn_mappings(Clust, Comps, Syms, ...
+                         'limit_to_map', true, 'word_count_weight_pct', 1, ...
+                         'add_first_pos_up_let', true, ...
+                         'add_last_pos_punct_syms', true, ...
+                         'valid_punct_syms', '.,:;!?');
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
+    end
+
+    load(res_datafile);
+
     if run_word_map
         map = word_lookup_map(Clust, Comps, Syms, 'order', order, ...
                               'restrict_order_to_class', false, ...
@@ -153,8 +166,24 @@ for ii=1:num_docs
                               'resize_method', 'nearest');
         fprintf('word lookup mapping complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
+    else
+        %convert the order to a map
+        map = cell2mat(order);
+        map = map(:,1);
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
     
+    load(res_datafile);
+
+    if run_simul_word_map
+        map = simul_word_lookup_map(Clust, Comps, Syms, ...
+                              'add_first_pos_up_let', true, ...
+                              'add_last_pos_punct_syms', true, ...
+                              'valid_punct_syms', '.,:;!?');
+        fprintf('simultaneous word lookup mapping complete: %f\n', toc);
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
+    end
+
     load(res_datafile);
 
     %print out mapped ground truth to a text file, and determine accuracy stats
@@ -168,39 +197,55 @@ for ii=1:num_docs
                 txt_file = [this_pg, '.Z', sprintf('%02d', ...
                             Comps.regions(rgns(kk),2))];
                 res_txtfile = [res_dir, '/', txt_file];
-                res_char_rprtfile = [res_txtfile, '.char_rprt'];
-                res_word_rprtfile = [res_txtfile, '.word_rprt'];
-                print_ocr_text(lines, Comps, Syms, map, ...
-                       'display_text', false, 'save_results', true, ...
+                print_ocr_rec_acc_report(lines, Comps, Syms, map, ...
+                       [gt_prefix,txt_file], 'display_text', false, ...
+                       'save_results', true, 'save_res_prefix', res_txtfile, ...
                        'keep_region', Comps.regions(rgns(kk),3:6), ...
-                       'save_file', res_txtfile);
-                cmd = ['accuracy ', gt_prefix, txt_file, ' ', ...
-                       res_txtfile, ' ', res_char_rprtfile];
-                s = unix(cmd);
-                if s ~= 0
-                    error('prob running accuracy. cmd: %s', cmd);
-                end
-                cmd = ['wordacc ', gt_prefix, txt_file, ' ', ...
-                       res_txtfile, ' ', res_word_rprtfile];
-                s = unix(cmd);
-                if s ~= 0
-                    error('prob running word accuracy. cmd: %s', cmd);
-                end
+                       'gen_char_acc_rprt',true, 'gen_word_acc_rprt',true, ...
+                       'gen_per_clust_acc_rprt', true, ...
+                       'gen_ig_case_char_acc_rprt', true, ...
+                       'gen_ig_case_word_acc_rprt', true, ...
+                       'save_gen_text', true, 'save_gen_file', res_txtfile, ...
+                       'inclusion_thresh', 0, 'save_mod_gt', true, ...
+                       'delete_sym','~', 'mod_gt_file',[res_txtfile,'.gt.txt']);
             end
         end
         %combine all the report files in this directory into a single
         %cumulative report
         char_rprts = dir([res_dir, '/*.char_rprt']);
         word_rprts = dir([res_dir, '/*.word_rprt']);
+        clust_rprts = dir([res_dir, '/*.clust_rprt']);
+        ig_case_char_rprts = dir([res_dir, '/*.ig_case_char_rprt']);
+        ig_case_word_rprts = dir([res_dir, '/*.ig_case_word_rprt']);
         char_rprt_list = '';
         word_rprt_list = '';
+        ig_case_char_rprt_list = '';
+        ig_case_word_rprt_list = '';
+        clust_counts = [];
         if length(char_rprts) > 1
             for jj=1:length(char_rprts)
                 char_rprt_list = [char_rprt_list, res_dir, '/', ...
                                   char_rprts(jj).name, ' '];
                 word_rprt_list = [word_rprt_list, res_dir, '/', ...
                                   word_rprts(jj).name, ' '];
+                ig_case_char_rprt_list = [ig_case_char_rprt_list, res_dir, ...
+                                  '/', ig_case_char_rprts(jj).name, ' '];
+                ig_case_word_rprt_list = [ig_case_word_rprt_list, res_dir, ...
+                                  '/', ig_case_word_rprts(jj).name, ' '];
+                fid = fopen([res_dir, '/', clust_rprts(jj).name]);
+                C = textscan(fid, '%f%f%f');
+                fclose(fid);
+                idx = C{1};
+                if ~isempty(idx)
+                    new_rows = max(idx) - size(clust_counts,1);
+                    if new_rows > 0
+                        clust_counts = [clust_counts; zeros(new_rows,3)];
+                    end
+                    clust_counts(idx,2) = clust_counts(idx,2) + C{2};
+                    clust_counts(idx,3) = clust_counts(idx,3) + C{3};
+                end
             end
+            clust_counts(:,1) = 1:size(clust_counts,1);
             cmd = ['accsum ', char_rprt_list, ' > ', res_dir, '/', ...
                    docs{ii}, '.chartot_rprt'];
             s = unix(cmd);
@@ -213,6 +258,21 @@ for ii=1:num_docs
             if s ~= 0
                 error('prob running wordaccsum. cmd: %s', cmd);
             end
+            cmd = ['accsum ', ig_case_char_rprt_list, ' > ', res_dir, '/', ...
+                   docs{ii}, '.ig_case_chartot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running accsum. cmd: %s', cmd);
+            end
+            cmd = ['wordaccsum ', ig_case_word_rprt_list, ' > ', res_dir, ...
+                   '/', docs{ii}, '.ig_case_wordtot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running wordaccsum. cmd: %s', cmd);
+            end
+            fid = fopen([res_dir, '/', docs{ii}, '.clusttot_rprt'], 'w');
+            fprintf(fid, '%d %d %d\n', clust_counts');
+            fclose(fid);
         else
             %just copy the single file for the total count
             cmd = ['cp ', res_dir, '/', char_rprts(1).name, ' ', res_dir, ...
@@ -223,6 +283,24 @@ for ii=1:num_docs
             end
             cmd = ['cp ', res_dir, '/', word_rprts(1).name, ' ', res_dir, ...
                    '/', docs{ii}, '.wordtot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running cp. cmd: %s', cmd);
+            end
+            cmd = ['cp ', res_dir, '/', ig_case_char_rprts(1).name, ' ', ...
+                   res_dir, '/', docs{ii}, '.ig_case_chartot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running cp. cmd: %s', cmd);
+            end
+            cmd = ['cp ', res_dir, '/', ig_case_word_rprts(1).name, ' ', ...
+                   res_dir, '/', docs{ii}, '.ig_case_wordtot_rprt'];
+            s = unix(cmd);
+            if s ~= 0
+                error('prob running cp. cmd: %s', cmd);
+            end
+            cmd = ['cp ', res_dir, '/', clust_rprts(1).name, ' ', res_dir, ...
+                   '/', docs{ii}, '.clusttot_rprt'];
             s = unix(cmd);
             if s ~= 0
                 error('prob running cp. cmd: %s', cmd);
