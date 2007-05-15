@@ -22,10 +22,13 @@ function [order,score] = vote_learn_mappings(Clust, Comps, Syms, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: vote_learn_mappings.m,v 1.2 2007-04-15 21:29:16 scottl Exp $
+% $Id: vote_learn_mappings.m,v 1.3 2007-05-15 16:58:19 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: vote_learn_mappings.m,v $
+% Revision 1.3  2007-05-15 16:58:19  scottl
+% comment spelling typo
+%
 % Revision 1.2  2007-04-15 21:29:16  scottl
 % *** empty log message ***
 %
@@ -47,7 +50,7 @@ limit_to_map = true;
 
 %what percentage of the counts should be counted as additional votes?  Set this
 %to 0, and each matching word gets a single vote (regardless of the number of
-%times it occurs in the document).  Set this to 1 and each occurence of each
+%times it occurs in the document).  Set this to 1 and each occurrence of each
 %word is counted as a vote.
 word_count_weight_pct = 0;
 
