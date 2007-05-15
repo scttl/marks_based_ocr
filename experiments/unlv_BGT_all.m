@@ -7,7 +7,7 @@ global MOCR_PATH;  %used to determine where to save results
 %set the following line to true to record process
 create_diary = true;
 if create_diary
-    diary_file = [MOCR_PATH, '/results/unlv_BGT_all.diary'];
+    diary_file = [MOCR_PATH, '/results/unlv_BGT_simul_const_all.diary'];
     if exist(diary_file)
         delete(diary_file);
     end
@@ -17,9 +17,10 @@ if create_diary
 end
 
 run_cluster=true;
-run_pos_map=true;
+run_pos_map=false;
 run_vote_map=false;
-run_word_map=true;
+run_word_map=false;
+run_simul_word_map=true;
 run_ocr_analysis=true;
 
 %if attempting to determine mappings, this should list the file containing the
@@ -30,7 +31,7 @@ syms_struct_file = [MOCR_PATH, '/data/reuters_pos_15_syms.mat'];
 pg_dir = [MOCR_PATH, '/data/unlv_ocr/B/B_GT/'];
 
 %this should give the path to the base part of where results will be kept
-res_base = [MOCR_PATH, '/results/BGT'];
+res_base = [MOCR_PATH, '/results/BGT_simul_const'];
 if ~exist(res_base, 'dir')
     [s,w] = unix(['mkdir -p ', res_base]);
     if s~=0
@@ -70,7 +71,7 @@ for ii=1:num_docs
 
     %now cluster the components
     if run_cluster
-        [Clust, Comps, Lines] = create_text_clusters(Files);
+        [Clust, Comps, Lines] = create_text_clusters(Files, 'max_word_len', 15);
         save(res_datafile, 'Clust', 'Comps', 'Lines');
         fprintf('clustering complete: %f\n', toc);
     end
@@ -80,7 +81,8 @@ for ii=1:num_docs
     %now attempt to infer mappings based on positional information
     if run_pos_map
         [order, score] = positional_learn_mappings(Clust, Syms, ...
-                         'dist_metric', 'manhattan');
+                         'dist_metric', 'euc', 'weight_proportion', .85, ...
+                         'prior_counts', 0, 'weight_per_symbol', false);
         fprintf('position based ordering complete: %f\n', toc);
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score');
     end
@@ -108,6 +110,17 @@ for ii=1:num_docs
         save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
     end
     
+    load(res_datafile);
+
+    if run_simul_word_map
+        map = simul_word_lookup_map(Clust, Comps, Syms, ...
+                              'add_first_pos_up_let', true, ...
+                              'add_last_pos_punct_syms', true, ...
+                              'valid_punct_syms', '.,:;!?');
+        fprintf('simultaneous word lookup mapping complete: %f\n', toc);
+        save(res_datafile, 'Clust', 'Comps', 'Lines', 'order', 'score', 'map');
+    end
+
     load(res_datafile);
 
     %print out mapped ground truth to a text file, and determine accuracy stats
