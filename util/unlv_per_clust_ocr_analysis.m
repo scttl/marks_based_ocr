@@ -17,10 +17,13 @@ function res = unlv_per_clust_ocr_analysis(files, varargin)
 
 % CVS INFO %
 %%%%%%%%%%%%
-% $Id: unlv_per_clust_ocr_analysis.m,v 1.1 2007-05-14 23:21:19 scottl Exp $
+% $Id: unlv_per_clust_ocr_analysis.m,v 1.2 2007-05-15 16:58:54 scottl Exp $
 %
 % REVISION HISTORY
 % $Log: unlv_per_clust_ocr_analysis.m,v $
+% Revision 1.2  2007-05-15 16:58:54  scottl
+% add parameter to control histogram bucket width
+%
 % Revision 1.1  2007-05-14 23:21:19  scottl
 % initial check-in
 %
@@ -48,6 +51,8 @@ take_first_num = [];
 plot_per_clust_acc=true;
 plot_per_freq_acc=false;
 plot_num_clust_hist=false;
+
+num_clust_div = 5;  %denominator used to determine how many buckets for hist
 
 
 % CODE START %
@@ -126,7 +131,7 @@ end
 fig_num=1;
 if plot_num_clust_hist
     figure(fig_num); clf;
-    hist(num_clusts, min(num_clusts):max(num_clusts));
+    hist(num_clusts, ceil(length(num_clusts)/num_clust_div));
     axis tight;
     xlabel('number of clusters', 'FontSize', ft_size);
     ylabel('frequency', 'FontSize', ft_size);
