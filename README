@@ -1,16 +1,10 @@
-##################################################################################
-## FILE: README
-##
-## CVS: $Id: README,v 1.1 2006-07-04 19:19:04 scottl Exp $
-##
-## DESCRIPTION: Text file describing how to install and use the marks_based_ocr
-##              application, as well as any other neccessary notes.
-##
-## ARGUMENTS:
-##
-## REQUIRES:
-##
-################################################################################
+Marks Based OCR
+===============
+Relatively complete document image analysis system that largely ignores image 
+information during the classification stage.  Instead relies on contextual and 
+language cues.
+
+Developed by Scott Leishman for research purposes while attending U of T.
 
 
 1. INSTALLING
